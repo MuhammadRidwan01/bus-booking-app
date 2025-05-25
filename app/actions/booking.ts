@@ -1,6 +1,6 @@
 "use server"
 
-import { supabaseAdmin } from "@/lib/supabase"
+import { getSupabaseAdmin } from "@/lib/supabase-server"
 import { bookingSchema } from "@/lib/validations"
 import { generateBookingCode, formatPhoneNumber } from "@/lib/utils"
 import { redirect } from "next/navigation"
@@ -14,7 +14,10 @@ export async function createBooking(formData: FormData) {
   if (!customerName) {
     throw new Error("Nama lengkap harus diisi");
   }
+  
   try {
+    const supabaseAdmin = await getSupabaseAdmin()
+    
     // Validate form data
     const rawData = {
       customerName: formData.get("customerName") as string,
@@ -45,7 +48,8 @@ export async function createBooking(formData: FormData) {
     }
 
     // Check capacity
-    if (schedule.current_booked + validatedData.passengerCount > schedule.bus_schedules.max_capacity) {
+    const maxCapacity = schedule.bus_schedules?.max_capacity
+    if (!maxCapacity || schedule.current_booked + validatedData.passengerCount > maxCapacity) {
       throw new Error("Kapasitas tidak mencukupi")
     }
 
@@ -57,7 +61,7 @@ export async function createBooking(formData: FormData) {
       .from("bookings")
       .insert({
         booking_code: bookingCode,
-        hotel_id: schedule.bus_schedules.hotel_id,
+        hotel_id: schedule.bus_schedules?.hotel_id,
         daily_schedule_id: validatedData.scheduleId,
         customer_name: validatedData.customerName,
         phone: formatPhoneNumber(validatedData.phoneNumber),
@@ -81,23 +85,41 @@ export async function createBooking(formData: FormData) {
       console.error("Failed to update capacity:", capacityError)
     }
 
-    // TODO: Send WhatsApp ticket
-    // await sendTicketToWhatsApp(booking)
     redirect(`/booking/confirmation?code=${bookingCode}`)
   } catch (error) {
     console.error("Booking error:", error)
     throw error
   }
-
-  
 }
 
 export async function getBookingByCode(code: string) {
   try {
-    const { data: booking } = await supabaseAdmin.from("booking_details").select("*").eq("booking_code", code).single()
+    const supabaseAdmin = await getSupabaseAdmin()
+    const { data: booking } = await supabaseAdmin
+      .from("booking_details")
+      .select("*")
+      .eq("booking_code", code)
+      .single()
 
     return { found: !!booking, booking }
   } catch (error) {
     return { found: false, booking: null }
+  }
+}
+
+export async function getHotelDetails(hotelId: string) {
+  try {
+    const supabaseAdmin = await getSupabaseAdmin()
+    const { data, error } = await supabaseAdmin
+      .from('hotels')
+      .select('*')
+      .eq('id', hotelId)
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error("Error getting hotel details:", error)
+    throw error
   }
 }
