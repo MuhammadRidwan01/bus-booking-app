@@ -128,6 +128,9 @@ importers:
       next-themes:
         specifier: ^0.4.4
         version: 0.4.6(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      node-cron:
+        specifier: ^4.0.7
+        version: 4.0.7
       react:
         specifier: ^19
         version: 19.1.0
@@ -1538,6 +1541,10 @@ packages:
         optional: true
       sass:
         optional: true
+
+  node-cron@4.0.7:
+    resolution: {integrity: sha512-A37UUDpxRT/kWanELr/oMayCWQFk9Zx9BEUoXrAKuKwKzH4XuAX+vMixMBPkgZBkADgJwXv91w5cMRTNSVP/mA==}
+    engines: {node: '>=6.0.0'}
 
   node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
@@ -3280,6 +3287,8 @@ snapshots:
     transitivePeerDependencies:
       - '@babel/core'
       - babel-plugin-macros
+
+  node-cron@4.0.7: {}
 
   node-releases@2.0.19: {}
 
