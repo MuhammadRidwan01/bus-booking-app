@@ -6,6 +6,7 @@ export const bookingSchema = z.object({
   bookingDate: z.string(),
   scheduleId: z.string().uuid("Schedule ID tidak valid"),
   passengerCount: z.number().min(1, "Minimal 1 penumpang").max(5, "Maksimal 5 penumpang"),
+  roomNumberId: z.string().uuid("Room number tidak valid"),
 })
 
 export const trackingSchema = z.object({

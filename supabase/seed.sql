@@ -36,6 +36,15 @@ CREATE TABLE daily_schedules (
   UNIQUE(bus_schedule_id, schedule_date)
 );
 
+-- Tabel room_numbers untuk daftar kamar valid per hotel
+CREATE TABLE room_numbers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  hotel_id UUID REFERENCES hotels(id) ON DELETE CASCADE,
+  room_number VARCHAR(20) NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  UNIQUE(hotel_id, room_number)
+);
+
 -- Bookings
 CREATE TABLE bookings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -48,8 +57,22 @@ CREATE TABLE bookings (
   status VARCHAR(20) DEFAULT 'confirmed', -- confirmed, cancelled
   whatsapp_sent BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  room_number_id UUID REFERENCES room_numbers(id)
 );
+
+-- Seed data room_numbers untuk masing-masing hotel
+-- Ibis Style: 101, 102, 103, 201, 202, 203
+INSERT INTO room_numbers (hotel_id, room_number) 
+SELECT h.id, rn
+FROM hotels h, unnest(ARRAY['101','102','103','201','202','203']) rn
+WHERE h.slug = 'ibis-style';
+
+-- Ibis Budget: A1, A2, B1, B2
+INSERT INTO room_numbers (hotel_id, room_number) 
+SELECT h.id, rn
+FROM hotels h, unnest(ARRAY['A1','A2','B1','B2']) rn
+WHERE h.slug = 'ibis-budget';
 
 -- Function untuk generate jadwal harian otomatis (diperbaiki)
 CREATE OR REPLACE FUNCTION generate_daily_schedules()
@@ -255,11 +278,13 @@ SELECT
   ds.current_booked,
   bs.max_capacity,
   ds.status as schedule_status,
-  (bs.max_capacity - ds.current_booked) as available_seats
+  (bs.max_capacity - ds.current_booked) as available_seats,
+  rn.room_number as room_number
 FROM bookings b
 JOIN hotels h ON b.hotel_id = h.id
 JOIN daily_schedules ds ON b.daily_schedule_id = ds.id
-JOIN bus_schedules bs ON ds.bus_schedule_id = bs.id;
+JOIN bus_schedules bs ON ds.bus_schedule_id = bs.id
+LEFT JOIN room_numbers rn ON b.room_number_id = rn.id;
 
 -- View untuk available schedules (hanya yang masih aktif)
 CREATE OR REPLACE VIEW available_schedules AS
