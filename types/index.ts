@@ -41,6 +41,7 @@ export interface BookingDetails extends Booking {
   departure_time: string
   destination: string
   schedule_date: string
+  room_number?: string
 }
 
 export interface ScheduleWithCapacity {
@@ -51,4 +52,11 @@ export interface ScheduleWithCapacity {
   max_capacity: number
   status: "available" | "almost-full" | "full"
   schedule_date: string
+}
+
+export interface RoomNumber {
+  id: string
+  hotel_id: string
+  room_number: string
+  is_active: boolean
 }

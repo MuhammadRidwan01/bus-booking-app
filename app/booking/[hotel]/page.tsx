@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,8 @@ import { ScheduleSelector } from "@/components/ScheduleSelector"
 import { useRealTimeCapacity } from "@/hooks/useRealTimeCapacity"
 import { createBooking } from "@/app/actions/booking"
 import { useActionState } from "react"
+import { supabase } from "@/lib/supabase"
+import type { RoomNumber } from "@/types"
 
 export default function BookingPage() {
   const params = useParams()
@@ -22,18 +24,48 @@ export default function BookingPage() {
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>("")
   const [passengerCount, setPassengerCount] = useState<number>(1)
+  const [roomNumbers, setRoomNumbers] = useState<RoomNumber[]>([])
+  const [selectedRoomNumberId, setSelectedRoomNumberId] = useState<string>("")
 
   const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug)
-  const [state, formAction, isPending] = useActionState(createBooking, null)
 
   const hotelName = hotelSlug === "ibis-style" ? "Ibis Style" : "Ibis Budget"
+
+  useEffect(() => {
+    async function fetchRoomNumbers() {
+      if (!hotelSlug) return
+      const { data: hotel } = await supabase
+        .from("hotels")
+        .select("id")
+        .eq("slug", hotelSlug)
+        .single()
+      if (!hotel) return
+      const { data: rooms } = await supabase
+        .from("room_numbers")
+        .select("id, room_number, hotel_id, is_active")
+        .eq("hotel_id", hotel.id)
+        .eq("is_active", true)
+      setRoomNumbers(rooms || [])
+    }
+    fetchRoomNumbers()
+  }, [hotelSlug])
 
   const handleScheduleSelect = (scheduleId: string, date: string) => {
     setSelectedScheduleId(scheduleId)
     setSelectedDate(date)
   }
 
-  const isFormValid = selectedScheduleId && selectedDate && passengerCount >= 1
+  const isFormValid = selectedScheduleId && selectedDate && passengerCount >= 1 && selectedRoomNumberId
+
+  async function bookingFormAction(prevState: any, formData: FormData) {
+    try {
+      await createBooking(formData)
+      return { error: null }
+    } catch (error: any) {
+      return { error: error?.message || "Terjadi kesalahan saat booking" }
+    }
+  }
+  const [state, formAction] = useActionState(bookingFormAction, { error: null })
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -95,6 +127,7 @@ export default function BookingPage() {
                 <input type="hidden" name="scheduleId" value={selectedScheduleId || ""} />
                 <input type="hidden" name="bookingDate" value={selectedDate} />
                 <input type="hidden" name="passengerCount" value={passengerCount} />
+                <input type="hidden" name="roomNumberId" value={selectedRoomNumberId} />
 
                 {/* Customer Name */}
                 <div className="space-y-2">
@@ -152,16 +185,39 @@ export default function BookingPage() {
                   </Select>
                 </div>
 
+                {/* Room Number */}
+                <div className="space-y-2">
+                  <Label htmlFor="roomNumberId" className="flex items-center space-x-2">
+                    <span>No. Kamar</span>
+                  </Label>
+                  <Select
+                    value={selectedRoomNumberId}
+                    onValueChange={setSelectedRoomNumberId}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih nomor kamar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roomNumbers.map((room) => (
+                        <SelectItem key={room.id} value={room.id}>
+                          {room.room_number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Error Message */}
-                {state?.error && (
+                {state && typeof state === "object" && "error" in state && state.error && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <p className="text-red-800 text-sm">{state.error}</p>
                   </div>
                 )}
 
                 {/* Submit Button */}
-                <Button type="submit" className="w-full" disabled={!isFormValid || isPending}>
-                  {isPending ? "Memproses..." : "Konfirmasi Booking"}
+                <Button type="submit" className="w-full" disabled={!isFormValid}>
+                  Konfirmasi Booking
                 </Button>
 
                 {!isFormValid && (

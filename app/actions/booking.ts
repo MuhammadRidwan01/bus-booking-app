@@ -25,6 +25,7 @@ export async function createBooking(formData: FormData) {
       bookingDate: formData.get("bookingDate") as string,
       scheduleId: formData.get("scheduleId") as string,
       passengerCount: Number.parseInt(formData.get("passengerCount") as string),
+      roomNumberId: formData.get("roomNumberId") as string,
     }
 
     const validatedData = bookingSchema.parse(rawData)
@@ -35,6 +36,7 @@ export async function createBooking(formData: FormData) {
       .select(`
         id,
         current_booked,
+        bus_schedule_id,
         bus_schedules (
           hotel_id,
           max_capacity
@@ -48,7 +50,8 @@ export async function createBooking(formData: FormData) {
     }
 
     // Check capacity
-    const maxCapacity = schedule.bus_schedules?.max_capacity
+    const busSchedule = Array.isArray(schedule.bus_schedules) ? schedule.bus_schedules[0] : schedule.bus_schedules;
+    const maxCapacity = busSchedule?.max_capacity;
     if (!maxCapacity || schedule.current_booked + validatedData.passengerCount > maxCapacity) {
       throw new Error("Kapasitas tidak mencukupi")
     }
@@ -61,12 +64,13 @@ export async function createBooking(formData: FormData) {
       .from("bookings")
       .insert({
         booking_code: bookingCode,
-        hotel_id: schedule.bus_schedules?.hotel_id,
+        hotel_id: busSchedule?.hotel_id,
         daily_schedule_id: validatedData.scheduleId,
         customer_name: validatedData.customerName,
         phone: formatPhoneNumber(validatedData.phoneNumber),
         passenger_count: validatedData.passengerCount,
         status: "confirmed",
+        room_number_id: validatedData.roomNumberId,
       })
       .select()
       .single()

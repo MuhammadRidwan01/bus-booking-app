@@ -155,6 +155,18 @@ export default function TrackPage() {
                           </div>
                         </div>
 
+                        {booking.room_number && (
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+                              <span className="font-bold text-pink-600">#{booking.room_number}</span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{booking.room_number}</p>
+                              <p className="text-sm text-gray-600">No. Kamar</p>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                             <Calendar className="h-5 w-5 text-green-600" />
