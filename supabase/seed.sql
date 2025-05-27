@@ -329,5 +329,16 @@ CROSS JOIN (
 ) AS schedules(departure_time, destination)
 ON CONFLICT DO NOTHING;
 
+INSERT INTO room_numbers (hotel_id, room_number) 
+SELECT h.id, rn
+FROM hotels h, unnest(ARRAY['101','102','103','201','202','203']) rn
+WHERE h.slug = 'ibis-style';
+
+-- Ibis Budget: A1, A2, B1, B2
+INSERT INTO room_numbers (hotel_id, room_number) 
+SELECT h.id, rn
+FROM hotels h, unnest(ARRAY['A1','A2','B1','B2']) rn
+WHERE h.slug = 'ibis-budget';
+
 -- Generate initial daily schedules
 SELECT daily_maintenance();

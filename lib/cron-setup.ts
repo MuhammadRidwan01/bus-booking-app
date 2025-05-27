@@ -3,27 +3,28 @@ import { getSupabaseAdmin } from './supabase-server';
 import { supabaseAdmin } from './supabase-admin';
 export function setupCronJobs() {
   // Run daily maintenance setiap hari jam 00:05 WIB
-  cron.schedule('5 0 * * *', async () => {
-    try {
-      const supabaseAdmin = await getSupabaseAdmin()
-      console.log('Running scheduled daily maintenance...');
-      
-      const response = await fetch(`${process.env.NEXTAUTH_URL}/api/cron/daily-maintenance`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.CRON_SECRET}`
-        }
-      });
+  cron.schedule('55 14 * * *', async () => {
+  try {
+    const supabaseAdmin = await getSupabaseAdmin();
+    console.log('Running scheduled daily maintenance...');
 
-      const result = await response.json();
-      console.log('Daily maintenance result:', result);
+    const response = await fetch(`${process.env.NEXTAUTH_URL}/api/cron/daily-maintenance`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${process.env.CRON_SECRET}`
+      }
+    });
 
-    } catch (error) {
-      console.error('Cron job failed:', error);
-    }
-  }, {
-    timezone: "Asia/Jakarta"
-  });
+    const result = await response.json();
+    console.log('Daily maintenance result:', result);
+
+  } catch (error) {
+    console.error('Cron job failed:', error);
+  }
+}, {
+  timezone: "Asia/Jakarta" // Waktu Indonesia Barat
+});
+
 
   // Cleanup expired schedules setiap jam
   cron.schedule('0 * * * *', async () => {
