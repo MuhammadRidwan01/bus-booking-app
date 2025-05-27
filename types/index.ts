@@ -52,6 +52,7 @@ export interface ScheduleWithCapacity {
   max_capacity: number
   status: "available" | "almost-full" | "full"
   schedule_date: string
+  isPast?: boolean
 }
 
 export interface RoomNumber {

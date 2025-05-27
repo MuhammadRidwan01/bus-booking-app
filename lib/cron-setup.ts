@@ -3,11 +3,14 @@ import { getSupabaseAdmin } from './supabase-server';
 import { supabaseAdmin } from './supabase-admin';
 export function setupCronJobs() {
   // Run daily maintenance setiap hari jam 00:05 WIB
-  cron.schedule('55 14 * * *', async () => {
+  cron.schedule('05 00 * * *', async () => {
   try {
     const supabaseAdmin = await getSupabaseAdmin();
     console.log('Running scheduled daily maintenance...');
 
+    if (!process.env.NEXTAUTH_URL) {
+      throw new Error('NEXTAUTH_URL is not set');
+    }
     const response = await fetch(`${process.env.NEXTAUTH_URL}/api/cron/daily-maintenance`, {
       method: 'GET',
       headers: {

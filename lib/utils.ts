@@ -36,8 +36,9 @@ export function isScheduleAvailable(departureTime: string, scheduleDate: string)
 
   if (isToday(scheduleDateTime)) {
     const [hours, minutes] = departureTime.split(":")
-    const departureDateTime = setHours(setMinutes(new Date(), Number(minutes)), Number(hours))
-    return isAfter(departureDateTime, now)
+    const departureDateTime = setHours(setMinutes(new Date(scheduleDateTime), Number(minutes)), Number(hours))
+    const twentyMinutesBefore = new Date(departureDateTime.getTime() - 20 * 60 * 1000)
+    return isAfter(twentyMinutesBefore, now)
   }
 
   return true
