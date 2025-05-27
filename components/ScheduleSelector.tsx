@@ -25,7 +25,18 @@ export function ScheduleSelector({
 }: ScheduleSelectorProps) {
   const [selectedDate, setSelectedDate] = useState<"today" | "tomorrow">("today")
 
-  const currentSchedules = selectedDate === "today" ? todaySchedules : tomorrowSchedules
+  const currentSchedules = (selectedDate === "today" ? todaySchedules : tomorrowSchedules)
+    .slice()
+    .sort((a, b) => {
+      // Prioritaskan yang masih bisa dipesan
+      if (!!a.isPast !== !!b.isPast) {
+        return a.isPast ? 1 : -1
+      }
+      // Urutkan berdasarkan jam keberangkatan
+      const aTime = a.departure_time.split(":").map(Number)
+      const bTime = b.departure_time.split(":").map(Number)
+      return (aTime[0] * 60 + aTime[1]) - (bTime[0] * 60 + bTime[1])
+    })
   const currentDateString =
     selectedDate === "today"
       ? new Date().toISOString().split("T")[0]
@@ -86,6 +97,10 @@ export function ScheduleSelector({
       <CardHeader>
         <CardTitle className="text-2xl font-bold">Pilih Jadwal</CardTitle>
 
+        <div className="mb-2 text-sm text-blue-700 bg-blue-100 rounded px-3 py-2">
+          Tiket hanya bisa dipesan maksimal <b>20 menit sebelum keberangkatan</b>.
+        </div>
+
         <div className="flex space-x-2 mt-4">
           <Button
             type="button"
@@ -135,9 +150,9 @@ export function ScheduleSelector({
                   selectedScheduleId === schedule.id
                     ? "border-blue-500 bg-blue-50 shadow-md"
                     : "border-gray-200 hover:border-gray-300"
-                } ${schedule.status === "full" ? "opacity-60 cursor-not-allowed" : ""}`}
+                } ${(schedule.status === "full" || schedule.isPast) ? "opacity-60 cursor-not-allowed bg-gray-100" : ""}`}
                 onClick={() => {
-                  if (schedule.status !== "full") {
+                  if (schedule.status !== "full" && !schedule.isPast) {
                     onScheduleSelect(schedule.id, currentDateString)
                   }
                 }}
@@ -152,6 +167,32 @@ export function ScheduleSelector({
                       <Badge className={`${getCapacityColor(schedule.status)} px-3 py-1 text-sm font-medium`}>
                         {getCapacityText(schedule.status)}
                       </Badge>
+                      {/* {schedule.isPast && (
+                        <span className="ml-2 text-xs bg-gray-300 text-gray-700 px-2 py-1 rounded">Sudah Lewat</span>
+                      )} */}
+                    </div>
+                    {/* Info waktu sebelum keberangkatan */}
+                    <div className="text-xs text-gray-500 mt-1">
+                      {(() => {
+                        // Hitung berapa menit lagi sebelum keberangkatan
+                        const now = new Date()
+                        const scheduleDateTime = new Date(schedule.schedule_date)
+                        const [hours, minutes] = schedule.departure_time.split(":")
+                        const departureDateTime = new Date(scheduleDateTime)
+                        departureDateTime.setHours(Number(hours), Number(minutes), 0, 0)
+                        const diffMs = departureDateTime.getTime() - now.getTime()
+                        const diffMinutes = Math.floor(diffMs / 60000)
+                        if (schedule.isPast) {
+                          return <span className="text-red-500">Sudah tidak bisa dipesan</span>
+                        } else if (diffMinutes > 20) {
+                          const availableMinutes = diffMinutes - 20
+                          const jam = Math.floor(availableMinutes / 60)
+                          const menit = availableMinutes % 60
+                          return <span className="text-green-500">Ditutup dalam {jam > 0 ? `${jam} jam ` : ""}{menit > 0 ? `${menit} menit` : jam === 0 ? "0 menit" : ""}</span>
+                        } else {
+                          return <span>Kurang dari 20 menit, sudah tidak bisa dipesan</span>
+                        }
+                      })()}
                     </div>
 
                     <div className="flex items-center text-gray-700">

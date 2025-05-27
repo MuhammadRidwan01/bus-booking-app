@@ -85,16 +85,19 @@ export function useRealTimeCapacity(hotelSlug: string) {
 
     // Step 4: Proses data hasil query
     const processedToday = todayData
-      .map((schedule) => ({
-        id: schedule.id,
-        departure_time: schedule.bus_schedules?.departure_time,
-        destination: schedule.bus_schedules?.destination,
-        current_booked: schedule.current_booked,
-        max_capacity: schedule.bus_schedules?.max_capacity,
-        status: getCapacityStatus(schedule.current_booked, schedule.bus_schedules?.max_capacity),
-        schedule_date: schedule.schedule_date,
-      }))
-      .filter((schedule) => isScheduleAvailable(schedule.departure_time, schedule.schedule_date))
+      .map((schedule) => {
+        const isPast = !isScheduleAvailable(schedule.bus_schedules?.departure_time, schedule.schedule_date)
+        return {
+          id: schedule.id,
+          departure_time: schedule.bus_schedules?.departure_time,
+          destination: schedule.bus_schedules?.destination,
+          current_booked: schedule.current_booked,
+          max_capacity: schedule.bus_schedules?.max_capacity,
+          status: getCapacityStatus(schedule.current_booked, schedule.bus_schedules?.max_capacity),
+          schedule_date: schedule.schedule_date,
+          isPast,
+        }
+      })
 
     const processedTomorrow = tomorrowData.map((schedule) => ({
       id: schedule.id,
@@ -104,6 +107,7 @@ export function useRealTimeCapacity(hotelSlug: string) {
       max_capacity: schedule.bus_schedules?.max_capacity,
       status: getCapacityStatus(schedule.current_booked, schedule.bus_schedules?.max_capacity),
       schedule_date: schedule.schedule_date,
+      isPast: false,
     }))
 
     setTodaySchedules(processedToday)
