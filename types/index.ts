@@ -50,7 +50,7 @@ export interface ScheduleWithCapacity {
   destination: string
   current_booked: number
   max_capacity: number
-  status: "available" | "almost-full" | "full"
+  status: "available" | "almost-full" | "full" | "expired"
   schedule_date: string
   isPast?: boolean
 }

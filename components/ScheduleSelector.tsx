@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, MapPin, Users, AlertTriangle } from "lucide-react"
+import { Clock, MapPin, Users, AlertTriangle, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 import type { ScheduleWithCapacity } from "@/types"
 import { formatTime } from "@/lib/utils"
 
@@ -14,6 +14,9 @@ interface ScheduleSelectorProps {
   selectedScheduleId: string | null
   onScheduleSelect: (scheduleId: string, date: string) => void
   loading: boolean
+  onReconnect?: () => void
+  isConnected?: boolean
+  channelStatus?: 'SUBSCRIBED' | 'CLOSED' | 'TIMED_OUT' | 'CHANNEL_ERROR' | null
 }
 
 export function ScheduleSelector({
@@ -22,6 +25,9 @@ export function ScheduleSelector({
   selectedScheduleId,
   onScheduleSelect,
   loading,
+  onReconnect,
+  isConnected = true,
+  channelStatus = 'SUBSCRIBED',
 }: ScheduleSelectorProps) {
   const [selectedDate, setSelectedDate] = useState<"today" | "tomorrow">("today")
 
@@ -50,6 +56,8 @@ export function ScheduleSelector({
         return "bg-yellow-100 text-yellow-800 animate-pulse"
       case "full":
         return "bg-red-100 text-red-800"
+      case "expired":
+        return "bg-red-500 text-gray-300"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -63,6 +71,8 @@ export function ScheduleSelector({
         return "Hampir Penuh"
       case "full":
         return "Penuh"
+      case "expired":
+        return "Tidak Tersedia"
       default:
         return "Tidak Tersedia"
     }
@@ -99,6 +109,28 @@ export function ScheduleSelector({
 
         <div className="mb-2 text-sm text-blue-700 bg-blue-100 rounded px-3 py-2">
           Tiket hanya bisa dipesan maksimal <b>20 menit sebelum keberangkatan</b>.
+        </div>
+
+        {/* Indikator koneksi realtime */}
+        <div className="flex items-center gap-2 mb-2">
+          {channelStatus === 'SUBSCRIBED' ? (
+            <>
+              <CheckCircle className="text-green-500 w-4 h-4" />
+              <span className="text-green-700 text-xs">Realtime update aktif</span>
+            </>
+          ) : (
+            <>
+              <XCircle className="text-red-500 w-4 h-4" />
+              <span className="text-red-700 text-xs">Terputus</span>
+              <button
+                className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-700 rounded flex items-center gap-1 hover:bg-red-200"
+                onClick={onReconnect}
+                type="button"
+              >
+                <RefreshCw className="w-3 h-3 animate-spin mr-1" />{channelStatus}
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex space-x-2 mt-4">
@@ -150,9 +182,9 @@ export function ScheduleSelector({
                   selectedScheduleId === schedule.id
                     ? "border-blue-500 bg-blue-50 shadow-md"
                     : "border-gray-200 hover:border-gray-300"
-                } ${(schedule.status === "full" || schedule.isPast) ? "opacity-60 cursor-not-allowed bg-gray-100" : ""}`}
+                } ${(schedule.status === "full" || schedule.isPast || schedule.status === "expired") ? "opacity-60 cursor-not-allowed bg-gray-100" : ""}`}
                 onClick={() => {
-                  if (schedule.status !== "full" && !schedule.isPast) {
+                  if (schedule.status !== "full" && !schedule.isPast && schedule.status !== "expired") {
                     onScheduleSelect(schedule.id, currentDateString)
                   }
                 }}
@@ -167,13 +199,15 @@ export function ScheduleSelector({
                       <Badge className={`${getCapacityColor(schedule.status)} px-3 py-1 text-sm font-medium`}>
                         {getCapacityText(schedule.status)}
                       </Badge>
-                      {/* {schedule.isPast && (
-                        <span className="ml-2 text-xs bg-gray-300 text-gray-700 px-2 py-1 rounded">Sudah Lewat</span>
-                      )} */}
                     </div>
+
                     {/* Info waktu sebelum keberangkatan */}
                     <div className="text-xs text-gray-500 mt-1">
                       {(() => {
+                        if (schedule.status === "expired" || schedule.isPast) {
+                          return <span className="text-gray-500">Jadwal sudah lewat</span>
+                        }
+
                         // Hitung berapa menit lagi sebelum keberangkatan
                         const now = new Date()
                         const scheduleDateTime = new Date(schedule.schedule_date)
@@ -182,15 +216,14 @@ export function ScheduleSelector({
                         departureDateTime.setHours(Number(hours), Number(minutes), 0, 0)
                         const diffMs = departureDateTime.getTime() - now.getTime()
                         const diffMinutes = Math.floor(diffMs / 60000)
-                        if (schedule.isPast) {
-                          return <span className="text-red-500">Sudah tidak bisa dipesan</span>
-                        } else if (diffMinutes > 20) {
+                        
+                        if (diffMinutes > 20) {
                           const availableMinutes = diffMinutes - 20
                           const jam = Math.floor(availableMinutes / 60)
                           const menit = availableMinutes % 60
                           return <span className="text-green-500">Ditutup dalam {jam > 0 ? `${jam} jam ` : ""}{menit > 0 ? `${menit} menit` : jam === 0 ? "0 menit" : ""}</span>
                         } else {
-                          return <span>Kurang dari 20 menit, sudah tidak bisa dipesan</span>
+                          return <span className="text-red-500">Sudah tidak bisa dipesan</span>
                         }
                       })()}
                     </div>
@@ -200,30 +233,33 @@ export function ScheduleSelector({
                       <span className="font-medium">{schedule.destination}</span>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <Users className="h-4 w-4 mr-2" />
-                          <span>
-                            {schedule.current_booked}/{schedule.max_capacity} penumpang
+                    {/* Only show capacity info for non-expired schedules */}
+                    {schedule.status !== "expired" && !schedule.isPast && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm text-gray-600">
+                          <div className="flex items-center">
+                            <Users className="h-4 w-4 mr-2" />
+                            <span>
+                              {schedule.current_booked}/{schedule.max_capacity} penumpang
+                            </span>
+                          </div>
+                          <span className="text-xs">
+                            {Math.round((schedule.current_booked / schedule.max_capacity) * 100)}% terisi
                           </span>
                         </div>
-                        <span className="text-xs">
-                          {Math.round((schedule.current_booked / schedule.max_capacity) * 100)}% terisi
-                        </span>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${getProgressColor(
+                              schedule.current_booked,
+                              schedule.max_capacity
+                            )} transition-all duration-500`}
+                            style={{
+                              width: `${(schedule.current_booked / schedule.max_capacity) * 100}%`,
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${getProgressColor(
-                            schedule.current_booked,
-                            schedule.max_capacity
-                          )} transition-all duration-500`}
-                          style={{
-                            width: `${(schedule.current_booked / schedule.max_capacity) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   {selectedScheduleId === schedule.id && (

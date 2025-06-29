@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 "use client"
 
 import { useState, useEffect } from "react"
@@ -27,7 +28,7 @@ export default function BookingPage() {
   const [roomNumbers, setRoomNumbers] = useState<RoomNumber[]>([])
   const [selectedRoomNumberId, setSelectedRoomNumberId] = useState<string>("")
 
-  const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug)
+  const { todaySchedules, tomorrowSchedules, loading, isConnected, reconnect, channelStatus } = useRealTimeCapacity(hotelSlug)
 
   const hotelName = hotelSlug === "ibis-style" ? "Ibis Style" : "Ibis Budget"
 
@@ -114,6 +115,9 @@ export default function BookingPage() {
             selectedScheduleId={selectedScheduleId}
             onScheduleSelect={handleScheduleSelect}
             loading={loading}
+            onReconnect={reconnect}
+            isConnected={isConnected}
+            channelStatus={channelStatus}
           />
 
           {/* Booking Form */}

@@ -10,6 +10,10 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in forwards;
+    animation-delay: 0.2s;
+  }
 }
 
 @layer base {
@@ -90,5 +94,14 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
