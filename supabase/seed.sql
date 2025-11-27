@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 -- Enhanced Supabase Database Schema untuk Booking Bus Ibis Hotels
 -- dengan timezone handling dan automated scheduling
 
@@ -107,7 +106,7 @@ BEGIN
   WHERE bs.is_active = true
   ON CONFLICT (bus_schedule_id, schedule_date) DO NOTHING;
 
-  -- Generate untuk lusa (untuk booking yang lebih jauh)
+  -- Generate untuk lusa
   INSERT INTO daily_schedules (bus_schedule_id, schedule_date, current_booked, status)
   SELECT 
     bs.id,
@@ -127,19 +126,16 @@ DECLARE
   jakarta_date DATE;
   jakarta_time TIME;
 BEGIN
-  -- Get current date and time in Jakarta timezone
   SELECT 
     CURRENT_DATE AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta',
     CURRENT_TIME AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta'
   INTO jakarta_date, jakarta_time;
   
-  -- Mark expired schedules (past dates)
   UPDATE daily_schedules 
   SET status = 'expired', updated_at = NOW()
   WHERE schedule_date < jakarta_date 
   AND status NOT IN ('expired', 'cancelled');
   
-  -- Mark expired schedules (today but past departure time)
   UPDATE daily_schedules ds
   SET status = 'expired', updated_at = NOW()
   FROM bus_schedules bs
@@ -148,30 +144,23 @@ BEGIN
   AND bs.departure_time < jakarta_time
   AND ds.status NOT IN ('expired', 'cancelled');
   
-  -- Optional: Delete very old expired schedules (older than 7 days)
   DELETE FROM daily_schedules 
   WHERE schedule_date < jakarta_date - interval '7 days'
   AND status = 'expired';
-  
 END;
 $function$ LANGUAGE plpgsql;
 
--- Function untuk daily maintenance (kombinasi generate + cleanup)
+-- Function untuk daily maintenance
 CREATE OR REPLACE FUNCTION daily_maintenance()
 RETURNS void AS $function$
 BEGIN
-  -- Cleanup expired schedules first
   PERFORM cleanup_expired_schedules();
-  
-  -- Generate new schedules
   PERFORM generate_daily_schedules();
-  
-  -- Log maintenance (optional)
   RAISE NOTICE 'Daily maintenance completed at %', NOW();
 END;
 $function$ LANGUAGE plpgsql;
 
--- Function increment capacity (tidak berubah)
+-- Function increment capacity
 CREATE OR REPLACE FUNCTION increment_capacity(schedule_id UUID, increment INTEGER)
 RETURNS void AS $function$
 BEGIN
@@ -189,7 +178,7 @@ BEGIN
 END;
 $function$ LANGUAGE plpgsql;
 
--- Function untuk create booking (sedikit diperbaiki)
+-- Function untuk create booking with capacity
 CREATE OR REPLACE FUNCTION create_booking_with_capacity(
   p_booking_code VARCHAR(20),
   p_hotel_id UUID,
@@ -215,32 +204,26 @@ DECLARE
   max_cap INTEGER;
   schedule_status VARCHAR(20);
 BEGIN
-  -- Check current capacity and status
   SELECT ds.current_booked, bs.max_capacity, ds.status
   INTO current_capacity, max_cap, schedule_status
   FROM daily_schedules ds
   JOIN bus_schedules bs ON ds.bus_schedule_id = bs.id
   WHERE ds.id = p_daily_schedule_id;
   
-  -- Check if schedule is still active
   IF schedule_status != 'active' THEN
     RAISE EXCEPTION 'Jadwal tidak tersedia. Status: %', schedule_status;
   END IF;
   
-  -- Check if capacity is available
   IF current_capacity + p_passenger_count > max_cap THEN
     RAISE EXCEPTION 'Kapasitas tidak mencukupi. Tersisa: %', (max_cap - current_capacity);
   END IF;
   
-  -- Create booking
   INSERT INTO bookings (booking_code, hotel_id, daily_schedule_id, customer_name, phone, passenger_count)
   VALUES (p_booking_code, p_hotel_id, p_daily_schedule_id, p_customer_name, p_phone, p_passenger_count)
   RETURNING bookings.id INTO booking_id;
   
-  -- Update capacity
   PERFORM increment_capacity(p_daily_schedule_id, p_passenger_count);
   
-  -- Return booking details
   RETURN QUERY
   SELECT 
     b.id,
@@ -260,7 +243,7 @@ BEGIN
 END;
 $function$ LANGUAGE plpgsql;
 
--- Enhanced view untuk booking details dengan timezone
+-- Enhanced view untuk booking details
 CREATE OR REPLACE VIEW booking_details AS
 SELECT 
   b.id,
@@ -288,7 +271,7 @@ JOIN daily_schedules ds ON b.daily_schedule_id = ds.id
 JOIN bus_schedules bs ON ds.bus_schedule_id = bs.id
 LEFT JOIN room_numbers rn ON b.room_number_id = rn.id;
 
--- View untuk available schedules (hanya yang masih aktif)
+-- View available schedules
 CREATE OR REPLACE VIEW available_schedules AS
 SELECT 
   ds.id as daily_schedule_id,
@@ -310,7 +293,7 @@ AND h.is_active = true
 AND bs.is_active = true
 ORDER BY ds.schedule_date, bs.departure_time;
 
--- Insert initial data
+-- Insert initial hotels
 INSERT INTO hotels (name, slug) VALUES 
 ('Ibis Style Jakarta', 'ibis-style'),
 ('Ibis Budget Jakarta', 'ibis-budget')
@@ -331,12 +314,13 @@ CROSS JOIN (
 ) AS schedules(departure_time, destination)
 ON CONFLICT DO NOTHING;
 
+-- Insert room numbers (Ibis Style)
 INSERT INTO room_numbers (hotel_id, room_number) 
 SELECT h.id, rn
 FROM hotels h, unnest(ARRAY['101','102','103','201','202','203']) rn
 WHERE h.slug = 'ibis-style';
 
--- Ibis Budget: A1, A2, B1, B2
+-- Insert room numbers (Ibis Budget)
 INSERT INTO room_numbers (hotel_id, room_number) 
 SELECT h.id, rn
 FROM hotels h, unnest(ARRAY['A1','A2','B1','B2']) rn
@@ -344,4 +328,3 @@ WHERE h.slug = 'ibis-budget';
 
 -- Generate initial daily schedules
 SELECT daily_maintenance();
-=======
