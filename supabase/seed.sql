@@ -61,6 +61,7 @@ CREATE TABLE bookings (
   room_number_id UUID REFERENCES room_numbers(id)
 );
 
+
 -- Seed data room_numbers untuk masing-masing hotel
 -- Ibis Style: 101, 102, 103, 201, 202, 203
 INSERT INTO room_numbers (hotel_id, room_number) 
