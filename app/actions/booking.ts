@@ -4,21 +4,22 @@ import { getSupabaseAdmin } from "@/lib/supabase-server"
 import { bookingSchema } from "@/lib/validations"
 import { generateBookingCode, formatPhoneNumber } from "@/lib/utils"
 import { redirect } from "next/navigation"
+import { sendWhatsappTemplate } from "@/lib/send-wa"
 
 export async function createBooking(formData: FormData) {
   if (!formData) {
-    throw new Error("formData is null");
+    throw new Error("formData is null")
   }
 
   const customerName = formData.get("customerName")
   if (!customerName) {
-    throw new Error("Nama lengkap harus diisi");
+    throw new Error("Nama lengkap harus diisi")
   }
-  
+
   try {
     const supabaseAdmin = await getSupabaseAdmin()
-    
-    // Validate form data
+
+    // Validasi data form
     const rawData = {
       customerName: formData.get("customerName") as string,
       phoneNumber: formData.get("phoneNumber") as string,
@@ -30,7 +31,7 @@ export async function createBooking(formData: FormData) {
 
     const validatedData = bookingSchema.parse(rawData)
 
-    // Get hotel ID from schedule
+    // Ambil informasi jadwal & kapasitas
     const { data: schedule } = await supabaseAdmin
       .from("daily_schedules")
       .select(`
@@ -49,17 +50,19 @@ export async function createBooking(formData: FormData) {
       throw new Error("Jadwal tidak ditemukan")
     }
 
-    // Check capacity
-    const busSchedule = Array.isArray(schedule.bus_schedules) ? schedule.bus_schedules[0] : schedule.bus_schedules;
-    const maxCapacity = busSchedule?.max_capacity;
+    const busSchedule = Array.isArray(schedule.bus_schedules)
+      ? schedule.bus_schedules[0]
+      : schedule.bus_schedules
+    const maxCapacity = busSchedule?.max_capacity
+
     if (!maxCapacity || schedule.current_booked + validatedData.passengerCount > maxCapacity) {
       throw new Error("Kapasitas tidak mencukupi")
     }
 
-    // Generate booking code
+    // Generate kode booking unik
     const bookingCode = generateBookingCode()
 
-    // Create booking
+    // Simpan booking ke database
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from("bookings")
       .insert({
@@ -79,7 +82,7 @@ export async function createBooking(formData: FormData) {
       throw new Error("Gagal membuat booking")
     }
 
-    // Update capacity
+    // Update kapasitas harian
     const { error: capacityError } = await supabaseAdmin.rpc("increment_capacity", {
       schedule_id: validatedData.scheduleId,
       increment: validatedData.passengerCount,
@@ -89,6 +92,32 @@ export async function createBooking(formData: FormData) {
       console.error("Failed to update capacity:", capacityError)
     }
 
+    // Kirim WA pakai template message (via /api/send-wa)
+    try {
+      await sendWhatsappTemplate(
+        formatPhoneNumber(validatedData.phoneNumber),
+        {
+          "1": validatedData.customerName,
+          "2": bookingCode,
+          "3": "Hotel Ibis Shuttle", // bisa kamu ganti dengan hotel name
+        }
+      )
+
+      // Jika berhasil kirim WA, update kolom whatsapp_sent jadi true
+      const { error: whatsappError } = await supabaseAdmin
+        .from("bookings")
+        .update({ whatsapp_sent: true })
+        .eq("id", booking.id)
+
+      if (whatsappError) {
+        console.error("Gagal update status WhatsApp:", whatsappError)
+      }
+
+    } catch (waError) {
+      console.error("Gagal kirim WhatsApp:", waError)
+    }
+
+    // Redirect ke halaman konfirmasi
     redirect(`/booking/confirmation?code=${bookingCode}`)
   } catch (error) {
     console.error("Booking error:", error)
@@ -115,9 +144,9 @@ export async function getHotelDetails(hotelId: string) {
   try {
     const supabaseAdmin = await getSupabaseAdmin()
     const { data, error } = await supabaseAdmin
-      .from('hotels')
-      .select('*')
-      .eq('id', hotelId)
+      .from("hotels")
+      .select("*")
+      .eq("id", hotelId)
       .single()
 
     if (error) throw error

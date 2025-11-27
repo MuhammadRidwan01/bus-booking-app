@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Bus, User, Phone, Users } from "lucide-react"
+import { ArrowLeft, Bus, User, Phone, Users, MapPin, Star, Wifi, Coffee } from "lucide-react"
 import Link from "next/link"
 import { ScheduleSelector } from "@/components/ScheduleSelector"
 import { useRealTimeCapacity } from "@/hooks/useRealTimeCapacity"
@@ -15,6 +15,7 @@ import { createBooking } from "@/app/actions/booking"
 import { useActionState } from "react"
 import { supabase } from "@/lib/supabase"
 import type { RoomNumber } from "@/types"
+import Image from "next/image"
 
 export default function BookingPage() {
   const params = useParams()
@@ -26,10 +27,32 @@ export default function BookingPage() {
   const [passengerCount, setPassengerCount] = useState<number>(1)
   const [roomNumbers, setRoomNumbers] = useState<RoomNumber[]>([])
   const [selectedRoomNumberId, setSelectedRoomNumberId] = useState<string>("")
+  const [isMounted, setIsMounted] = useState(false) // Fix hydration
 
   const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug)
 
-  const hotelName = hotelSlug === "ibis-style" ? "Ibis Style" : "Ibis Budget"
+  const hotelName = hotelSlug === "ibis-style" ? "Ibis Style Jakarta Airport" : "Ibis Budget Jakarta Airport"
+  const hotelShortName = hotelSlug === "ibis-style" ? "Ibis Style" : "Ibis Budget"
+  
+  const hotelImages = {
+    "ibis-style": {
+      logo: "/ibis-styles-logo.png",
+      main: "/ISJA.jpeg",
+      photos: ["/ISJA-Depan.jpg", "/ISJA.jpeg", "/ISJA-IBJA-Logo-updated.png"]
+    },
+    "ibis-budget": {
+      logo: "/ibis-budget-logo.png",
+      main: "/IBJA-Depan.jpg",
+      photos: ["/IBJA-Depan.jpg", "/photo2.jpg", "/Lobby-IBJA.jpg"]
+    }
+  }
+
+  const currentHotel = hotelImages[hotelSlug as keyof typeof hotelImages]
+
+  // Fix hydration
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     async function fetchRoomNumbers() {
@@ -47,8 +70,10 @@ export default function BookingPage() {
         .eq("is_active", true)
       setRoomNumbers(rooms || [])
     }
-    fetchRoomNumbers()
-  }, [hotelSlug])
+    if (isMounted) {
+      fetchRoomNumbers()
+    }
+  }, [hotelSlug, isMounted])
 
   const handleScheduleSelect = (scheduleId: string, date: string) => {
     setSelectedScheduleId(scheduleId)
@@ -67,88 +92,156 @@ export default function BookingPage() {
   }
   const [state, formAction] = useActionState(bookingFormAction, { error: null })
 
+  // Prevent hydration mismatch
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <header className="bg-white shadow-md sticky top-0 z-10 border-b border-gray-200">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center space-x-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Kembali
-              </Button>
-            </Link>
-            <div className="flex items-center space-x-2">
-              <Bus className="h-6 w-6 text-blue-600" />
-              <h1 className="text-lg font-semibold">Booking {hotelName}</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Link href="/">
+                <Button variant="ghost" size="sm" className="hover:bg-gray-100">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Kembali
+                </Button>
+              </Link>
+              <div className="flex items-center space-x-3">
+                <Bus className="h-6 w-6 text-blue-600" />
+                <h1 className="text-xl font-bold text-gray-800">Booking Shuttle</h1>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="max-w-2xl mx-auto space-y-6">
-          {/* Hotel Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    hotelSlug === "ibis-style"
-                      ? "bg-gradient-to-br from-blue-500 to-blue-600"
-                      : "bg-gradient-to-br from-green-500 to-green-600"
-                  }`}
-                >
-                  <span className="text-white font-bold">{hotelSlug === "ibis-style" ? "IS" : "IB"}</span>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <Card className="overflow-hidden shadow-xl border-0">
+            <div className="relative h-64 md:h-80 bg-gradient-to-r from-blue-600 to-blue-800">
+              {currentHotel?.main && (
+                <Image
+                  src={currentHotel.main}
+                  alt={hotelName}
+                  fill
+                  className="object-cover opacity-90"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+              
+              <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-3 mb-2">
+                      {currentHotel?.logo && (
+                        <div className="w-16 h-16 bg-white rounded-lg p-2 shadow-lg">
+                          <Image
+                            src={currentHotel.logo}
+                            alt={`${hotelShortName} logo`}
+                            width={60}
+                            height={60}
+                            className="object-contain"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <h2 className="text-3xl font-bold drop-shadow-lg">{hotelName}</h2>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <MapPin className="h-4 w-4" />
+                          <span className="text-sm">Jakarta Airport Area</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-4 mt-3">
+                      <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span className="text-sm font-medium">Premium</span>
+                      </div>
+                      <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                        <Wifi className="h-4 w-4" />
+                        <span className="text-sm">Free WiFi</span>
+                      </div>
+                      <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                        <Coffee className="h-4 w-4" />
+                        <span className="text-sm">Breakfast</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <span>{hotelName}</span>
-              </CardTitle>
-            </CardHeader>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 p-4 bg-gray-50">
+              {currentHotel?.photos.slice(0, 3).map((photo, idx) => (
+                <div key={idx} className="relative h-24 rounded-lg overflow-hidden group cursor-pointer">
+                  <Image
+                    src={photo}
+                    alt={`${hotelName} photo ${idx + 1}`}
+                    fill
+                    className="object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                </div>
+              ))}
+            </div>
           </Card>
 
-          {/* Schedule Selection */}
-          <ScheduleSelector
-            todaySchedules={todaySchedules}
-            tomorrowSchedules={tomorrowSchedules}
-            selectedScheduleId={selectedScheduleId}
-            onScheduleSelect={handleScheduleSelect}
-            loading={loading}
-          />
+          <div className="bg-white rounded-xl shadow-lg p-1">
+            <ScheduleSelector
+              todaySchedules={todaySchedules}
+              tomorrowSchedules={tomorrowSchedules}
+              selectedScheduleId={selectedScheduleId}
+              onScheduleSelect={handleScheduleSelect}
+              loading={loading}
+            />
+          </div>
 
-          {/* Booking Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Data Penumpang</CardTitle>
+          <Card className="shadow-xl border-0">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+              <CardTitle className="flex items-center space-x-2 text-2xl">
+                <User className="h-6 w-6 text-blue-600" />
+                <span>Data Penumpang</span>
+              </CardTitle>
+              <p className="text-sm text-gray-600 mt-2">
+                Mohon lengkapi data di bawah ini untuk menyelesaikan booking
+              </p>
             </CardHeader>
-            <CardContent>
-              <form action={createBooking} className="space-y-4">
-                {/* Hidden fields */}
+            <CardContent className="p-6">
+              <form action={formAction} className="space-y-6">
                 <input type="hidden" name="scheduleId" value={selectedScheduleId || ""} />
                 <input type="hidden" name="bookingDate" value={selectedDate} />
                 <input type="hidden" name="passengerCount" value={passengerCount} />
                 <input type="hidden" name="roomNumberId" value={selectedRoomNumberId} />
 
-                {/* Customer Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="customerName" className="flex items-center space-x-2">
-                    <User className="h-4 w-4" />
+                  <Label htmlFor="customerName" className="flex items-center space-x-2 text-base font-semibold">
+                    <User className="h-5 w-5 text-blue-600" />
                     <span>Nama Lengkap</span>
                   </Label>
                   <Input
                     id="customerName"
                     name="customerName"
                     type="text"
-                    placeholder="Masukkan nama lengkap"
+                    placeholder="Masukkan nama lengkap sesuai identitas"
                     required
-                    className="w-full"
+                    className="w-full h-12 text-base border-2 focus:border-blue-500 transition-colors"
                   />
                 </div>
 
-                {/* Phone Number */}
                 <div className="space-y-2">
-                  <Label htmlFor="phoneNumber" className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4" />
+                  <Label htmlFor="phoneNumber" className="flex items-center space-x-2 text-base font-semibold">
+                    <Phone className="h-5 w-5 text-blue-600" />
                     <span>Nomor WhatsApp</span>
                   </Label>
                   <Input
@@ -157,73 +250,111 @@ export default function BookingPage() {
                     type="tel"
                     placeholder="08xxxxxxxxxx"
                     required
-                    className="w-full"
+                    className="w-full h-12 text-base border-2 focus:border-blue-500 transition-colors"
                   />
-                  <p className="text-xs text-gray-500">Tiket akan dikirim ke nomor WhatsApp ini</p>
+                  <div className="flex items-start space-x-2 bg-blue-50 p-3 rounded-lg">
+                    <div className="text-blue-600 mt-0.5">ℹ️</div>
+                    <p className="text-sm text-blue-800">
+                      Konfirmasi booking dan e-ticket akan dikirim ke nomor WhatsApp ini
+                    </p>
+                  </div>
                 </div>
 
-                {/* Passenger Count */}
-                <div className="space-y-2">
-                  <Label className="flex items-center space-x-2">
-                    <Users className="h-4 w-4" />
-                    <span>Jumlah Penumpang</span>
-                  </Label>
-                  <Select
-                    value={passengerCount.toString()}
-                    onValueChange={(value) => setPassengerCount(Number.parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5].map((count) => (
-                        <SelectItem key={count} value={count.toString()}>
-                          {count} orang
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="flex items-center space-x-2 text-base font-semibold">
+                      <Users className="h-5 w-5 text-blue-600" />
+                      <span>Jumlah Penumpang</span>
+                    </Label>
+                    <Select
+                      value={passengerCount.toString()}
+                      onValueChange={(value) => setPassengerCount(Number.parseInt(value))}
+                    >
+                      <SelectTrigger className="h-12 text-base border-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5].map((count) => (
+                          <SelectItem key={count} value={count.toString()}>
+                            {count} orang
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="roomNumberId" className="flex items-center space-x-2 text-base font-semibold">
+                      <span>🚪</span>
+                      <span>No. Kamar</span>
+                    </Label>
+                    <Select
+                      value={selectedRoomNumberId}
+                      onValueChange={setSelectedRoomNumberId}
+                      required
+                    >
+                      <SelectTrigger className="h-12 text-base border-2">
+                        <SelectValue placeholder="Pilih nomor kamar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roomNumbers.map((room) => (
+                          <SelectItem key={room.id} value={room.id}>
+                            Kamar {room.room_number}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                {/* Room Number */}
-                <div className="space-y-2">
-                  <Label htmlFor="roomNumberId" className="flex items-center space-x-2">
-                    <span>No. Kamar</span>
-                  </Label>
-                  <Select
-                    value={selectedRoomNumberId}
-                    onValueChange={setSelectedRoomNumberId}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih nomor kamar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roomNumbers.map((room) => (
-                        <SelectItem key={room.id} value={room.id}>
-                          {room.room_number}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Error Message */}
                 {state && typeof state === "object" && "error" in state && state.error && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-red-800 text-sm">{state.error}</p>
+                  <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start space-x-3">
+                    <span className="text-red-600 text-xl">⚠️</span>
+                    <p className="text-red-800 text-base font-medium">{state.error}</p>
                   </div>
                 )}
 
-                {/* Submit Button */}
-                <Button type="submit" className="w-full" disabled={!isFormValid}>
-                  Konfirmasi Booking
-                </Button>
+                <div className="pt-4">
+                  <Button 
+                    type="submit" 
+                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300" 
+                    disabled={!isFormValid}
+                  >
+                    {isFormValid ? "✓ Konfirmasi Booking" : "Lengkapi Data Booking"}
+                  </Button>
 
-                {!isFormValid && (
-                  <p className="text-sm text-gray-500 text-center">Pilih jadwal terlebih dahulu untuk melanjutkan</p>
-                )}
+                  {!isFormValid && (
+                    <div className="mt-4 text-center bg-amber-50 p-4 rounded-lg border border-amber-200">
+                      <p className="text-sm text-amber-800 font-medium">
+                        📋 Pilih jadwal dan lengkapi semua data untuk melanjutkan
+                      </p>
+                    </div>
+                  )}
+                </div>
               </form>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-lg">
+            <CardContent className="p-6">
+              <h3 className="font-semibold text-lg mb-3 flex items-center space-x-2">
+                <span>💡</span>
+                <span>Informasi Penting</span>
+              </h3>
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li className="flex items-start space-x-2">
+                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span>Harap tiba di lobby 10 menit sebelum jadwal keberangkatan</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span>E-ticket akan dikirim melalui WhatsApp setelah booking dikonfirmasi</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span>Pastikan nomor kamar dan jumlah penumpang sudah benar</span>
+                </li>
+              </ul>
             </CardContent>
           </Card>
         </div>
