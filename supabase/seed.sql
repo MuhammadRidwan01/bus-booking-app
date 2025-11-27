@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 -- Enhanced Supabase Database Schema untuk Booking Bus Ibis Hotels
 -- dengan timezone handling dan automated scheduling
 
@@ -343,3 +344,4 @@ WHERE h.slug = 'ibis-budget';
 
 -- Generate initial daily schedules
 SELECT daily_maintenance();
+=======
