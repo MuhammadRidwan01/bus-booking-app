@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Cw1yUpE9eWC0gUvkZFYMWCihWemPJj07F0bQDg6wjxC0Iof643z8iNJ", // jangan lupa ganti ke env nanti
+      Authorization: "", // jangan lupa ganti ke env nanti
     },
     body: JSON.stringify({
       phone, // format: 628xxxx
