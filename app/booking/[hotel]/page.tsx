@@ -13,8 +13,6 @@ import { ScheduleSelector } from "@/components/ScheduleSelector"
 import { useRealTimeCapacity } from "@/hooks/useRealTimeCapacity"
 import { createBooking } from "@/app/actions/booking"
 import { useActionState } from "react"
-import { supabase } from "@/lib/supabase"
-import type { RoomNumber } from "@/types"
 import Image from "next/image"
 
 export default function BookingPage() {
@@ -25,9 +23,8 @@ export default function BookingPage() {
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>("")
   const [passengerCount, setPassengerCount] = useState<number>(1)
-  const [roomNumbers, setRoomNumbers] = useState<RoomNumber[]>([])
-  const [selectedRoomNumberId, setSelectedRoomNumberId] = useState<string>("")
-  const [isMounted, setIsMounted] = useState(false) // Fix hydration
+  const [roomNumber, setRoomNumber] = useState<string>("")
+  const [isMounted, setIsMounted] = useState(false)
 
   const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug)
 
@@ -37,8 +34,8 @@ export default function BookingPage() {
   const hotelImages = {
     "ibis-style": {
       logo: "/ibis-styles-logo.png",
-      main: "/ISJA.jpeg",
-      photos: ["/ISJA-Depan.jpg", "/ISJA.jpeg", "/ISJA-IBJA-Logo-updated.png"]
+      main: "/ISJA-depan.jpeg",
+      photos: ["/ISJA-depan.jpeg", "/ISJA-resize.jpg", "/photi1a.jpg"]
     },
     "ibis-budget": {
       logo: "/ibis-budget-logo.png",
@@ -49,38 +46,16 @@ export default function BookingPage() {
 
   const currentHotel = hotelImages[hotelSlug as keyof typeof hotelImages]
 
-  // Fix hydration
   useEffect(() => {
     setIsMounted(true)
   }, [])
-
-  useEffect(() => {
-    async function fetchRoomNumbers() {
-      if (!hotelSlug) return
-      const { data: hotel } = await supabase
-        .from("hotels")
-        .select("id")
-        .eq("slug", hotelSlug)
-        .single()
-      if (!hotel) return
-      const { data: rooms } = await supabase
-        .from("room_numbers")
-        .select("id, room_number, hotel_id, is_active")
-        .eq("hotel_id", hotel.id)
-        .eq("is_active", true)
-      setRoomNumbers(rooms || [])
-    }
-    if (isMounted) {
-      fetchRoomNumbers()
-    }
-  }, [hotelSlug, isMounted])
 
   const handleScheduleSelect = (scheduleId: string, date: string) => {
     setSelectedScheduleId(scheduleId)
     setSelectedDate(date)
   }
 
-  const isFormValid = selectedScheduleId && selectedDate && passengerCount >= 1 && selectedRoomNumberId
+  const isFormValid = selectedScheduleId && selectedDate && passengerCount >= 1 && roomNumber.trim()
 
   async function bookingFormAction(prevState: any, formData: FormData) {
     try {
@@ -92,7 +67,6 @@ export default function BookingPage() {
   }
   const [state, formAction] = useActionState(bookingFormAction, { error: null })
 
-  // Prevent hydration mismatch
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
@@ -222,7 +196,7 @@ export default function BookingPage() {
                 <input type="hidden" name="scheduleId" value={selectedScheduleId || ""} />
                 <input type="hidden" name="bookingDate" value={selectedDate} />
                 <input type="hidden" name="passengerCount" value={passengerCount} />
-                <input type="hidden" name="roomNumberId" value={selectedRoomNumberId} />
+                <input type="hidden" name="roomNumber" value={roomNumber} />
 
                 <div className="space-y-2">
                   <Label htmlFor="customerName" className="flex items-center space-x-2 text-base font-semibold">
@@ -284,26 +258,19 @@ export default function BookingPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="roomNumberId" className="flex items-center space-x-2 text-base font-semibold">
+                    <Label htmlFor="roomNumber" className="flex items-center space-x-2 text-base font-semibold">
                       <span>🚪</span>
                       <span>No. Kamar</span>
                     </Label>
-                    <Select
-                      value={selectedRoomNumberId}
-                      onValueChange={setSelectedRoomNumberId}
+                    <Input
+                      id="roomNumber"
+                      type="text"
+                      placeholder="Contoh: 101, 205, 3A"
+                      value={roomNumber}
+                      onChange={(e) => setRoomNumber(e.target.value)}
                       required
-                    >
-                      <SelectTrigger className="h-12 text-base border-2">
-                        <SelectValue placeholder="Pilih nomor kamar" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roomNumbers.map((room) => (
-                          <SelectItem key={room.id} value={room.id}>
-                            Kamar {room.room_number}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      className="w-full h-12 text-base border-2 focus:border-blue-500 transition-colors"
+                    />
                   </div>
                 </div>
 

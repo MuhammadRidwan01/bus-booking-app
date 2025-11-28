@@ -1,10 +1,20 @@
 "use server"
 
 import { getSupabaseAdmin } from "@/lib/supabase-server"
-import { bookingSchema } from "@/lib/validations"
 import { generateBookingCode, formatPhoneNumber } from "@/lib/utils"
 import { redirect } from "next/navigation"
 import { sendWhatsappTemplate } from "@/lib/send-wa"
+import { z } from "zod"
+
+// Validation schema - langsung di file ini
+const bookingSchema = z.object({
+  customerName: z.string().min(1, "Nama lengkap harus diisi"),
+  phoneNumber: z.string().min(10, "Nomor WhatsApp tidak valid"),
+  bookingDate: z.string().min(1, "Tanggal booking harus dipilih"),
+  scheduleId: z.string().uuid("Schedule ID tidak valid"),
+  passengerCount: z.number().min(1).max(5, "Jumlah penumpang maksimal 5 orang"),
+  roomNumber: z.string().min(1, "Nomor kamar harus diisi"),
+})
 
 export async function createBooking(formData: FormData) {
   if (!formData) {
@@ -26,7 +36,7 @@ export async function createBooking(formData: FormData) {
       bookingDate: formData.get("bookingDate") as string,
       scheduleId: formData.get("scheduleId") as string,
       passengerCount: Number.parseInt(formData.get("passengerCount") as string),
-      roomNumberId: formData.get("roomNumberId") as string,
+      roomNumber: formData.get("roomNumber") as string,
     }
 
     const validatedData = bookingSchema.parse(rawData)
@@ -73,13 +83,14 @@ export async function createBooking(formData: FormData) {
         phone: formatPhoneNumber(validatedData.phoneNumber),
         passenger_count: validatedData.passengerCount,
         status: "confirmed",
-        room_number_id: validatedData.roomNumberId,
+        room_number: validatedData.roomNumber,
       })
       .select()
       .single()
 
     if (bookingError) {
-      throw new Error("Gagal membuat booking")
+      console.error("Booking error details:", bookingError)
+      throw new Error("Gagal membuat booking: " + bookingError.message)
     }
 
     // Update kapasitas harian
@@ -99,7 +110,7 @@ export async function createBooking(formData: FormData) {
         {
           "1": validatedData.customerName,
           "2": bookingCode,
-          "3": "Hotel Ibis Shuttle", // bisa kamu ganti dengan hotel name
+          "3": "Hotel Ibis Shuttle",
         }
       )
 
