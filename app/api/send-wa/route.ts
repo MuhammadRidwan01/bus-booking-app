@@ -90,28 +90,59 @@ export async function POST(req: NextRequest) {
     try {
       // Try PDF first if available
       let pdfTried = false
+      let pdfFailedData: unknown = null
       if (pdfUrl) {
         pdfTried = true
         const pdfResult = await sendPdf()
         if (pdfResult?.isSuccess) {
           clearTimeout(timeout)
           return NextResponse.json({ ok: true, data: pdfResult.data })
+        } else if (pdfResult) {
+          pdfFailedData = pdfResult.data
+          console.error("Wablas send-document failed", { status: pdfResult.status, data: pdfResult.data })
         }
       }
 
-      const textResult = await sendText()
+      const textMessage = pdfUrl && pdfFailedData
+        ? `${message}\nPDF: ${pdfUrl}`
+        : message
+
+      const body = new URLSearchParams({
+        phone,
+        message: textMessage,
+        flag: "instant",
+      })
+
+      const textResultRaw = await fetch(`${baseUrl}/api/send-message`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `${token}.${secretKey}`,
+        },
+        body,
+        signal: controller.signal,
+      })
+
+      let textData: unknown = null
+      try {
+        textData = await textResultRaw.json()
+      } catch {
+        textData = null
+      }
+
+      const textSuccess = textResultRaw.ok && Boolean((textData as any)?.status)
       clearTimeout(timeout)
-      if (textResult.isSuccess) {
-        // If PDF failed, include link in response so caller can decide to notify user
-        return NextResponse.json({ ok: true, data: textResult.data, pdfSent: false, pdfUrl })
+      if (textSuccess) {
+        // If PDF failed, include link info so caller can notify user
+        return NextResponse.json({ ok: true, data: textData, pdfSent: !pdfFailedData && pdfUrl ? true : false, pdfUrl: pdfUrl ?? null })
       }
 
       console.error("Wablas send failed", {
-        status: textResult.status,
-        data: textResult.data,
+        status: textResultRaw.status,
+        data: textData,
       })
       return NextResponse.json(
-        { ok: false, error: "Failed to send WhatsApp", data: textResult.data },
+        { ok: false, error: "Failed to send WhatsApp", data: textData },
         { status: 502 },
       )
     } catch (error) {
