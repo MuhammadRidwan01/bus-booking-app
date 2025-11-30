@@ -1,10 +1,11 @@
 "use server"
 
 import { getSupabaseAdmin } from "@/lib/supabase-server"
-import { generateBookingCode, formatPhoneNumber } from "@/lib/utils"
+import { generateBookingCode, formatDate, formatTime } from "@/lib/utils"
 import { redirect } from "next/navigation"
-import { sendWhatsappTemplate } from "@/lib/send-wa"
 import { z } from "zod"
+import { normalizeTo62 } from "@/lib/phone"
+import { sendWhatsappMessage } from "@/lib/whatsapp"
 
 // Validation schema - langsung di file ini
 const bookingSchema = z.object({
@@ -46,11 +47,14 @@ export async function createBooking(formData: FormData) {
       .from("daily_schedules")
       .select(`
         id,
+        schedule_date,
         current_booked,
         bus_schedule_id,
         bus_schedules (
           hotel_id,
-          max_capacity
+          max_capacity,
+          departure_time,
+          destination
         )
       `)
       .eq("id", validatedData.scheduleId)
@@ -72,6 +76,24 @@ export async function createBooking(formData: FormData) {
     // Generate kode booking unik
     const bookingCode = generateBookingCode()
 
+    const normalizedPhone = normalizeTo62(validatedData.phoneNumber)
+    const hotel = busSchedule?.hotel_id ? await getHotelDetails(busSchedule.hotel_id) : null
+    const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "") || ""
+    const trackLink = `${baseUrl}/track?code=${bookingCode}`
+    const pdfLink = `${baseUrl}/api/ticket/${bookingCode}`
+
+    const messageParts = [
+      `Halo ${validatedData.customerName}, booking shuttle kamu sudah berhasil.`,
+      `Hotel: ${hotel?.name ?? "Ibis Hotel"}`,
+      `Tanggal: ${formatDate(validatedData.bookingDate)}`,
+      busSchedule?.departure_time ? `Jam: ${formatTime(busSchedule.departure_time)} WIB` : null,
+      busSchedule?.destination ? `Tujuan: ${busSchedule.destination}` : null,
+      `Kode Booking: ${bookingCode}`,
+      `Lacak tiket: ${trackLink}`,
+      "Terima kasih.",
+    ].filter(Boolean)
+    const whatsappMessage = messageParts.join("\n")
+
     // Simpan booking ke database
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from("bookings")
@@ -80,7 +102,7 @@ export async function createBooking(formData: FormData) {
         hotel_id: busSchedule?.hotel_id,
         daily_schedule_id: validatedData.scheduleId,
         customer_name: validatedData.customerName,
-        phone: formatPhoneNumber(validatedData.phoneNumber),
+        phone: normalizedPhone,
         passenger_count: validatedData.passengerCount,
         status: "confirmed",
         room_number: validatedData.roomNumber,
@@ -103,29 +125,50 @@ export async function createBooking(formData: FormData) {
       console.error("Failed to update capacity:", capacityError)
     }
 
-    // Kirim WA pakai template message (via /api/send-wa)
+    // Kirim WhatsApp via internal API (non-blocking untuk keberhasilan booking)
     try {
-      await sendWhatsappTemplate(
-        formatPhoneNumber(validatedData.phoneNumber),
-        {
-          "1": validatedData.customerName,
-          "2": bookingCode,
-          "3": "Hotel Ibis Shuttle",
-        }
-      )
+      const waResult = await sendWhatsappMessage({
+        phone: normalizedPhone,
+        message: whatsappMessage,
+        pdfUrl: pdfLink,
+        caption: `Tiket Shuttle - ${bookingCode}`,
+      })
 
-      // Jika berhasil kirim WA, update kolom whatsapp_sent jadi true
-      const { error: whatsappError } = await supabaseAdmin
-        .from("bookings")
-        .update({ whatsapp_sent: true })
-        .eq("id", booking.id)
-
-      if (whatsappError) {
-        console.error("Gagal update status WhatsApp:", whatsappError)
+      const waErrorMessage = waResult.ok
+        ? null
+        : (waResult.data as any)?.error ?? "Wablas send failed"
+      // If PDF failed to send, append info so admins can inspect
+      if (!waResult.ok && waResult.data && (waResult.data as any).pdfUrl) {
+        console.error("PDF not sent, link fallback", (waResult.data as any).pdfUrl)
       }
 
+      const { error: whatsappLogError } = await supabaseAdmin
+        .from("bookings")
+        .update({
+          whatsapp_attempts: (booking as any)?.whatsapp_attempts ? Number((booking as any).whatsapp_attempts) + 1 : 1,
+          whatsapp_sent: waResult.ok,
+          whatsapp_last_error: waResult.ok ? null : waErrorMessage,
+        })
+        .eq("id", booking.id)
+
+      if (whatsappLogError) {
+        console.error("Gagal update log WhatsApp:", whatsappLogError)
+      }
     } catch (waError) {
-      console.error("Gagal kirim WhatsApp:", waError)
+      console.error("Gagal kirim atau log WhatsApp:", waError instanceof Error ? waError.message : waError)
+
+      const { error: whatsappLogError } = await supabaseAdmin
+        .from("bookings")
+        .update({
+          whatsapp_attempts: (booking as any)?.whatsapp_attempts ? Number((booking as any).whatsapp_attempts) + 1 : 1,
+          whatsapp_sent: false,
+          whatsapp_last_error: waError instanceof Error ? waError.message : "Network/timeout to Wablas",
+        })
+        .eq("id", booking.id)
+
+      if (whatsappLogError) {
+        console.error("Gagal update log WhatsApp setelah error kirim:", whatsappLogError)
+      }
     }
 
     // Redirect ke halaman konfirmasi

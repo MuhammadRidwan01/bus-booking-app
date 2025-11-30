@@ -5,8 +5,9 @@ import { CheckCircle, MessageCircle, Copy, Home } from "lucide-react"
 import Link from "next/link"
 import BookingCode from "@/components/BookingCode"
 
-function ConfirmationContent({ searchParams }: { searchParams: { code?: string } }) {
-   const bookingCode = searchParams.code || ''
+async function ConfirmationContent({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
+   const params = await searchParams
+   const bookingCode = params.code || ''
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -81,9 +82,10 @@ function ConfirmationContent({ searchParams }: { searchParams: { code?: string }
   )
 }
 
-export default function ConfirmationPage({ searchParams }: { searchParams: { code?: string } }) {
+export default async function ConfirmationPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
   return (
     <Suspense fallback={<div>Loading...</div>}>
+      {/* @ts-expect-error Async Server Component */}
       <ConfirmationContent searchParams={searchParams} />
     </Suspense>
   )
