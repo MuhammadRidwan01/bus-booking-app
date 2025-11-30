@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,22 +12,23 @@ import Link from "next/link"
 import { getBookingByCode } from "@/app/actions/booking"
 import type { BookingDetails } from "@/types"
 import { formatDate, formatTime } from "@/lib/utils"
+import { useSearchParams } from "next/navigation"
 
 export default function TrackPage() {
   const [bookingCode, setBookingCode] = useState("")
   const [booking, setBooking] = useState<BookingDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const searchParams = useSearchParams()
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!bookingCode.trim()) return
+  const searchBooking = async (code: string) => {
+    if (!code.trim()) return
 
     setLoading(true)
     setSearched(true)
 
     try {
-      const result = await getBookingByCode(bookingCode.trim().toUpperCase())
+      const result = await getBookingByCode(code.trim().toUpperCase())
       setBooking(result.found ? result.booking : null)
     } catch (error) {
       console.error("Search error:", error)
@@ -36,6 +37,19 @@ export default function TrackPage() {
       setLoading(false)
     }
   }
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await searchBooking(bookingCode)
+  }
+
+  useEffect(() => {
+    const code = searchParams.get("code")
+    if (code) {
+      setBookingCode(code.toUpperCase())
+      searchBooking(code)
+    }
+  }, [searchParams])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
