@@ -1,25 +1,138 @@
-// app/api/send-wa/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { phone, message } = body;
+  try {
+    const { phone, message, pdfUrl, caption } = await req.json()
 
-  const res = await fetch("https://sby.wablas.com/api/send-message", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: "", // jangan lupa ganti ke env nanti
-    },
-    body: JSON.stringify({
-      phone, // format: 628xxxx
-      message,
-      secret: false,
-      retry: false,
-      isGroup: false,
-    }),
-  });
+    if (!phone || !message) {
+      return NextResponse.json({ ok: false, error: "phone and message are required" }, { status: 400 })
+    }
 
-  const data = await res.json();
-  return NextResponse.json(data);
+    const token = process.env.WABLAS_TOKEN
+    const secretKey = process.env.WABLAS_SECRET_KEY
+    const baseUrl = process.env.WABLAS_BASE_URL ?? "https://bdg.wablas.com"
+
+    if (!token || !secretKey) {
+      return NextResponse.json({ ok: false, error: "Wablas credentials not configured" }, { status: 500 })
+    }
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10_000)
+
+    // Helper to send text-only message
+    const sendText = async () => {
+      const body = new URLSearchParams({
+        phone,
+        message,
+        flag: "instant",
+      })
+
+      const wablasResponse = await fetch(`${baseUrl}/api/send-message`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `${token}.${secretKey}`,
+        },
+        body,
+        signal: controller.signal,
+      })
+
+      let data: unknown = null
+      try {
+        data = await wablasResponse.json()
+      } catch {
+        data = null
+      }
+
+      const wablasStatus = Boolean((data as any)?.status)
+      const isSuccess = wablasResponse.ok && wablasStatus
+
+      return { isSuccess, status: wablasResponse.status, data }
+    }
+
+    // Helper to send PDF as document if provided (use direct URL; caller must provide publicly reachable link)
+    const sendPdf = async () => {
+      if (!pdfUrl) return null
+      try {
+        const body = new URLSearchParams({
+          phone,
+          caption: caption || message,
+          document: pdfUrl,
+          filename: pdfUrl.split("/").pop() || "ticket.pdf",
+          flag: "instant",
+        })
+
+        const resp = await fetch(`${baseUrl}/api/send-document`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `${token}.${secretKey}`,
+          },
+          body,
+          signal: controller.signal,
+        })
+
+        let data: unknown = null
+        try {
+          data = await resp.json()
+        } catch {
+          data = null
+        }
+        const wablasStatus = Boolean((data as any)?.status)
+        const isSuccess = resp.ok && wablasStatus
+        return { isSuccess, status: resp.status, data }
+      } catch (err) {
+        console.error("Wablas PDF send failed", { message: (err as Error)?.message })
+        return null
+      }
+    }
+
+    try {
+      // Try PDF first if available
+      let pdfTried = false
+      if (pdfUrl) {
+        pdfTried = true
+        const pdfResult = await sendPdf()
+        if (pdfResult?.isSuccess) {
+          clearTimeout(timeout)
+          return NextResponse.json({ ok: true, data: pdfResult.data })
+        }
+      }
+
+      const textResult = await sendText()
+      clearTimeout(timeout)
+      if (textResult.isSuccess) {
+        // If PDF failed, include link in response so caller can decide to notify user
+        return NextResponse.json({ ok: true, data: textResult.data, pdfSent: false, pdfUrl })
+      }
+
+      console.error("Wablas send failed", {
+        status: textResult.status,
+        data: textResult.data,
+      })
+      return NextResponse.json(
+        { ok: false, error: "Failed to send WhatsApp", data: textResult.data },
+        { status: 502 },
+      )
+    } catch (error) {
+      if ((error as Error)?.name === "AbortError") {
+        return NextResponse.json(
+          { ok: false, error: "Network or timeout error to Wablas" },
+          { status: 504 },
+        )
+      }
+
+      console.error("Wablas network error", { message: (error as Error)?.message })
+      return NextResponse.json(
+        { ok: false, error: "Internal error while sending WhatsApp" },
+        { status: 500 },
+      )
+    }
+  } catch (error) {
+    console.error("Unexpected error in /api/send-wa", { message: (error as Error)?.message })
+    return NextResponse.json(
+      { ok: false, error: "Internal error while sending WhatsApp" },
+      { status: 500 },
+    )
+  }
 }
