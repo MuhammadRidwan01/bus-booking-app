@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useTransition } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner"
 import { cancelSchedule, exportPassengersCsv, fetchBookingsAction, fetchSchedulesAction, getSchedulePreview, runGenerateSchedules } from "@/app/admin/actions"
 import type { Hotel } from "@/types"
+import { addDays } from "date-fns"
 
 interface ScheduleItem {
   id: string
@@ -35,29 +36,29 @@ interface Props {
 
 export default function SchedulesClient({ initialSchedules, hotels, initialFilters }: Props) {
   const [schedules, setSchedules] = useState<ScheduleItem[]>(initialSchedules)
-  const [filters, setFilters] = useState(initialFilters)
+  const [filters, setFilters] = useState(() => {
+    if (typeof window === "undefined") return initialFilters
+    const hasUrl = window.location.search.length > 0
+    if (hasUrl) return initialFilters
+    const stored = localStorage.getItem("admin-schedules-filters")
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        return { ...initialFilters, ...parsed }
+      } catch (error) {
+        console.error(error)
+      }
+    }
+    return initialFilters
+  })
   const [loading, startTransition] = useTransition()
   const [bookings, setBookings] = useState<any[]>([])
-  const [previewStart, setPreviewStart] = useState(filters.startDate ?? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
+  const [previewStart, setPreviewStart] = useState(
+    () => filters.startDate ?? addDays(new Date(), 1).toISOString().slice(0, 10)
+  )
   const [previewDays, setPreviewDays] = useState(7)
   const [preview, setPreview] = useState<any[]>([])
   const router = useRouter()
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    const hasUrl = searchParams.toString().length > 0
-    if (!hasUrl) {
-      const stored = localStorage.getItem("admin-schedules-filters")
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          setFilters((f) => ({ ...f, ...parsed }))
-        } catch (error) {
-          console.error(error)
-        }
-      }
-    }
-  }, [])
 
   useEffect(() => {
     localStorage.setItem("admin-schedules-filters", JSON.stringify(filters))

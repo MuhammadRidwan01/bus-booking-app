@@ -33,6 +33,8 @@ export interface Booking {
   passenger_count: number
   status: "confirmed" | "cancelled"
   whatsapp_sent: boolean
+  whatsapp_attempts?: number
+  whatsapp_last_error?: string | null
   created_at: string
 }
 

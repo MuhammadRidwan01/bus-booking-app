@@ -1,10 +1,16 @@
-import type { Metadata } from 'next'
-import './globals.css'
+import type { Metadata } from "next"
+import "./globals.css"
+import { Plus_Jakarta_Sans } from "next/font/google"
+
+const fontSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: "Ibis Shuttle Booking",
+  description: "Book and track Ibis Jakarta Airport shuttle tickets",
 }
 
 export default function RootLayout({
@@ -13,8 +19,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="id" className="h-full">
+      <body className={`${fontSans.variable} bg-canvas text-ink antialiased min-h-full`}>
+        {children}
+      </body>
     </html>
   )
 }

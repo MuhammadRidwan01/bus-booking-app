@@ -51,6 +51,7 @@
     "next-themes": "^0.4.4",
     "node-cron": "^4.0.7",
     "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.3",
     "react": "^19",
     "react-day-picker": "8.10.1",
     "react-dom": "^19",
@@ -60,7 +61,6 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
-    "qrcode": "^1.5.3",
     "twilio": "^5.7.1",
     "vaul": "^0.9.6",
     "zod": "latest"
@@ -69,6 +69,8 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "16.0.6",
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"

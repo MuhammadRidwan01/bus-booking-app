@@ -27,15 +27,21 @@ export default function CommandPalette() {
 
   useEffect(() => {
     if (!open) return
+    let cancelled = false
     if (!query) {
-      setResults({ bookings: [], hotels: [] })
+      startTransition(() => setResults({ bookings: [], hotels: [] }))
       return
     }
     startTransition(async () => {
       const data = await quickSearch(query)
-      setResults(data)
+      if (!cancelled) {
+        setResults(data)
+      }
     })
-  }, [open, query])
+    return () => {
+      cancelled = true
+    }
+  }, [open, query, startTransition])
 
   const goToBooking = (code: string) => {
     setOpen(false)
