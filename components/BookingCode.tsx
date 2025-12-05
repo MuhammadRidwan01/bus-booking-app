@@ -24,7 +24,7 @@ export default function BookingCode({ bookingCode }: BookingCodeProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Kode Booking</CardTitle>
+        <CardTitle className="text-lg">Booking Code</CardTitle>
       </CardHeader>
     
         <CardContent>

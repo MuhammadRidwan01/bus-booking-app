@@ -60,7 +60,7 @@ export default function TrackPage() {
             <Link href="/">
               <Button variant="ghost" size="sm" className="hover:bg-blue-50">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Kembali
+                Back
               </Button>
             </Link>
             <div className="flex items-center space-x-2">
@@ -68,7 +68,7 @@ export default function TrackPage() {
                 <Search className="h-5 w-5 text-white" />
               </div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Lacak Tiket
+                Track Your Ticket
               </h1>
             </div>
           </div>
@@ -84,13 +84,13 @@ export default function TrackPage() {
                 <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
                   <Search className="h-4 w-4" />
                 </div>
-                <span>Masukkan Kode Booking</span>
+                <span>Enter Booking Code</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <form onSubmit={handleSearch} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="bookingCode" className="text-base font-medium">Kode Booking</Label>
+                  <Label htmlFor="bookingCode" className="text-base font-medium">Booking Code</Label>
                   <div className="relative">
                     <Input
                       id="bookingCode"
@@ -105,7 +105,7 @@ export default function TrackPage() {
                   </div>
                   <p className="text-sm text-gray-500 flex items-center space-x-1">
                     <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                    <span>Masukkan kode booking yang Anda terima setelah konfirmasi</span>
+                    <span>Enter the booking code you received after confirmation.</span>
                   </p>
                 </div>
 
@@ -117,12 +117,12 @@ export default function TrackPage() {
                   {loading ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                      Mencari...
+                      Loading...
                     </>
                   ) : (
                     <>
                       <Search className="h-5 w-5 mr-2" />
-                      Lacak Tiket
+                      Search Ticket
                     </>
                   )}
                 </Button>
@@ -140,7 +140,7 @@ export default function TrackPage() {
                       <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
                         <Bus className="h-5 w-5" />
                       </div>
-                      <span>Detail Tiket</span>
+                      <span>Ticket Details</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-6 space-y-6">
@@ -149,7 +149,7 @@ export default function TrackPage() {
                       <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                       <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
                       <div className="relative text-center">
-                        <p className="text-sm text-blue-100 mb-2 font-medium">Kode Booking</p>
+                        <p className="text-sm text-blue-100 mb-2 font-medium">Booking Code</p>
                         <p className="text-3xl font-mono font-bold text-white tracking-wider">{booking.booking_code}</p>
                       </div>
                     </div>
@@ -158,7 +158,7 @@ export default function TrackPage() {
                     <div className="space-y-3">
                       <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
                         <div className="w-1 h-5 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
-                        <span>Informasi Penumpang</span>
+                        <span>Passenger Information</span>
                       </h4>
                       <div className="grid grid-cols-1 gap-3">
                         <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
@@ -167,7 +167,7 @@ export default function TrackPage() {
                           </div>
                           <div>
                             <p className="font-semibold text-gray-900">{booking.customer_name}</p>
-                            <p className="text-sm text-gray-600">Nama Penumpang</p>
+                            <p className="text-sm text-gray-600">Passenger Name</p>
                           </div>
                         </div>
 
@@ -177,7 +177,7 @@ export default function TrackPage() {
                           </div>
                           <div>
                             <p className="font-semibold text-gray-900">+{booking.phone}</p>
-                            <p className="text-sm text-gray-600">Nomor WhatsApp</p>
+                            <p className="text-sm text-gray-600">WhatsApp Number</p>
                           </div>
                         </div>
                       </div>
@@ -187,7 +187,7 @@ export default function TrackPage() {
                     <div className="space-y-3">
                       <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
                         <div className="w-1 h-5 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
-                        <span>Detail Perjalanan</span>
+                        <span>Travel Details</span>
                       </h4>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -208,7 +208,7 @@ export default function TrackPage() {
                             </div>
                             <div className="flex-1">
                               <p className="font-semibold text-gray-900 text-sm">{booking.room_number}</p>
-                              <p className="text-xs text-pink-600 font-medium">No. Kamar</p>
+                              <p className="text-xs text-pink-600 font-medium">Room Number</p>
                             </div>
                           </div>
                         )}
@@ -219,7 +219,7 @@ export default function TrackPage() {
                           </div>
                           <div className="flex-1">
                             <p className="font-semibold text-gray-900 text-sm">{formatDate(booking.schedule_date)}</p>
-                            <p className="text-xs text-green-600 font-medium">Tanggal</p>
+                            <p className="text-xs text-green-600 font-medium">Date</p>
                           </div>
                         </div>
 
@@ -229,7 +229,7 @@ export default function TrackPage() {
                           </div>
                           <div className="flex-1">
                             <p className="font-semibold text-gray-900 text-sm">{formatTime(booking.departure_time)} WIB</p>
-                            <p className="text-xs text-orange-600 font-medium">Keberangkatan</p>
+                            <p className="text-xs text-orange-600 font-medium">Departure</p>
                           </div>
                         </div>
 
@@ -239,7 +239,7 @@ export default function TrackPage() {
                           </div>
                           <div className="flex-1">
                             <p className="font-semibold text-gray-900 text-sm">{booking.destination}</p>
-                            <p className="text-xs text-purple-600 font-medium">Tujuan</p>
+                            <p className="text-xs text-purple-600 font-medium">Destination</p>
                           </div>
                         </div>
 
@@ -248,8 +248,7 @@ export default function TrackPage() {
                             <Users className="h-6 w-6 text-white" />
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-gray-900 text-sm">{booking.passenger_count} orang</p>
-                            <p className="text-xs text-indigo-600 font-medium">Penumpang</p>
+                            <p className="font-semibold text-gray-900 text-sm">{booking.passenger_count} passenger</p>
                           </div>
                         </div>
                       </div>
@@ -258,7 +257,7 @@ export default function TrackPage() {
                     {/* Status */}
                     <div className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-gray-700">Status Tiket:</span>
+                        <span className="font-semibold text-gray-700">Ticket Status:</span>
                         <span
                           className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
                             booking.status === "confirmed" 
@@ -266,7 +265,7 @@ export default function TrackPage() {
                               : "bg-gradient-to-r from-red-500 to-pink-500 text-white"
                           }`}
                         >
-                          {booking.status === "confirmed" ? "✓ Terkonfirmasi" : "✕ Dibatalkan"}
+                          {booking.status === "confirmed" ? "✓ Confirmed" : "✕ Cancelled"}
                         </span>
                       </div>
                     </div>
@@ -280,20 +279,20 @@ export default function TrackPage() {
                             <div className="w-6 h-6 bg-amber-500 rounded-lg flex items-center justify-center">
                               <span className="text-white text-xs">!</span>
                             </div>
-                            <span>Petunjuk Keberangkatan</span>
+                            <span>Departure Instructions</span>
                           </h5>
                           <ul className="space-y-2">
                             <li className="flex items-start space-x-2 text-sm text-amber-800">
                               <span className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5">1</span>
-                              <span>Tiba di lobby hotel 10 menit sebelum keberangkatan</span>
+                              <span>Arrive at the hotel lobby 10 minutes before departure</span>
                             </li>
                             <li className="flex items-start space-x-2 text-sm text-amber-800">
                               <span className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5">2</span>
-                              <span>Tunjukkan tiket WhatsApp kepada driver</span>
+                              <span>Show the WhatsApp ticket to the driver</span>
                             </li>
                             <li className="flex items-start space-x-2 text-sm text-amber-800">
                               <span className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5">3</span>
-                              <span>Pastikan membawa identitas diri</span>
+                              <span>Make sure to bring personal identification</span>
                             </li>
                           </ul>
                         </div>
@@ -308,24 +307,24 @@ export default function TrackPage() {
                       <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                         <Search className="h-12 w-12 text-gray-400" />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-3">Tiket Tidak Ditemukan</h3>
+                      <h3 className="text-xl font-bold text-gray-900 mb-3">Ticket Not Found</h3>
                       <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                        Kode booking yang Anda masukkan tidak ditemukan dalam sistem.
+                        The booking code you entered was not found in the system.
                       </p>
                       <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 rounded-xl p-5 max-w-md mx-auto">
-                        <p className="font-semibold text-gray-900 mb-3">Pastikan:</p>
+                        <p className="font-semibold text-gray-900 mb-3">Make sure:</p>
                         <div className="space-y-2 text-sm text-gray-700">
                           <p className="flex items-center space-x-2">
                             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                            <span>Kode booking diketik dengan benar</span>
+                            <span>Booking code is typed correctly</span>
                           </p>
                           <p className="flex items-center space-x-2">
                             <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                            <span>Menggunakan kode yang diterima setelah booking</span>
+                            <span>Using the code received after booking</span>
                           </p>
                           <p className="flex items-center space-x-2">
                             <span className="w-1.5 h-1.5 bg-pink-500 rounded-full"></span>
-                            <span>Tidak ada spasi atau karakter tambahan</span>
+                            <span>No spaces or extra characters</span>
                           </p>
                         </div>
                       </div>

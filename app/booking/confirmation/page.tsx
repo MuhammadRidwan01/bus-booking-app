@@ -17,8 +17,8 @@ async function ConfirmationContent({ searchParams }: { searchParams: Promise<{ c
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="h-12 w-12 text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Booking Berhasil!</h1>
-          <p className="text-gray-600">Tiket Anda telah berhasil dibuat</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Booking Successful!</h1>
+          <p className="text-gray-600">Your ticket has been successfully created</p>
         </div>
 
         {/* Booking Code */}
@@ -33,8 +33,8 @@ async function ConfirmationContent({ searchParams }: { searchParams: Promise<{ c
                   <span className="text-blue-600 text-sm font-bold">1</span>
                 </div>
                 <div>
-                  <p className="font-medium">Tiket WhatsApp</p>
-                  <p className="text-sm text-gray-600">Tiket akan dikirim ke WhatsApp Anda dalam beberapa menit</p>
+                  <p className="font-medium">WhatsApp Ticket</p>
+                  <p className="text-sm text-gray-600">Tickets will be sent to your WhatsApp within minutes</p>
                 </div>
               </div>
 
@@ -43,8 +43,8 @@ async function ConfirmationContent({ searchParams }: { searchParams: Promise<{ c
                   <span className="text-blue-600 text-sm font-bold">2</span>
                 </div>
                 <div>
-                  <p className="font-medium">Simpan Kode Booking</p>
-                  <p className="text-sm text-gray-600">Gunakan kode ini untuk melacak tiket Anda</p>
+                  <p className="font-medium">Save Booking Code</p>
+                  <p className="text-sm text-gray-600">Use this code to track your ticket</p>
                 </div>
               </div>
 
@@ -53,8 +53,8 @@ async function ConfirmationContent({ searchParams }: { searchParams: Promise<{ c
                   <span className="text-blue-600 text-sm font-bold">3</span>
                 </div>
                 <div>
-                  <p className="font-medium">Tiba 10 Menit Sebelumnya</p>
-                  <p className="text-sm text-gray-600">Harap tiba di lobby hotel 10 menit sebelum keberangkatan</p>
+                  <p className="font-medium">Arrived 10 Minutes Earlier</p>
+                  <p className="text-sm text-gray-600">Please arrive at the hotel lobby 10 minutes before departure.</p>
                 </div>
               </div>
             </div>
@@ -66,14 +66,14 @@ async function ConfirmationContent({ searchParams }: { searchParams: Promise<{ c
           <Link href="/track" className="w-full">
             <Button variant="outline" className="w-full">
               <MessageCircle className="h-4 w-4 mr-2" />
-              Lacak Tiket
+              Track Ticket
             </Button>
           </Link>
 
           <Link href="/" className="w-full">
             <Button className="w-full">
               <Home className="h-4 w-4 mr-2" />
-              Kembali ke Beranda
+              Back to Home
             </Button>
           </Link>
         </div>
