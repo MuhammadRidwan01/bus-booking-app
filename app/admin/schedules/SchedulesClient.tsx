@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import Flatpickr from "react-flatpickr"
+import "flatpickr/dist/themes/airbnb.css"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
@@ -85,6 +87,17 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
     return "bg-gray-100 text-gray-700"
   }
 
+  const inventoryTotals = useMemo(() => {
+    return schedules.reduce(
+      (acc, s) => {
+        acc.sold += s.current_booked
+        acc.capacity += s.max_capacity ?? 0
+        return acc
+      },
+      { sold: 0, capacity: 0 },
+    )
+  }, [schedules])
+
   const openDetail = async (s: ScheduleItem) => {
     setBookings([])
     const res = await fetch(`/api/admin-bookings?dailyScheduleId=${s.id}`, { credentials: "include" }).then((r) => r.json())
@@ -128,7 +141,12 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
         <CardContent className="grid gap-3 md:grid-cols-4">
           <div className="space-y-1">
             <Label>Start date</Label>
-            <Input type="date" value={previewStart} onChange={(e) => setPreviewStart(e.target.value)} />
+            <Flatpickr
+              value={previewStart}
+              options={{ dateFormat: "Y-m-d" }}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(dates) => setPreviewStart(dates[0] ? dates[0].toISOString().slice(0, 10) : "")}
+            />
           </div>
           <div className="space-y-1">
             <Label>Days</Label>
@@ -192,11 +210,21 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
         <CardContent className="grid gap-3 md:grid-cols-4">
           <div className="space-y-1">
             <Label>Start</Label>
-            <Input type="date" value={filters.startDate ?? ""} onChange={(e) => reload({ ...filters, startDate: e.target.value })} />
+            <Flatpickr
+              value={filters.startDate ?? ""}
+              options={{ dateFormat: "Y-m-d" }}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(dates) => reload({ ...filters, startDate: dates[0] ? dates[0].toISOString().slice(0, 10) : "" })}
+            />
           </div>
           <div className="space-y-1">
             <Label>End</Label>
-            <Input type="date" value={filters.endDate ?? ""} onChange={(e) => reload({ ...filters, endDate: e.target.value })} />
+            <Flatpickr
+              value={filters.endDate ?? ""}
+              options={{ dateFormat: "Y-m-d" }}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(dates) => reload({ ...filters, endDate: dates[0] ? dates[0].toISOString().slice(0, 10) : "" })}
+            />
           </div>
           <div className="space-y-1">
             <Label>Hotel</Label>
@@ -230,15 +258,18 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
         <CardHeader className="flex items-center justify-between">
           <div>
             <CardTitle>Daily schedules</CardTitle>
-            <p className="text-sm text-gray-500">{schedules.length} rows</p>
+            <p className="text-sm text-gray-500">
+              {schedules.length} rows · Sold {inventoryTotals.sold} / {inventoryTotals.capacity} seats
+            </p>
           </div>
           {loading && <span className="text-xs text-gray-500">Loading...</span>}
         </CardHeader>
         <CardContent className="space-y-3">
-          {schedules.length === 0 && <p className="text-sm text-gray-500">Tidak ada jadwal.</p>}
+          {schedules.length === 0 && <p className="text-sm text-gray-500">No schedules.</p>}
           {schedules.map((s) => {
             const pct = s.max_capacity ? Math.round((s.current_booked / s.max_capacity) * 100) : 0
             const future = new Date(s.schedule_date) >= new Date(new Date().toDateString())
+            const available = (s.max_capacity ?? 0) - s.current_booked
             return (
               <div key={s.id} className="flex flex-col gap-3 rounded-lg border p-3 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -246,13 +277,14 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
                   <p className="text-sm font-semibold">{s.destination}</p>
                   <p className="text-xs text-gray-600">{s.schedule_date} · {s.departure_time}</p>
                   <div className="mt-1 flex gap-2 text-xs">
-                    <Badge className={occupancyClass(pct)}>{pct}% terisi</Badge>
+                    <Badge className={occupancyClass(pct)}>{pct}% filled</Badge>
                     <Badge variant="outline">{s.status}</Badge>
+                    <Badge variant="secondary">{available} available</Badge>
                   </div>
                 </div>
                 <div className="w-full md:w-64">
                   <div className="flex items-center justify-between text-xs text-gray-600">
-                    <span>{s.current_booked}/{s.max_capacity} penumpang</span>
+                    <span>{s.current_booked}/{s.max_capacity} passengers</span>
                   </div>
                   <Progress value={pct} className="mt-2" />
                   <div className="mt-2 flex gap-2">
@@ -279,7 +311,7 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
                               </TableHeader>
                               <TableBody>
                                 {bookings.length === 0 && (
-                                  <TableRow><TableCell colSpan={4} className="text-xs text-gray-500">Tidak ada booking</TableCell></TableRow>
+                                  <TableRow><TableCell colSpan={4} className="text-xs text-gray-500">No bookings</TableCell></TableRow>
                                 )}
                                 {bookings.map((b) => (
                                   <TableRow key={b.booking_code}>

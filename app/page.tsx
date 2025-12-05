@@ -1,3 +1,4 @@
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,10 +29,13 @@ export default function HomePage() {
 
     {/* LEFT — BRAND */}
     <div className="flex items-center gap-3 min-w-0">
-      <img
+      <Image
         src="/ISJA-IBJA-Logo-updated.png"
         alt="Ibis Hotels Logo"
+        width={180}
+        height={50}
         className="h-9 sm:h-10 w-auto shrink-0"
+        priority
       />
 
       <div className=" xs:flex flex-col truncate">
@@ -267,7 +271,13 @@ export default function HomePage() {
         <div className="container mx-auto px-4 md:px-6 py-10 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <img src="/ISJA-IBJA-Logo-updated.png" className="h-8 w-auto" />
+              <Image
+                src="/ISJA-IBJA-Logo-updated.png"
+                alt="Ibis Hotels Logo"
+                width={160}
+                height={44}
+                className="h-8 w-auto"
+              />
               <div>
                 <p className="text-[10px] md:text-xs uppercase tracking-[0.25em] text-slate-400">
                   Ibis Jakarta Airport
@@ -335,7 +345,14 @@ function HotelCard({ name, slug, image, logo, badge, accent = "indigo" }: any) {
   return (
     <div className="rounded-2xl border border-slate-100 overflow-hidden shadow-sm bg-white transition hover:shadow-lg hover:-translate-y-1">
       <div className="relative h-40 sm:h-44 md:h-48">
-        <img src={image} className="w-full h-full object-cover" />
+        <Image
+          src={image}
+          alt={`${name} shuttle cover`}
+          fill
+          className="object-cover"
+          sizes="(min-width: 1280px) 544px, (min-width: 768px) 50vw, 100vw"
+          priority
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
         <div
           className={`absolute top-3 left-3 backdrop-blur px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-2 border ${pill}`}
@@ -348,7 +365,7 @@ function HotelCard({ name, slug, image, logo, badge, accent = "indigo" }: any) {
       <div className="p-4 space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-inner flex items-center justify-center">
-            <img src={logo} className="h-8 w-auto" />
+            <Image src={logo} alt={`${name} logo`} width={64} height={32} className="h-8 w-auto" />
           </div>
           <div>
             <p className="text-xs text-slate-500">Airport Shuttle</p>
