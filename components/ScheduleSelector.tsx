@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, MapPin, Users, AlertTriangle } from "lucide-react"
+import { Clock, MapPin, Users, AlertTriangle, CalendarRange } from "lucide-react"
 import type { ScheduleWithCapacity } from "@/types"
 import { formatTime } from "@/lib/utils"
+import { addDays, format } from "date-fns"
 
 interface ScheduleSelectorProps {
   todaySchedules: ScheduleWithCapacity[]
@@ -25,66 +26,76 @@ export function ScheduleSelector({
 }: ScheduleSelectorProps) {
   const [selectedDate, setSelectedDate] = useState<"today" | "tomorrow">("today")
 
-  const currentSchedules = (selectedDate === "today" ? todaySchedules : tomorrowSchedules)
-    .slice()
-    .sort((a, b) => {
-      // Prioritaskan yang masih bisa dipesan
-      if (!!a.isPast !== !!b.isPast) {
-        return a.isPast ? 1 : -1
-      }
-      // Urutkan berdasarkan jam keberangkatan
-      const aTime = a.departure_time.split(":").map(Number)
-      const bTime = b.departure_time.split(":").map(Number)
-      return (aTime[0] * 60 + aTime[1]) - (bTime[0] * 60 + bTime[1])
-    })
-  const currentDateString =
-    selectedDate === "today"
-      ? new Date().toISOString().split("T")[0]
-      : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+  const currentSchedules = useMemo(() => {
+    const source = selectedDate === "today" ? todaySchedules : tomorrowSchedules
+    return source
+      .slice()
+      .sort((a, b) => {
+        if (!!a.isPast !== !!b.isPast) return a.isPast ? 1 : -1
+        const aTime = a.departure_time.split(":").map(Number)
+        const bTime = b.departure_time.split(":").map(Number)
+        return aTime[0] * 60 + aTime[1] - (bTime[0] * 60 + bTime[1])
+      })
+  }, [selectedDate, todaySchedules, tomorrowSchedules])
+
+  const currentDateString = useMemo(() => {
+    const base = new Date()
+    if (selectedDate === "tomorrow") {
+      return addDays(base, 1).toISOString().split("T")[0]
+    }
+    return base.toISOString().split("T")[0]
+  }, [selectedDate])
+
+  const todayLabel = useMemo(() => format(new Date(), "EEE, dd MMM"), [])
+  const tomorrowLabel = useMemo(() => format(addDays(new Date(), 1), "EEE, dd MMM"), [])
 
   const getCapacityColor = (status: string) => {
     switch (status) {
       case "available":
-        return "bg-green-100 text-green-800 animate-pulse"
+        return "bg-emerald-50 text-emerald-700 border border-emerald-100"
       case "almost-full":
-        return "bg-yellow-100 text-yellow-800 animate-pulse"
+        return "bg-amber-50 text-amber-700 border border-amber-100"
       case "full":
-        return "bg-red-100 text-red-800"
+        return "bg-rose-50 text-rose-700 border border-rose-100"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-slate-50 text-slate-700 border border-slate-200"
     }
   }
 
   const getCapacityText = (status: string) => {
     switch (status) {
       case "available":
-        return "Tersedia"
+        return "Available"
       case "almost-full":
-        return "Hampir Penuh"
+        return "Almost full"
       case "full":
-        return "Penuh"
+        return "Full"
       default:
-        return "Tidak Tersedia"
+        return "Unavailable"
     }
   }
 
   const getProgressColor = (current: number, max: number) => {
     const percentage = (current / max) * 100
-    if (percentage >= 90) return "bg-red-500"
-    if (percentage >= 70) return "bg-yellow-500"
-    return "bg-green-500"
+    if (percentage >= 90) return "bg-rose-500"
+    if (percentage >= 70) return "bg-amber-500"
+    return "bg-emerald-500"
   }
 
   if (loading) {
     return (
-      <Card className="shadow-lg transition-all duration-300 hover:shadow-xl">
-        <CardHeader>
-          <CardTitle>Pilih Jadwal</CardTitle>
+      <Card className="shadow-lg transition-all duration-300 hover:shadow-xl bg-white/90">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">Pick a schedule</p>
+            <CardTitle className="text-xl">Loading</CardTitle>
+          </div>
+          <CalendarRange className="h-5 w-5 text-primary" />
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded-lg animate-pulse" />
+              <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />
             ))}
           </div>
         </CardContent>
@@ -93,149 +104,144 @@ export function ScheduleSelector({
   }
 
   return (
-    <Card className="shadow-lg transition-all duration-300 hover:shadow-xl">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold">Pilih Jadwal</CardTitle>
-
-        <div className="mb-2 text-sm text-blue-700 bg-blue-100 rounded px-3 py-2">
-          Tiket hanya bisa dipesan maksimal <b>20 menit sebelum keberangkatan</b>.
+    <Card className="shadow-lg transition-all duration-300 hover:shadow-xl bg-white/90 border border-slate-100">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pick a schedule</p>
+            <CardTitle className="text-2xl font-semibold text-slate-900">Nearest departures</CardTitle>
+          </div>
+          <CalendarRange className="h-6 w-6 text-primary" />
+        </div>
+        <div className="mt-3 text-sm text-blue-900 bg-blue-50 rounded-xl px-4 py-3 border border-blue-100">
+          Tickets can be booked up to <span className="font-semibold">20 minutes</span> before departure.
         </div>
 
-        <div className="flex space-x-2 mt-4">
+        <div className="grid grid-cols-2 gap-2 mt-4">
           <Button
             type="button"
             variant={selectedDate === "today" ? "default" : "outline"}
             size="lg"
             onClick={() => setSelectedDate("today")}
             disabled={todaySchedules.length === 0}
-            className="flex-1 transition-all duration-300"
+            className="w-full rounded-xl h-12 flex flex-col items-start gap-1"
           >
-            Hari Ini
-            {todaySchedules.length === 0 && (
-              <span className="ml-2 text-xs bg-gray-200 px-2 py-1 rounded-full">(Tidak Ada)</span>
-            )}
+            <span className="flex items-center gap-2">
+              Today
+              {todaySchedules.length === 0 && <span className="text-xs text-muted-foreground">(none)</span>}
+            </span>
+            <span className="text-xs text-muted-foreground">{todayLabel}</span>
           </Button>
           <Button
             type="button"
             variant={selectedDate === "tomorrow" ? "default" : "outline"}
             size="lg"
             onClick={() => setSelectedDate("tomorrow")}
-            className="flex-1 transition-all duration-300"
+            className="w-full rounded-xl h-12 flex flex-col items-start gap-1"
           >
-            Besok
+            <span>Tomorrow</span>
+            <span className="text-xs text-muted-foreground">{tomorrowLabel}</span>
           </Button>
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="space-y-3">
         {currentSchedules.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <Clock className="h-16 w-16 mx-auto mb-4 text-gray-300 animate-pulse" />
-            <p className="text-lg font-semibold text-gray-700">
-              Tidak ada jadwal tersedia untuk {selectedDate === "today" ? "hari ini" : "besok"}
+          <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <Clock className="h-10 w-10 mx-auto mb-3 text-slate-400" />
+            <p className="font-semibold text-slate-800">
+              No schedules for {selectedDate === "today" ? "today" : "tomorrow"}
             </p>
             {selectedDate === "today" && (
-              <div className="flex items-center justify-center mt-3 text-yellow-600">
-                <AlertTriangle className="h-5 w-5 mr-2" />
-                <p className="text-sm">Jadwal hari ini mungkin sudah lewat</p>
+              <div className="flex items-center justify-center mt-2 text-amber-700 text-sm">
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Today’s schedules may be closed
               </div>
             )}
           </div>
         ) : (
-          <div className="space-y-4">
-            {currentSchedules.map((schedule) => (
-              <div
-                key={schedule.id}
-                className={`border-2 rounded-xl p-5 cursor-pointer transition-all duration-300 transform hover:scale-[1.02] ${
-                  selectedScheduleId === schedule.id
-                    ? "border-blue-500 bg-blue-50 shadow-md"
-                    : "border-gray-200 hover:border-gray-300"
-                } ${(schedule.status === "full" || schedule.isPast) ? "opacity-60 cursor-not-allowed bg-gray-100" : ""}`}
-                onClick={() => {
-                  if (schedule.status !== "full" && !schedule.isPast) {
-                    onScheduleSelect(schedule.id, currentDateString)
-                  }
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center text-xl font-bold">
-                        <Clock className="h-6 w-6 mr-2 text-blue-600" />
-                        {formatTime(schedule.departure_time)} WIB
-                      </div>
-                      <Badge className={`${getCapacityColor(schedule.status)} px-3 py-1 text-sm font-medium`}>
-                        {getCapacityText(schedule.status)}
-                      </Badge>
-                      {/* {schedule.isPast && (
-                        <span className="ml-2 text-xs bg-gray-300 text-gray-700 px-2 py-1 rounded">Sudah Lewat</span>
-                      )} */}
-                    </div>
-                    {/* Info waktu sebelum keberangkatan */}
-                    <div className="text-xs text-gray-500 mt-1">
-                      {(() => {
-                        // Hitung berapa menit lagi sebelum keberangkatan
-                        const now = new Date()
-                        const scheduleDateTime = new Date(schedule.schedule_date)
-                        const [hours, minutes] = schedule.departure_time.split(":")
-                        const departureDateTime = new Date(scheduleDateTime)
-                        departureDateTime.setHours(Number(hours), Number(minutes), 0, 0)
-                        const diffMs = departureDateTime.getTime() - now.getTime()
-                        const diffMinutes = Math.floor(diffMs / 60000)
-                        if (schedule.isPast) {
-                          return <span className="text-red-500">Sudah tidak bisa dipesan</span>
-                        } else if (diffMinutes > 20) {
-                          const availableMinutes = diffMinutes - 20
-                          const jam = Math.floor(availableMinutes / 60)
-                          const menit = availableMinutes % 60
-                          return <span className="text-green-500">Ditutup dalam {jam > 0 ? `${jam} jam ` : ""}{menit > 0 ? `${menit} menit` : jam === 0 ? "0 menit" : ""}</span>
-                        } else {
-                          return <span>Kurang dari 20 menit, sudah tidak bisa dipesan</span>
-                        }
-                      })()}
-                    </div>
+          <div className="space-y-3">
+            {currentSchedules.map((schedule) => {
+              const percentage = Math.round((schedule.current_booked / schedule.max_capacity) * 100)
+              const disabled = schedule.status === "full" || schedule.isPast
 
-                    <div className="flex items-center text-gray-700">
-                      <MapPin className="h-5 w-5 mr-2 text-indigo-500" />
-                      <span className="font-medium">{schedule.destination}</span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <Users className="h-4 w-4 mr-2" />
-                          <span>
-                            {schedule.current_booked}/{schedule.max_capacity} penumpang
-                          </span>
+              return (
+                <button
+                  key={schedule.id}
+                  type="button"
+                  className={`w-full text-left rounded-2xl border transition-all duration-200 p-4 bg-white/70 hover:shadow-md hover:-translate-y-[1px] ${
+                    selectedScheduleId === schedule.id ? "border-primary ring-2 ring-primary/10" : "border-slate-200"
+                  } ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                  onClick={() => {
+                    if (!disabled) onScheduleSelect(schedule.id, currentDateString)
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center text-lg font-semibold text-slate-900">
+                          <Clock className="h-5 w-5 mr-2 text-primary" />
+                          {formatTime(schedule.departure_time)} WIB
                         </div>
-                        <span className="text-xs">
-                          {Math.round((schedule.current_booked / schedule.max_capacity) * 100)}% terisi
-                        </span>
+                        <Badge className={`${getCapacityColor(schedule.status)} px-3 py-1 text-xs font-semibold`}>
+                          {getCapacityText(schedule.status)}
+                        </Badge>
                       </div>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+
+                      <div className="flex items-center text-sm text-slate-700">
+                        <MapPin className="h-4 w-4 mr-2 text-primary" />
+                        <span className="font-medium">{schedule.destination}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-600">
+                        <span className="inline-flex items-center gap-2">
+                          <Users className="h-4 w-4 text-slate-500" />
+                          {schedule.current_booked}/{schedule.max_capacity} passengers
+                        </span>
+                        <span className="font-semibold text-slate-800">{percentage}% filled</span>
+                      </div>
+
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full ${getProgressColor(
-                            schedule.current_booked,
-                            schedule.max_capacity
-                          )} transition-all duration-500`}
-                          style={{
-                            width: `${(schedule.current_booked / schedule.max_capacity) * 100}%`,
-                          }}
+                          className={`h-full ${getProgressColor(schedule.current_booked, schedule.max_capacity)} transition-all duration-500`}
+                          style={{ width: `${percentage}%` }}
                         />
                       </div>
-                    </div>
-                  </div>
 
-                  {selectedScheduleId === schedule.id && (
-                    <div className="ml-4">
-                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center animate-pulse">
-                        <div className="w-3 h-3 bg-white rounded-full" />
-                      </div>
+                      <p className="text-xs text-slate-500">
+                        {(() => {
+                          const now = new Date()
+                          const scheduleDateTime = new Date(schedule.schedule_date)
+                          const [hours, minutes] = schedule.departure_time.split(":")
+                          const departureDateTime = new Date(scheduleDateTime)
+                          departureDateTime.setHours(Number(hours), Number(minutes), 0, 0)
+                          const diffMs = departureDateTime.getTime() - now.getTime()
+                          const diffMinutes = Math.floor(diffMs / 60000)
+                          if (schedule.isPast) return "No longer bookable"
+                          if (diffMinutes > 20) {
+                            const availableMinutes = diffMinutes - 20
+                            const hours = Math.floor(availableMinutes / 60)
+                            const minutes = availableMinutes % 60
+                            const hoursText = hours > 0 ? `${hours}h ` : ""
+                            const minutesText = `${minutes}m`
+                            return `Booking closes in ${hoursText}${minutesText}`
+                          }
+                          return "Less than 20 minutes — closed"
+                        })()}
+                      </p>
                     </div>
-                  )}
-                </div>
-              </div>
-            ))}
+
+                    {selectedScheduleId === schedule.id && (
+                      <div className="mt-1">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center">
+                          <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
           </div>
         )}
       </CardContent>

@@ -4,17 +4,19 @@ import { getSupabaseAdmin } from "@/lib/supabase-server"
 import { generateBookingCode, formatDate, formatTime } from "@/lib/utils"
 import { redirect } from "next/navigation"
 import { z } from "zod"
-import { normalizeTo62 } from "@/lib/phone"
 import { sendWhatsappMessage } from "@/lib/whatsapp"
 
 // Validation schema - langsung di file ini
 const bookingSchema = z.object({
   customerName: z.string().min(1, "Nama lengkap harus diisi"),
-  phoneNumber: z.string().min(10, "Nomor WhatsApp tidak valid"),
+  phoneNumber: z.string().min(5, "Nomor WhatsApp tidak valid"),
   bookingDate: z.string().min(1, "Tanggal booking harus dipilih"),
   scheduleId: z.string().uuid("Schedule ID tidak valid"),
   passengerCount: z.number().min(1).max(5, "Jumlah penumpang maksimal 5 orang"),
   roomNumber: z.string().min(1, "Nomor kamar harus diisi"),
+  idempotencyKey: z.string().min(8, "Idempotency key tidak valid"),
+  hasWhatsapp: z.enum(["yes", "no"]).default("yes"),
+  countryCode: z.string().min(1, "Kode negara harus diisi"),
 })
 
 export async function createBooking(formData: FormData) {
@@ -38,9 +40,36 @@ export async function createBooking(formData: FormData) {
       scheduleId: formData.get("scheduleId") as string,
       passengerCount: Number.parseInt(formData.get("passengerCount") as string),
       roomNumber: formData.get("roomNumber") as string,
+      idempotencyKey: formData.get("idempotencyKey") as string,
+      hasWhatsapp: ((formData.get("hasWhatsapp") as string) || "yes") as "yes" | "no",
+      countryCode: (formData.get("countryCode") as string) || "62",
     }
 
     const validatedData = bookingSchema.parse(rawData)
+
+    // Short-circuit if this request has already produced a booking
+    let idempotencySupported = true
+    let existingBooking = null as { id: string; booking_code: string } | null
+    try {
+      const existing = await supabaseAdmin
+        .from("bookings")
+        .select("id, booking_code")
+        .eq("idempotency_key", validatedData.idempotencyKey)
+        .maybeSingle()
+      existingBooking = existing.data
+    } catch (existingError: any) {
+      // Column might not exist if migration belum jalan; fallback tanpa idempotency
+      if (existingError?.code === "42703") {
+        idempotencySupported = false
+      } else if (existingError?.code !== "PGRST116") {
+        console.error("Check existing booking by idempotency error:", existingError)
+        throw new Error("Gagal memproses booking, coba lagi")
+      }
+    }
+
+    if (existingBooking) {
+      redirect(`/booking/confirmation?code=${existingBooking.booking_code}`)
+    }
 
     // Ambil informasi jadwal & kapasitas
     const { data: schedule } = await supabaseAdmin
@@ -76,7 +105,7 @@ export async function createBooking(formData: FormData) {
     // Generate kode booking unik
     const bookingCode = generateBookingCode()
 
-    const normalizedPhone = normalizeTo62(validatedData.phoneNumber)
+    const normalizedPhone = normalizePhoneWithCountry(validatedData.phoneNumber, validatedData.countryCode)
     const hotel = busSchedule?.hotel_id ? await getHotelDetails(busSchedule.hotel_id) : null
     const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "") || ""
     const trackLink = `${baseUrl}/track?code=${bookingCode}`
@@ -95,22 +124,44 @@ export async function createBooking(formData: FormData) {
     const whatsappMessage = messageParts.join("\n")
 
     // Simpan booking ke database
-    const { data: booking, error: bookingError } = await supabaseAdmin
+    const insertPayload: Record<string, any> = {
+      booking_code: bookingCode,
+      hotel_id: busSchedule?.hotel_id,
+      daily_schedule_id: validatedData.scheduleId,
+      customer_name: validatedData.customerName,
+      phone: normalizedPhone,
+      passenger_count: validatedData.passengerCount,
+      status: "confirmed",
+      room_number: validatedData.roomNumber,
+    }
+
+    if (idempotencySupported) {
+      insertPayload.idempotency_key = validatedData.idempotencyKey
+    }
+
+  const { data: booking, error: bookingError } = await supabaseAdmin
       .from("bookings")
-      .insert({
-        booking_code: bookingCode,
-        hotel_id: busSchedule?.hotel_id,
-        daily_schedule_id: validatedData.scheduleId,
-        customer_name: validatedData.customerName,
-        phone: normalizedPhone,
-        passenger_count: validatedData.passengerCount,
-        status: "confirmed",
-        room_number: validatedData.roomNumber,
-      })
+      .insert(insertPayload)
       .select()
       .single()
 
     if (bookingError) {
+      if (bookingError.code === "23505" && idempotencySupported) {
+        const { data: dupBooking, error: fetchDupError } = await supabaseAdmin
+          .from("bookings")
+          .select("id, booking_code")
+          .eq("idempotency_key", validatedData.idempotencyKey)
+          .maybeSingle()
+
+        if (fetchDupError && fetchDupError.code !== "PGRST116") {
+          console.error("Failed to fetch duplicate booking after conflict:", fetchDupError)
+        }
+
+        if (dupBooking) {
+          redirect(`/booking/confirmation?code=${dupBooking.booking_code}`)
+        }
+      }
+
       console.error("Booking error details:", bookingError)
       throw new Error("Gagal membuat booking: " + bookingError.message)
     }
@@ -125,50 +176,71 @@ export async function createBooking(formData: FormData) {
       console.error("Failed to update capacity:", capacityError)
     }
 
-    // Kirim WhatsApp via internal API (non-blocking untuk keberhasilan booking)
-    try {
-      const waResult = await sendWhatsappMessage({
-        phone: normalizedPhone,
-        message: whatsappMessage,
-        pdfUrl: pdfLink,
-        caption: `Tiket Shuttle - ${bookingCode}`,
-      })
+    // Kirim WhatsApp di background jika user menyatakan nomor WA aktif
+    const attemptCount = (booking as any)?.whatsapp_attempts ? Number((booking as any).whatsapp_attempts) : 0
+    const userHasWhatsapp = validatedData.hasWhatsapp !== "no"
 
-      const waErrorMessage = waResult.ok
-        ? null
-        : (waResult.data as any)?.error ?? "Wablas send failed"
-      // If PDF failed to send, append info so admins can inspect
-      if (!waResult.ok && waResult.data && (waResult.data as any).pdfUrl) {
-        console.error("PDF not sent, link fallback", (waResult.data as any).pdfUrl)
-      }
-
+    if (!userHasWhatsapp) {
       const { error: whatsappLogError } = await supabaseAdmin
         .from("bookings")
         .update({
-          whatsapp_attempts: (booking as any)?.whatsapp_attempts ? Number((booking as any).whatsapp_attempts) + 1 : 1,
-          whatsapp_sent: waResult.ok,
-          whatsapp_last_error: waResult.ok ? null : waErrorMessage,
-        })
-        .eq("id", booking.id)
-
-      if (whatsappLogError) {
-        console.error("Gagal update log WhatsApp:", whatsappLogError)
-      }
-    } catch (waError) {
-      console.error("Gagal kirim atau log WhatsApp:", waError instanceof Error ? waError.message : waError)
-
-      const { error: whatsappLogError } = await supabaseAdmin
-        .from("bookings")
-        .update({
-          whatsapp_attempts: (booking as any)?.whatsapp_attempts ? Number((booking as any).whatsapp_attempts) + 1 : 1,
+          whatsapp_attempts: attemptCount,
           whatsapp_sent: false,
-          whatsapp_last_error: waError instanceof Error ? waError.message : "Network/timeout to Wablas",
+          whatsapp_last_error: "User indicated number is not on WhatsApp",
         })
         .eq("id", booking.id)
 
       if (whatsappLogError) {
-        console.error("Gagal update log WhatsApp setelah error kirim:", whatsappLogError)
+        console.error("Gagal update log WhatsApp (no WA):", whatsappLogError)
       }
+    } else {
+      const sendWhatsappInBackground = async () => {
+        try {
+          const waResult = await sendWhatsappMessage({
+            phone: normalizedPhone,
+            message: whatsappMessage,
+            pdfUrl: pdfLink,
+            caption: `Tiket Shuttle - ${bookingCode}`,
+          })
+
+          const waErrorMessage = waResult.ok
+            ? null
+            : (waResult.data as any)?.error ?? "Wablas send failed"
+          if (!waResult.ok && waResult.data && (waResult.data as any).pdfUrl) {
+            console.error("PDF not sent, link fallback", (waResult.data as any).pdfUrl)
+          }
+
+          const { error: whatsappLogError } = await supabaseAdmin
+            .from("bookings")
+            .update({
+              whatsapp_attempts: attemptCount + 1,
+              whatsapp_sent: waResult.ok,
+              whatsapp_last_error: waResult.ok ? null : waErrorMessage,
+            })
+            .eq("id", booking.id)
+
+          if (whatsappLogError) {
+            console.error("Gagal update log WhatsApp:", whatsappLogError)
+          }
+        } catch (waError) {
+          console.error("Gagal kirim atau log WhatsApp:", waError instanceof Error ? waError.message : waError)
+
+          const { error: whatsappLogError } = await supabaseAdmin
+            .from("bookings")
+            .update({
+              whatsapp_attempts: attemptCount + 1,
+              whatsapp_sent: false,
+              whatsapp_last_error: waError instanceof Error ? waError.message : "Network/timeout to Wablas",
+            })
+            .eq("id", booking.id)
+
+          if (whatsappLogError) {
+            console.error("Gagal update log WhatsApp setelah error kirim:", whatsappLogError)
+          }
+        }
+      }
+
+      void sendWhatsappInBackground()
     }
 
     // Redirect ke halaman konfirmasi
@@ -209,4 +281,18 @@ export async function getHotelDetails(hotelId: string) {
     console.error("Error getting hotel details:", error)
     throw error
   }
+}
+
+function normalizePhoneWithCountry(phone: string, countryCode: string) {
+  const digits = phone.replace(/[^\d+]/g, "")
+  if (digits.startsWith("+")) {
+    return digits.slice(1)
+  }
+
+  const code = (countryCode || "").replace(/\D/g, "") || "62"
+  const local = digits.replace(/\D/g, "")
+
+  if (local.startsWith(code)) return local
+  if (local.startsWith("0")) return code + local.slice(1)
+  return code + local
 }
