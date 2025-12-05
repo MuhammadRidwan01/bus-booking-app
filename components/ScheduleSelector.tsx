@@ -58,13 +58,13 @@ export function ScheduleSelector({
   const getCapacityText = (status: string) => {
     switch (status) {
       case "available":
-        return "Tersedia"
+        return "Available"
       case "almost-full":
-        return "Hampir Penuh"
+        return "Almost Full"
       case "full":
-        return "Penuh"
+        return "Full"
       default:
-        return "Tidak Tersedia"
+        return "Unavailable"
     }
   }
 
@@ -79,7 +79,7 @@ export function ScheduleSelector({
     return (
       <Card className="shadow-lg transition-all duration-300 hover:shadow-xl">
         <CardHeader>
-          <CardTitle>Pilih Jadwal</CardTitle>
+          <CardTitle>Select Schedule</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -95,10 +95,10 @@ export function ScheduleSelector({
   return (
     <Card className="shadow-lg transition-all duration-300 hover:shadow-xl">
       <CardHeader>
-        <CardTitle className="text-2xl font-bold">Pilih Jadwal</CardTitle>
+        <CardTitle className="text-2xl font-bold">Select Schedule</CardTitle>
 
         <div className="mb-2 text-sm text-blue-700 bg-blue-100 rounded px-3 py-2">
-          Tiket hanya bisa dipesan maksimal <b>20 menit sebelum keberangkatan</b>.
+          Tickets can only be booked a maximum of <b>20 minutes before departure</b>.
         </div>
 
         <div className="flex space-x-2 mt-4">
@@ -110,9 +110,9 @@ export function ScheduleSelector({
             disabled={todaySchedules.length === 0}
             className="flex-1 transition-all duration-300"
           >
-            Hari Ini
+            Today
             {todaySchedules.length === 0 && (
-              <span className="ml-2 text-xs bg-gray-200 px-2 py-1 rounded-full">(Tidak Ada)</span>
+              <span className="ml-2 text-xs bg-gray-200 px-2 py-1 rounded-full">(Unavailable)</span>
             )}
           </Button>
           <Button
@@ -122,7 +122,7 @@ export function ScheduleSelector({
             onClick={() => setSelectedDate("tomorrow")}
             className="flex-1 transition-all duration-300"
           >
-            Besok
+            Tomorrow
           </Button>
         </div>
       </CardHeader>
@@ -132,12 +132,12 @@ export function ScheduleSelector({
           <div className="text-center py-12 bg-gray-50 rounded-lg">
             <Clock className="h-16 w-16 mx-auto mb-4 text-gray-300 animate-pulse" />
             <p className="text-lg font-semibold text-gray-700">
-              Tidak ada jadwal tersedia untuk {selectedDate === "today" ? "hari ini" : "besok"}
+              There are no schedules available for {selectedDate === "today" ? "today" : "tomorrow"}.
             </p>
             {selectedDate === "today" && (
               <div className="flex items-center justify-center mt-3 text-yellow-600">
                 <AlertTriangle className="h-5 w-5 mr-2" />
-                <p className="text-sm">Jadwal hari ini mungkin sudah lewat</p>
+                <p className="text-sm">Today's schedule may have passed</p>
               </div>
             )}
           </div>
@@ -183,14 +183,14 @@ export function ScheduleSelector({
                         const diffMs = departureDateTime.getTime() - now.getTime()
                         const diffMinutes = Math.floor(diffMs / 60000)
                         if (schedule.isPast) {
-                          return <span className="text-red-500">Sudah tidak bisa dipesan</span>
+                          return <span className="text-red-500">Can no longer be booked</span>
                         } else if (diffMinutes > 20) {
                           const availableMinutes = diffMinutes - 20
                           const jam = Math.floor(availableMinutes / 60)
                           const menit = availableMinutes % 60
-                          return <span className="text-green-500">Ditutup dalam {jam > 0 ? `${jam} jam ` : ""}{menit > 0 ? `${menit} menit` : jam === 0 ? "0 menit" : ""}</span>
+                          return <span className="text-green-500">Closed in {jam > 0 ? `${jam} hours ` : ""}{menit > 0 ? `${menit} minutes` : jam === 0 ? "0 minutes" : ""}</span>
                         } else {
-                          return <span>Kurang dari 20 menit, sudah tidak bisa dipesan</span>
+                          return <span>Less than 20 minutes, can no longer be booked</span>
                         }
                       })()}
                     </div>
@@ -205,11 +205,11 @@ export function ScheduleSelector({
                         <div className="flex items-center">
                           <Users className="h-4 w-4 mr-2" />
                           <span>
-                            {schedule.current_booked}/{schedule.max_capacity} penumpang
+                            {schedule.current_booked}/{schedule.max_capacity} passengers
                           </span>
                         </div>
                         <span className="text-xs">
-                          {Math.round((schedule.current_booked / schedule.max_capacity) * 100)}% terisi
+                          {Math.round((schedule.current_booked / schedule.max_capacity) * 100)}% booked
                         </span>
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">

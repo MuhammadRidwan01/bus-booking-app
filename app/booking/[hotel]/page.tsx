@@ -72,7 +72,7 @@ export default function BookingPage() {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat...</p>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     )
@@ -87,12 +87,12 @@ export default function BookingPage() {
               <Link href="/">
                 <Button variant="ghost" size="sm" className="hover:bg-gray-100">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Kembali
+                  Back
                 </Button>
               </Link>
               <div className="flex items-center space-x-3">
                 <Bus className="h-6 w-6 text-blue-600" />
-                <h1 className="text-xl font-bold text-gray-800">Booking Shuttle</h1>
+                <h1 className="text-xl font-bold text-gray-800">Shuttle Booking</h1>
               </div>
             </div>
           </div>
@@ -185,10 +185,10 @@ export default function BookingPage() {
             <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
               <CardTitle className="flex items-center space-x-2 text-2xl">
                 <User className="h-6 w-6 text-blue-600" />
-                <span>Data Penumpang</span>
+                <span>Passenger Form</span>
               </CardTitle>
               <p className="text-sm text-gray-600 mt-2">
-                Mohon lengkapi data di bawah ini untuk menyelesaikan booking
+                Please complete the form below to complete your booking.
               </p>
             </CardHeader>
             <CardContent className="p-6">
@@ -201,13 +201,13 @@ export default function BookingPage() {
                 <div className="space-y-2">
                   <Label htmlFor="customerName" className="flex items-center space-x-2 text-base font-semibold">
                     <User className="h-5 w-5 text-blue-600" />
-                    <span>Nama Lengkap</span>
+                    <span>Full Name</span>
                   </Label>
                   <Input
                     id="customerName"
                     name="customerName"
                     type="text"
-                    placeholder="Masukkan nama lengkap sesuai identitas"
+                    placeholder="Enter your full name according to your identity"
                     required
                     className="w-full h-12 text-base border-2 focus:border-blue-500 transition-colors"
                   />
@@ -229,7 +229,7 @@ export default function BookingPage() {
                   <div className="flex items-start space-x-2 bg-blue-50 p-3 rounded-lg">
                     <div className="text-blue-600 mt-0.5">ℹ️</div>
                     <p className="text-sm text-blue-800">
-                      Konfirmasi booking dan e-ticket akan dikirim ke nomor WhatsApp ini
+                      Booking confirmation and e-ticket will be sent to this WhatsApp number
                     </p>
                   </div>
                 </div>
@@ -238,7 +238,7 @@ export default function BookingPage() {
                   <div className="space-y-2">
                     <Label className="flex items-center space-x-2 text-base font-semibold">
                       <Users className="h-5 w-5 text-blue-600" />
-                      <span>Jumlah Penumpang</span>
+                      <span>Number of Passengers</span>
                     </Label>
                     <Select
                       value={passengerCount.toString()}
@@ -250,7 +250,7 @@ export default function BookingPage() {
                       <SelectContent>
                         {[1, 2, 3, 4, 5].map((count) => (
                           <SelectItem key={count} value={count.toString()}>
-                            {count} orang
+                            {count} {count === 1 ? "passenger" : "passengers"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -260,12 +260,12 @@ export default function BookingPage() {
                   <div className="space-y-2">
                     <Label htmlFor="roomNumber" className="flex items-center space-x-2 text-base font-semibold">
                       <span>🚪</span>
-                      <span>No. Kamar</span>
+                      <span>Room Number</span>
                     </Label>
                     <Input
                       id="roomNumber"
                       type="text"
-                      placeholder="Contoh: 101, 205, 3A"
+                      placeholder="Example: 101, 205, 192"
                       value={roomNumber}
                       onChange={(e) => setRoomNumber(e.target.value)}
                       required
@@ -293,7 +293,7 @@ export default function BookingPage() {
                   {!isFormValid && (
                     <div className="mt-4 text-center bg-amber-50 p-4 rounded-lg border border-amber-200">
                       <p className="text-sm text-amber-800 font-medium">
-                        📋 Pilih jadwal dan lengkapi semua data untuk melanjutkan
+                        📋 Select a schedule and complete all form to continue.
                       </p>
                     </div>
                   )}
@@ -306,20 +306,20 @@ export default function BookingPage() {
             <CardContent className="p-6">
               <h3 className="font-semibold text-lg mb-3 flex items-center space-x-2">
                 <span>💡</span>
-                <span>Informasi Penting</span>
+                <span>Important Information</span>
               </h3>
               <ul className="space-y-2 text-sm text-gray-700">
                 <li className="flex items-start space-x-2">
                   <span className="text-blue-600 mt-0.5">•</span>
-                  <span>Harap tiba di lobby 10 menit sebelum jadwal keberangkatan</span>
+                  <span>Please arrive at the lobby 10 minutes before the scheduled departure time.</span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <span className="text-blue-600 mt-0.5">•</span>
-                  <span>E-ticket akan dikirim melalui WhatsApp setelah booking dikonfirmasi</span>
+                  <span>E-ticket will be sent via WhatsApp after booking is confirmed.</span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <span className="text-blue-600 mt-0.5">•</span>
-                  <span>Pastikan nomor kamar dan jumlah penumpang sudah benar</span>
+                  <span>Make sure the room number and number of passengers are correct.</span>
                 </li>
               </ul>
             </CardContent>

@@ -24,7 +24,8 @@ export default function HomePage() {
             </div>
             <Link href="/track">
               <Button variant="outline" size="sm" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-                Lacak Tiket
+                <ArrowRight className="h-4 w-4" />
+                Track Ticket
               </Button>
             </Link>
           </div>
@@ -47,9 +48,9 @@ export default function HomePage() {
                 Ibis Hotels Jakarta Airport
               </span>
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Pesan shuttle bus gratis untuk perjalanan Anda ke bandara. 
-              Mudah, cepat, dan tanpa biaya tambahan.
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">          
+              Book a free shuttle bus for your trip to the airport.
+              It's easy, fast, and at no extra cost.
             </p>
           </div>
 
@@ -59,28 +60,28 @@ export default function HomePage() {
               <div className="bg-gradient-to-br from-blue-500 to-blue-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transform group-hover:scale-110 transition-transform duration-300">
                 <Clock className="h-10 w-10 text-white" />
               </div>
-              <h3 className="font-bold text-lg mb-2">Booking Instan</h3>
-              <p className="text-sm text-gray-600">Tanpa login, konfirmasi langsung via WhatsApp</p>
+              <h3 className="font-bold text-lg mb-2">Instant Booking</h3>
+              <p className="text-sm text-gray-600">Without login, direct confirmation via WhatsApp</p>
             </div>
             <div className="text-center group">
               <div className="bg-gradient-to-br from-green-500 to-green-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transform group-hover:scale-110 transition-transform duration-300">
                 <Users className="h-10 w-10 text-white" />
               </div>
-              <h3 className="font-bold text-lg mb-2">Real-time Kapasitas</h3>
-              <p className="text-sm text-gray-600">Lihat ketersediaan kursi secara langsung</p>
+              <h3 className="font-bold text-lg mb-2">Real-time Capacity</h3>
+              <p className="text-sm text-gray-600">View seat availability directly</p>
             </div>
             <div className="text-center group">
               <div className="bg-gradient-to-br from-purple-500 to-purple-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transform group-hover:scale-110 transition-transform duration-300">
                 <CheckCircle className="h-10 w-10 text-white" />
               </div>
-              <h3 className="font-bold text-lg mb-2">100% Gratis</h3>
-              <p className="text-sm text-gray-600">Layanan shuttle tanpa biaya untuk tamu hotel</p>
+              <h3 className="font-bold text-lg mb-2">100% Free</h3>
+              <p className="text-sm text-gray-600">Free shuttle service for hotel guests</p>
             </div>
           </div>
 
           {/* Hotel Selection */}
           <div className="max-w-6xl mx-auto">
-            <h3 className="text-3xl font-bold text-center mb-12">Pilih Lokasi Hotel Pick-up Anda</h3>
+            <h3 className="text-3xl font-bold text-center mb-12">Select Your Hotel Pick-up Location</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
               {/* Ibis Style Card */}
@@ -106,8 +107,8 @@ export default function HomePage() {
                     </div>
                     <span>Ibis Style Jakarta Airport</span>
                   </CardTitle>
-                  <CardDescription className="text-base mt-2">
-                    Hotel modern dengan fasilitas premium dan desain kontemporer yang stylish
+                  <CardDescription className="text-base mt-2">                  
+                    A modern hotel with premium facilities and stylish contemporary design.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="relative z-10">
@@ -115,29 +116,29 @@ export default function HomePage() {
                     <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
                       <MapPin className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="font-semibold text-sm text-gray-900">Rute Tersedia</p>
-                        <p className="text-sm text-gray-600">Bandara Soekarno-Hatta</p>
+                        <p className="font-semibold text-sm text-gray-900">Route</p>
+                        <p className="text-sm text-gray-600">Soekarno-Hatta Airport</p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
                       <Clock className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="font-semibold text-sm text-gray-900">Jadwal Operasional</p>
+                        <p className="font-semibold text-sm text-gray-900">Operational Schedule</p>
                         <p className="text-sm text-gray-600">06:00 - 22:00 WIB (Setiap jam)</p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
                       <Users className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="font-semibold text-sm text-gray-900">Kapasitas</p>
-                        <p className="text-sm text-gray-600">15 penumpang per shuttle</p>
+                        <p className="font-semibold text-sm text-gray-900">Capacity</p>
+                        <p className="text-sm text-gray-600">15 passengers per shuttle</p>
                       </div>
                     </div>
                   </div>
                   <div className="relative z-20">
                     <Link href="/booking/ibis-style" className="block w-full">
                       <Button className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-6 text-base shadow-lg">
-                        Booking Sekarang
+                        Book Now
                         <ArrowRight className="ml-2 h-5 w-5" />
                       </Button>
                     </Link>
@@ -169,7 +170,7 @@ export default function HomePage() {
                     <span>Ibis Budget Jakarta Airport</span>
                   </CardTitle>
                   <CardDescription className="text-base mt-2">
-                    Hotel ekonomis dengan kualitas terjamin dan harga terjangkau untuk semua
+                    Budget hotel with guaranteed quality and affordable prices for everyone
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="relative z-10">
@@ -177,29 +178,29 @@ export default function HomePage() {
                     <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
                       <MapPin className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="font-semibold text-sm text-gray-900">Rute Tersedia</p>
-                        <p className="text-sm text-gray-600">Bandara Soekarno-Hatta</p>
+                        <p className="font-semibold text-sm text-gray-900">Route</p>
+                        <p className="text-sm text-gray-600">Soekarno-Hatta Airport</p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
                       <Clock className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="font-semibold text-sm text-gray-900">Jadwal Operasional</p>
-                        <p className="text-sm text-gray-600">06:00 - 22:00 WIB (Setiap jam)</p>
+                        <p className="font-semibold text-sm text-gray-900">Operational Schedule</p>
+                        <p className="text-sm text-gray-600">06:00 - 22:00 WIB</p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
                       <Users className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="font-semibold text-sm text-gray-900">Kapasitas</p>
-                        <p className="text-sm text-gray-600">15 penumpang per shuttle</p>
+                        <p className="font-semibold text-sm text-gray-900">Capacity</p>
+                        <p className="text-sm text-gray-600">15 passengers per shuttle</p>
                       </div>
                     </div>
                   </div>
                   <div className="relative z-20">
                     <Link href="/booking/ibis-budget" className="block w-full">
                       <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-6 text-base shadow-lg">
-                        Booking Sekarang
+                        Book Now
                         <ArrowRight className="ml-2 h-5 w-5" />
                       </Button>
                     </Link>
@@ -211,28 +212,29 @@ export default function HomePage() {
 
           {/* Info Section */}
           <div className="max-w-4xl mx-auto mt-16 bg-white/60 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
-            <h4 className="text-xl font-bold text-center mb-6">Cara Booking Shuttle</h4>
+            <h4 className="text-xl font-bold text-center mb-6">How to Book a Shuttle
+</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
                   1
                 </div>
-                <p className="text-sm font-semibold mb-1">Pilih Hotel</p>
-                <p className="text-xs text-gray-600">Pilih hotel dan tujuan perjalanan Anda</p>
+                <p className="text-sm font-semibold mb-1">Select a Hotel</p>
+                <p className="text-xs text-gray-600">Select your hotel and travel destination</p>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
                   2
                 </div>
-                <p className="text-sm font-semibold mb-1">Isi Data</p>
-                <p className="text-xs text-gray-600">Masukkan informasi dan pilih jadwal</p>
+                <p className="text-sm font-semibold mb-1">fill in the form</p>
+                <p className="text-xs text-gray-600">Enter information and select a schedule</p>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
                   3
                 </div>
-                <p className="text-sm font-semibold mb-1">Terima Tiket</p>
-                <p className="text-xs text-gray-600">Tiket dikirim langsung ke WhatsApp</p>
+                <p className="text-sm font-semibold mb-1">Receive Ticket</p>
+                <p className="text-xs text-gray-600">Tickets sent directly to WhatsApp</p>
               </div>
             </div>
           </div>
