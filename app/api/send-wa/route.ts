@@ -99,7 +99,12 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ ok: true, data: pdfResult.data })
         } else if (pdfResult) {
           pdfFailedData = pdfResult.data
-          console.error("Wablas send-document failed", { status: pdfResult.status, data: pdfResult.data })
+          // Downgrade quietly if package does not support document; avoid noisy logs
+          const message = (pdfResult.data as any)?.message || ""
+          const shouldLog = !String(message).toLowerCase().includes("not support")
+          if (shouldLog) {
+            console.error("Wablas send-document failed", { status: pdfResult.status, data: pdfResult.data })
+          }
         }
       }
 
