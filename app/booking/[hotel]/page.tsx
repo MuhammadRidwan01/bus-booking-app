@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Bus, User, Users, MapPin, Shield, KeyRound, Clock } from "lucide-react"
+import { Bus, User, Users, MapPin, Shield, KeyRound, Clock } from "lucide-react"
 import Link from "next/link"
 import { ScheduleSelector } from "@/components/ScheduleSelector"
 import { useRealTimeCapacity } from "@/hooks/useRealTimeCapacity"
@@ -15,6 +15,7 @@ import { createBooking } from "@/app/actions/booking"
 import { useActionState } from "react"
 import { useFormStatus } from "react-dom"
 import Image from "next/image"
+import { PublicShell } from "@/components/PublicShell"
 
 /* ------------------------------------------------------------
    PAGE
@@ -74,31 +75,8 @@ export default function BookingPage() {
   const [state, formAction] = useActionState(bookingFormAction, { error: null })
 
   return (
-    <div className="min-h-screen bg-canvas">
-      {/* HEADER */}
-      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-6xl mx-auto flex items-center justify-between py-3 px-4 md:px-6">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="rounded-full">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Home
-              </Button>
-            </Link>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-slate-800">Shuttle Booking</p>
-            </div>
-          </div>
-          <Link href="/track">
-            <Button variant="outline" size="sm" className="rounded-full border-slate-200">
-              Track ticket
-            </Button>
-          </Link>
-        </div>
-      </header>
-
-      {/* CONTENT WRAPPER */}
-      <div className="max-w-6xl mx-auto py-8 px-4 md:px-6 space-y-6">
+    <PublicShell showBack backHref="/">
+      <div className="space-y-6">
 
         {/* HOTEL HEADER CARD */}
         <Card className="overflow-hidden border border-slate-100 shadow-lg rounded-2xl">
@@ -320,7 +298,7 @@ export default function BookingPage() {
         </div>
 
       </div>
-    </div>
+    </PublicShell>
   )
 }
 

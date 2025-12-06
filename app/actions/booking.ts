@@ -139,7 +139,7 @@ export async function createBooking(formData: FormData) {
       insertPayload.idempotency_key = validatedData.idempotencyKey
     }
 
-  const { data: booking, error: bookingError } = await supabaseAdmin
+    const { data: booking, error: bookingError } = await supabaseAdmin
       .from("bookings")
       .insert(insertPayload)
       .select()
@@ -254,13 +254,38 @@ export async function createBooking(formData: FormData) {
 export async function getBookingByCode(code: string) {
   try {
     const supabaseAdmin = await getSupabaseAdmin()
-    const { data: booking } = await supabaseAdmin
+    const { data: booking, error } = await supabaseAdmin
       .from("booking_details")
       .select("*")
       .eq("booking_code", code)
       .single()
 
-    return { found: !!booking, booking }
+    if (!error) {
+      return { found: !!booking, booking }
+    }
+
+    // Fallback if view is outdated
+    const { data } = await supabaseAdmin
+      .from("bookings")
+      .select(
+        `id, booking_code, hotel_id, daily_schedule_id, customer_name, phone, passenger_count, status, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, room_number, has_whatsapp, created_at,
+         daily_schedules ( schedule_date, bus_schedules ( departure_time, destination, hotels ( name, slug ) ) )`
+      )
+      .eq("booking_code", code)
+      .single()
+
+    if (!data) return { found: false, booking: null }
+
+    const mapped: any = {
+      ...data,
+      hotel_name: data.daily_schedules?.bus_schedules?.hotels?.name ?? "",
+      hotel_slug: data.daily_schedules?.bus_schedules?.hotels?.slug ?? "",
+      departure_time: data.daily_schedules?.bus_schedules?.departure_time ?? "",
+      destination: data.daily_schedules?.bus_schedules?.destination ?? "",
+      schedule_date: data.daily_schedules?.schedule_date ?? "",
+    }
+
+    return { found: true, booking: mapped }
   } catch (error) {
     return { found: false, booking: null }
   }
