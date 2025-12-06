@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, degrees } from "pdf-lib"
+import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib"
 import QRCode from "qrcode"
 
 interface TicketPayload {
@@ -19,14 +19,12 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
 
-  const primary = rgb(0.11, 0.36, 0.92)
-  const muted = rgb(0.45, 0.5, 0.56)
-  const surface = rgb(0.97, 0.98, 1)
-
-  // Background accents
-  page.drawRectangle({ x: 0, y: 520, width: 440, height: 150, color: primary, opacity: 0.08 })
-  page.drawRectangle({ x: 16, y: 60, width: 388, height: 520, color: surface, opacity: 1, borderColor: rgb(0.88, 0.9, 0.94), borderWidth: 1 })
-  page.drawRectangle({ x: -60, y: 540, width: 200, height: 120, color: primary, opacity: 0.08, rotate: degrees(-12) })
+  const primary = rgb(0.12, 0.35, 0.85)
+  const indigo = rgb(0.16, 0.2, 0.51)
+  const cyan = rgb(0.05, 0.7, 0.8)
+  const slate = rgb(0.38, 0.42, 0.48)
+  const border = rgb(0.87, 0.9, 0.94)
+  const surface = rgb(0.98, 0.99, 1)
 
   const drawText = (text: string, x: number, y: number, size = 12, color = rgb(0, 0, 0), bold = false) => {
     page.drawText(text, { x, y, size, font: bold ? fontBold : font, color })
@@ -34,8 +32,8 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
 
   const drawLabelValue = (label: string, value: string | undefined, x: number, y: number, w: number) => {
     if (!value) return
-    drawText(label, x, y, 9, muted, true)
-    drawWrapped(value, x, y - 14, w, 12, rgb(0, 0, 0), true)
+    drawText(label, x, y, 8.5, slate, true)
+    drawWrapped(value, x, y - 12, w, 12, rgb(0, 0, 0), true)
   }
 
   const drawWrapped = (
@@ -67,46 +65,93 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     })
   }
 
-  // Header
-  drawText("Shuttle Ticket", 28, 560, 20, rgb(0, 0, 0), true)
-  drawText("Booking details and boarding pass", 28, 540, 11, muted)
-  drawText(payload.bookingCode, 300, 558, 16, primary, true)
-  drawText("Booking code", 300, 542, 9, muted, true)
+  // Background accents
+  page.drawRectangle({ x: -60, y: 520, width: 260, height: 180, color: primary, opacity: 0.08, rotate: degrees(-12) })
+  page.drawRectangle({ x: 18, y: 70, width: 384, height: 500, color: surface, borderColor: border, borderWidth: 1 })
 
-  // Trip info card
-  drawText("Trip information", 36, 504, 12, muted, true)
-  drawLabelValue("Hotel", payload.hotelName, 36, 480, 170)
-  drawLabelValue("Destination", payload.destination, 220, 480, 170)
-  drawLabelValue("Date", payload.scheduleDate, 36, 444, 170)
-  drawLabelValue("Departure", payload.departureTime ? `${payload.departureTime} WIB` : undefined, 220, 444, 170)
-  drawLabelValue("Passengers", payload.passengerCount ? String(payload.passengerCount) : undefined, 36, 408, 170)
-  drawLabelValue("Room", payload.roomNumber || undefined, 220, 408, 170)
-
-  // Divider
-  page.drawLine({ start: { x: 28, y: 376 }, end: { x: 392, y: 376 }, color: rgb(0.88, 0.9, 0.94), thickness: 1 })
-
-  // Passenger
-  drawLabelValue("Passenger", payload.customerName, 36, 360, 320)
-
-  // QR and tracking
-  const qrDataUrl = await QRCode.toDataURL(payload.trackUrl, { width: 240, margin: 0 })
-  const base64 = qrDataUrl.split(",")[1]
-  const qrImage = await pdfDoc.embedPng(Buffer.from(base64, "base64"))
-  const qrDims = qrImage.scale(0.55)
-  page.drawImage(qrImage, {
-    x: 36,
-    y: 180,
-    width: qrDims.width,
-    height: qrDims.height,
+  // Header card
+  page.drawRectangle({
+    x: 26,
+    y: 470,
+    width: 368,
+    height: 120,
+    color: indigo,
+    opacity: 0.96,
+    borderColor: primary,
+    borderWidth: 1,
   })
-  drawText("Scan to track ticket", 200, 260, 11, muted)
-  drawWrapped(payload.trackUrl, 200, 238, 180, 9, primary, false)
+
+  drawText("SHUTTLE PASS", 42, 548, 18, rgb(1, 1, 1), true)
+  drawText("Premium Transportation Service", 42, 528, 10, rgb(0.85, 0.92, 1))
+
+  drawText("BOOKING CODE", 248, 548, 8, rgb(0.85, 0.92, 1), true)
+  drawText(payload.bookingCode || "-", 248, 530, 16, rgb(1, 1, 1), true)
+
+  // Route card
+  page.drawRectangle({
+    x: 34,
+    y: 484,
+    width: 352,
+    height: 66,
+    color: rgb(1, 1, 1),
+    opacity: 0.08,
+    borderColor: rgb(1, 1, 1),
+    borderWidth: 0.4,
+  })
+  drawText("From", 42, 524, 8.5, rgb(0.85, 0.92, 1), true)
+  drawWrapped(payload.hotelName || "-", 42, 506, 130, 12, rgb(1, 1, 1), true)
+  drawText("→", 200, 512, 18, rgb(1, 1, 1), true)
+  drawText("To", 248, 524, 8.5, rgb(0.85, 0.92, 1), true)
+  drawWrapped(payload.destination || "-", 248, 506, 130, 12, rgb(1, 1, 1), true)
+
+  // Perforation
+  page.drawLine({ start: { x: 32, y: 460 }, end: { x: 388, y: 460 }, color: border, thickness: 1, dashArray: [6, 6] })
+
+  // Body title
+  drawText("Trip Details", 42, 438, 11, slate, true)
+
+  // Trip grid cards
+  const cardY = [414, 414, 374, 374]
+  const cardX = [42, 226, 42, 226]
+  const labels = ["Date", "Departure", "Passengers", "Room"]
+  const values = [
+    payload.scheduleDate || "-",
+    payload.departureTime ? `${payload.departureTime} WIB` : "-",
+    payload.passengerCount ? `${payload.passengerCount} Person(s)` : "-",
+    payload.roomNumber ? `#${payload.roomNumber}` : "-",
+  ]
+
+  labels.forEach((label, idx) => {
+    const x = cardX[idx]
+    const y = cardY[idx]
+    page.drawRectangle({ x, y: y - 2, width: 152, height: 34, color: rgb(1, 1, 1), opacity: 0.9, borderColor: border, borderWidth: 1 })
+    drawText(label.toUpperCase(), x + 10, y + 20, 8, slate, true)
+    drawText(values[idx], x + 10, y + 6, 12, rgb(0.08, 0.12, 0.2), true)
+  })
+
+  // Passenger + QR container
+  page.drawRectangle({ x: 34, y: 220, width: 352, height: 132, color: rgb(1, 1, 1), opacity: 0.95, borderColor: border, borderWidth: 1 })
+  drawText("Passenger Name", 44, 336, 9, slate, true)
+  drawWrapped(payload.customerName || "-", 44, 318, 200, 18, rgb(0.08, 0.12, 0.2), true)
+  drawText("Scan the QR code to track your shuttle in real time.", 44, 298, 9, slate)
+
+  const qrDataUrl = await QRCode.toDataURL(payload.trackUrl || "", { width: 240, margin: 0 })
+  const qrBase64 = qrDataUrl.split(",")[1]
+  const qrImage = await pdfDoc.embedPng(Buffer.from(qrBase64, "base64"))
+  const qrDims = qrImage.scale(0.35)
+  page.drawRectangle({ x: 260, y: 238, width: qrDims.width + 20, height: qrDims.height + 20, color: rgb(0.06, 0.07, 0.09) })
+  page.drawImage(qrImage, { x: 270, y: 248, width: qrDims.width, height: qrDims.height })
+  drawText("Scan QR Code", 275, 232, 9, slate, true)
 
   // Notes
-  drawText("Notes", 36, 150, 11, muted, true)
-  drawText("• Please arrive 15 minutes before departure.", 36, 134, 9, muted)
-  drawText("• Keep this ticket and your booking code handy.", 36, 120, 9, muted)
-  drawText("• For changes/cancellations, contact the hotel front desk.", 36, 106, 9, muted)
+  page.drawRectangle({ x: 34, y: 170, width: 352, height: 44, color: rgb(1, 0.97, 0.93), borderColor: rgb(0.96, 0.73, 0.24), borderWidth: 1 })
+  drawText("Important Information", 44, 202, 10, rgb(0.58, 0.31, 0.05), true)
+  drawText("• Please arrive 15 minutes before departure.", 44, 188, 9, rgb(0.58, 0.31, 0.05))
+  drawText("• Keep this ticket and booking code accessible.", 44, 176, 9, rgb(0.58, 0.31, 0.05))
+
+  // Footer
+  drawText("Ibis Shuttle Service • Premium Transportation", 42, 150, 10, slate)
+  drawText(payload.bookingCode || "-", 320, 150, 10, slate, true)
 
   const pdfBytes = await pdfDoc.save()
   return pdfBytes

@@ -30,6 +30,10 @@ export async function resendWhatsapp(bookingId: string) {
     return { ok: false, error: "Booking tidak ditemukan" }
   }
 
+  if ((booking as any).has_whatsapp === false) {
+    return { ok: false, error: "Number marked inactive; WhatsApp skipped" }
+  }
+
   const normalizedPhone = normalizeTo62(booking.phone)
   const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "") || ""
   const trackLink = `${baseUrl}/track?code=${booking.booking_code}`

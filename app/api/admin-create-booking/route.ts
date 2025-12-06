@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
       passenger_count: parsedBody.passengerCount,
       status: "confirmed",
       room_number: parsedBody.roomNumber,
+      has_whatsapp: true,
     })
     .select()
     .single()

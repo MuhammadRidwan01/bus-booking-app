@@ -21,13 +21,17 @@ export async function POST(req: Request) {
     const { data: booking } = await supabase
       .from("booking_details")
       .select(
-        "id, booking_code, customer_name, phone, hotel_name, schedule_date, departure_time, destination, whatsapp_attempts"
+        "id, booking_code, customer_name, phone, hotel_name, schedule_date, departure_time, destination, whatsapp_attempts, has_whatsapp"
       )
       .eq("booking_code", code)
       .maybeSingle()
 
     if (!booking) {
       return NextResponse.json({ ok: false, error: "Booking not found" }, { status: 404 })
+    }
+
+    if ((booking as any).has_whatsapp === false) {
+      return NextResponse.json({ ok: true, skipped: true, message: "Number marked inactive; skip WhatsApp." })
     }
 
     const trackLink = `${baseUrl}/track?code=${booking.booking_code}`

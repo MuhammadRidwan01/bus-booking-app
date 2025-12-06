@@ -166,7 +166,7 @@ export async function getBookings(filters: BookingFilters): Promise<BookingDetai
     let query = supabase
       .from("bookings")
       .select(
-        `id, booking_code, hotel_id, daily_schedule_id, customer_name, phone, passenger_count, status, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, room_number, created_at,
+        `id, booking_code, hotel_id, daily_schedule_id, customer_name, phone, passenger_count, status, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, room_number, has_whatsapp, created_at,
          daily_schedules ( schedule_date, bus_schedules ( departure_time, destination, max_capacity, hotels ( id, name ) ) )`
       )
       .order("created_at", { ascending: false })
@@ -197,6 +197,7 @@ export async function getBookings(filters: BookingFilters): Promise<BookingDetai
       departure_time: row.daily_schedules?.bus_schedules?.departure_time ?? "",
       destination: row.daily_schedules?.bus_schedules?.destination ?? "",
       hotel_name: row.daily_schedules?.bus_schedules?.hotels?.name ?? "",
+      has_whatsapp: row.has_whatsapp,
     }))
   }
 

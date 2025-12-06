@@ -11,11 +11,30 @@ export async function GET(req: Request) {
 
   try {
     const supabase = await getSupabaseAdmin()
-    const { data: booking } = await supabase
+    const { data: booking, error } = await supabase
       .from("booking_details")
       .select("id, booking_code, whatsapp_sent, whatsapp_attempts, whatsapp_last_error")
       .eq("booking_code", code)
       .maybeSingle()
+
+    if (error && error.code === "42703") {
+      const { data } = await supabase
+        .from("bookings")
+        .select("id, booking_code, whatsapp_sent, whatsapp_attempts, whatsapp_last_error")
+        .eq("booking_code", code)
+        .maybeSingle()
+      if (!data) {
+        return NextResponse.json({ ok: false, error: "Booking not found" }, { status: 404 })
+      }
+      return NextResponse.json({
+        ok: true,
+        data: {
+          whatsapp_sent: data.whatsapp_sent,
+          whatsapp_attempts: (data as any)?.whatsapp_attempts ?? 0,
+          whatsapp_last_error: (data as any)?.whatsapp_last_error,
+        },
+      })
+    }
 
     if (!booking) {
       return NextResponse.json({ ok: false, error: "Booking not found" }, { status: 404 })
