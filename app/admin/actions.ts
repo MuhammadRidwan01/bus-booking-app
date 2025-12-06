@@ -77,6 +77,13 @@ export async function resendWhatsapp(bookingId: string) {
 
 export async function cancelBooking(bookingId: string) {
   const supabase = await getSupabaseAdmin()
+  // Fetch detail before cancellation for notification
+  const { data: bookingDetail } = await supabase
+    .from("booking_details")
+    .select("booking_code, customer_name, phone, schedule_date, departure_time, destination, hotel_name, has_whatsapp, whatsapp_attempts")
+    .eq("id", bookingId)
+    .maybeSingle()
+
   const { data, error } = await supabase.rpc("cancel_booking_and_release_capacity", { p_booking_id: bookingId })
 
   if (error) {
@@ -87,6 +94,37 @@ export async function cancelBooking(bookingId: string) {
   await logAdminAction("CANCEL_BOOKING", { booking_id: bookingId })
   revalidatePath("/admin/bookings")
   revalidatePath("/admin/schedules")
+
+  // Fire-and-forget WhatsApp notification if possible
+  if (bookingDetail && bookingDetail.has_whatsapp !== false) {
+    const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "") || ""
+    const normalizedPhone = normalizeTo62(bookingDetail.phone)
+    const messageParts = [
+      `Halo ${bookingDetail.customer_name}, tiket shuttle kamu dengan kode ${bookingDetail.booking_code} dibatalkan oleh admin.`,
+      bookingDetail.hotel_name ? `Hotel: ${bookingDetail.hotel_name}` : null,
+      bookingDetail.schedule_date ? `Tanggal: ${formatDate(bookingDetail.schedule_date)}` : null,
+      bookingDetail.departure_time ? `Jam: ${formatTime(bookingDetail.departure_time)} WIB` : null,
+      bookingDetail.destination ? `Tujuan: ${bookingDetail.destination}` : null,
+      `Silakan hubungi resepsionis jika perlu penjadwalan ulang.`,
+      baseUrl ? `Lihat status: ${baseUrl}/track?code=${bookingDetail.booking_code}` : null,
+    ].filter(Boolean)
+
+    const waResult = await sendWhatsappMessage({
+      phone: normalizedPhone,
+      message: messageParts.join("\n"),
+      caption: `Tiket dibatalkan - ${bookingDetail.booking_code}`,
+    })
+
+    await supabase
+      .from("bookings")
+      .update({
+        whatsapp_attempts: (bookingDetail as any).whatsapp_attempts ? Number((bookingDetail as any).whatsapp_attempts) + 1 : 1,
+        whatsapp_sent: waResult.ok,
+        whatsapp_last_error: waResult.ok ? null : (waResult.data as any)?.error ?? "Wablas send failed (cancel notice)",
+      })
+      .eq("id", bookingId)
+  }
+
   return { ok: true, data }
 }
 
@@ -260,29 +298,74 @@ export async function getSchedulePreview(startDate: string, days: number) {
 
 export async function fetchSendQueueAction(filter?: { mode?: "all" | "pending" | "failed" }) {
   const supabase = await getSupabaseAdmin()
-  let query = supabase
-    .from("booking_details")
-    .select(
-      "id, booking_code, customer_name, phone, schedule_date, departure_time, destination, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, created_at",
-    )
-    .eq("whatsapp_sent", false)
-    .order("created_at", { ascending: false })
-    .limit(400)
+  const buildViewQuery = () => {
+    let query = supabase
+      .from("booking_details")
+      .select(
+        "id, booking_code, customer_name, phone, schedule_date, departure_time, destination, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, created_at",
+      )
+      .eq("whatsapp_sent", false)
+      .order("created_at", { ascending: false })
+      .limit(400)
 
-  if (filter?.mode === "pending") {
-    query = query.eq("whatsapp_attempts", 0)
-  } else if (filter?.mode === "failed") {
-    query = query.gt("whatsapp_attempts", 0)
+    if (filter?.mode === "pending") {
+      query = query.eq("whatsapp_attempts", 0)
+    } else if (filter?.mode === "failed") {
+      query = query.gt("whatsapp_attempts", 0)
+    }
+    return query
   }
 
-  const { data, error } = await query
-  if (error) {
-    await logAdminAction("FETCH_SEND_QUEUE_FAIL", { error: error.message })
-    throw new Error(error.message)
+  const attempt = await buildViewQuery()
+
+  if (attempt.error?.code === "42703") {
+    let fb = supabase
+      .from("bookings")
+      .select(
+        `id, booking_code, customer_name, phone, passenger_count, status, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, created_at,
+         daily_schedules ( schedule_date, bus_schedules ( departure_time, destination ) )`
+      )
+      .eq("whatsapp_sent", false)
+      .order("created_at", { ascending: false })
+      .limit(400)
+
+    if (filter?.mode === "pending") {
+      fb = fb.eq("whatsapp_attempts", 0)
+    } else if (filter?.mode === "failed") {
+      fb = fb.gt("whatsapp_attempts", 0)
+    }
+
+    const { data, error } = await fb
+    if (error) {
+      await logAdminAction("FETCH_SEND_QUEUE_FAIL", { error: error.message })
+      throw new Error(error.message)
+    }
+
+    const mapped = (data ?? []).map((row: any) => ({
+      id: row.id,
+      booking_code: row.booking_code,
+      customer_name: row.customer_name,
+      phone: row.phone,
+      schedule_date: row.daily_schedules?.schedule_date ?? "",
+      departure_time: row.daily_schedules?.bus_schedules?.departure_time ?? "",
+      destination: row.daily_schedules?.bus_schedules?.destination ?? "",
+      whatsapp_sent: row.whatsapp_sent,
+      whatsapp_attempts: row.whatsapp_attempts ?? 0,
+      whatsapp_last_error: row.whatsapp_last_error ?? null,
+      created_at: row.created_at,
+    }))
+
+    await logAdminAction("FETCH_SEND_QUEUE", { count: mapped.length, mode: filter?.mode ?? "all", source: "fallback" })
+    return mapped
   }
 
-  await logAdminAction("FETCH_SEND_QUEUE", { count: data?.length ?? 0, mode: filter?.mode ?? "all" })
-  return data ?? []
+  if (attempt.error) {
+    await logAdminAction("FETCH_SEND_QUEUE_FAIL", { error: attempt.error.message })
+    throw new Error(attempt.error.message)
+  }
+
+  await logAdminAction("FETCH_SEND_QUEUE", { count: attempt.data?.length ?? 0, mode: filter?.mode ?? "all" })
+  return attempt.data ?? []
 }
 
 export async function quickSearch(query: string) {

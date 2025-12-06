@@ -9,6 +9,7 @@ type StatusData = {
   whatsapp_sent: boolean
   whatsapp_attempts: number
   whatsapp_last_error: string | null
+  has_whatsapp?: boolean
 }
 
 type Props = {
@@ -128,7 +129,7 @@ export function BookingStatusCard({ bookingCode, initialStatus }: Props) {
           <span>{waStatusLabel}{loading && !status?.whatsapp_sent && !skipByUser ? " (checking...)" : ""}</span>
         </div>
 
-        {skipByUser && bookingCode && (
+        {(skipByUser || status?.has_whatsapp || status?.whatsapp_sent) && bookingCode && (
           <div className="space-y-2">
             <a
               href={`/api/ticket/${bookingCode}`}
