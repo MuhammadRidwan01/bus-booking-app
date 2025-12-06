@@ -45,12 +45,26 @@ export async function getAdminDashboardData() {
     .select("id", { count: "exact", head: true })
     .eq("whatsapp_sent", false)
 
-  const { count: waFailed24h } = await supabase
-    .from("booking_details")
-    .select("id", { count: "exact", head: true })
-    .eq("whatsapp_sent", false)
-    .gt("whatsapp_attempts", 0)
-    .gte("created_at", yesterdayIso)
+  const waFailed24h = await (async () => {
+    const res = await supabase
+      .from("booking_details")
+      .select("id", { count: "exact", head: true })
+      .eq("whatsapp_sent", false)
+      .gt("whatsapp_attempts", 0)
+      .gte("created_at", yesterdayIso)
+
+    if (res.error?.code === "42703") {
+      const fb = await supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("whatsapp_sent", false)
+        .gt("whatsapp_attempts", 0)
+        .gte("created_at", yesterdayIso)
+      return fb.count ?? 0
+    }
+
+    return res.count ?? 0
+  })()
 
   const { count: activeSchedules } = await supabase
     .from("daily_schedules")
@@ -158,7 +172,10 @@ export async function getBookings(filters: BookingFilters): Promise<BookingDetai
     return query
   }
 
-  const attempt = await buildViewQuery()
+  const attempt = (await buildViewQuery()) as {
+    data: BookingDetails[] | null
+    error: { code?: string; message: string } | null
+  }
   if (!attempt.error) return attempt.data ?? []
 
   // Fallback if booking_details view is missing columns
@@ -286,14 +303,50 @@ export async function getSystemHealthData() {
       .eq("status", "active")
       .limit(8)
       .order("schedule_date", { ascending: true }),
-    supabase
-      .from("booking_details")
-      .select("id, booking_code, customer_name, phone, whatsapp_last_error, created_at")
-      .eq("whatsapp_sent", false)
-      .gt("whatsapp_attempts", 0)
-      .gte("created_at", yesterdayIso)
-      .order("created_at", { ascending: false })
-      .limit(8),
+    (async () => {
+      const res = await supabase
+        .from("booking_details")
+        .select("id, booking_code, customer_name, phone, whatsapp_last_error, whatsapp_attempts, created_at")
+        .eq("whatsapp_sent", false)
+        .gt("whatsapp_attempts", 0)
+        .gte("created_at", yesterdayIso)
+        .order("created_at", { ascending: false })
+        .limit(8)
+
+      if (res.error?.code === "42703") {
+        const fb = await supabase
+          .from("bookings")
+          .select(
+            `id, booking_code, customer_name, phone, whatsapp_last_error, whatsapp_attempts, created_at,
+             daily_schedules ( schedule_date )`
+          )
+          .eq("whatsapp_sent", false)
+          .gt("whatsapp_attempts", 0)
+          .gte("created_at", yesterdayIso)
+          .order("created_at", { ascending: false })
+          .limit(8)
+
+        if (fb.error) {
+          return { data: [], error: fb.error }
+        }
+
+        return {
+          data: (fb.data ?? []).map((row: any) => ({
+            id: row.id,
+            booking_code: row.booking_code,
+            customer_name: row.customer_name,
+            phone: row.phone,
+            whatsapp_last_error: row.whatsapp_last_error,
+            whatsapp_attempts: row.whatsapp_attempts ?? 0,
+            created_at: row.created_at,
+            schedule_date: row.daily_schedules?.schedule_date ?? null,
+          })),
+          error: null,
+        }
+      }
+
+      return res
+    })(),
     supabase
       .from("booking_details")
       .select("id", { count: "exact", head: true })
@@ -345,12 +398,49 @@ export async function getSystemHealthData() {
 
 export async function getSendQueue() {
   const supabase = await getSupabaseAdmin()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("booking_details")
-    .select("id, booking_code, customer_name, phone, schedule_date, departure_time, destination, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, created_at")
+    .select(
+      "id, booking_code, customer_name, phone, schedule_date, departure_time, destination, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, created_at"
+    )
     .eq("whatsapp_sent", false)
     .order("created_at", { ascending: false })
     .limit(300)
+
+  // Fallback if booking_details view is missing whatsapp_attempts
+  if (error?.code === "42703") {
+    const fallback = await supabase
+      .from("bookings")
+      .select(
+        `id, booking_code, customer_name, phone, passenger_count, status, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, created_at,
+         daily_schedules ( schedule_date, bus_schedules ( departure_time, destination ) )`
+      )
+      .eq("whatsapp_sent", false)
+      .order("created_at", { ascending: false })
+      .limit(300)
+
+    if (fallback.error) {
+      throw new Error(fallback.error.message)
+    }
+
+    return (fallback.data ?? []).map((row: any) => ({
+      id: row.id,
+      booking_code: row.booking_code,
+      customer_name: row.customer_name,
+      phone: row.phone,
+      schedule_date: row.daily_schedules?.schedule_date ?? "",
+      departure_time: row.daily_schedules?.bus_schedules?.departure_time ?? "",
+      destination: row.daily_schedules?.bus_schedules?.destination ?? "",
+      whatsapp_sent: row.whatsapp_sent,
+      whatsapp_attempts: row.whatsapp_attempts ?? 0,
+      whatsapp_last_error: row.whatsapp_last_error ?? null,
+      created_at: row.created_at,
+    }))
+  }
+
+  if (error) {
+    throw new Error(error.message)
+  }
 
   return data ?? []
 }

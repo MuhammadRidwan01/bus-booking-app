@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Search, Bus, Calendar, Clock, MapPin, Users, Phone } from "lucide-react"
+import { Search, Bus, Calendar, Clock, MapPin, Users, Phone, Download } from "lucide-react"
 import { getBookingByCode } from "@/app/actions/booking"
 import type { BookingDetails } from "@/types"
 import { formatDate, formatTime } from "@/lib/utils"
@@ -107,6 +107,17 @@ export default function TrackPage() {
                     <p className="mt-1 text-3xl font-mono font-bold tracking-[0.2em]">{booking.booking_code}</p>
                   </div>
 
+                  {(booking.whatsapp_sent || (booking.whatsapp_attempts ?? 0) > 0 || booking.phone) && (
+                    <a
+                      href={`/api/ticket/${booking.booking_code}`}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition"
+                      download
+                    >
+                      <Download className="h-4 w-4" />
+                      Download PDF Ticket
+                    </a>
+                  )}
+
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <InfoCard icon={<Users className="h-4 w-4" />} title="Passenger name" value={booking.customer_name} />
                     <InfoCard icon={<Phone className="h-4 w-4" />} title="WhatsApp number" value={`+${booking.phone}`} />
@@ -134,11 +145,12 @@ export default function TrackPage() {
                     </div>
 
                     <BookingStatusCard
-                      booking={booking}
+                      bookingCode={booking.booking_code}
                       initialStatus={{
                         whatsapp_sent: booking.whatsapp_sent,
                         whatsapp_attempts: booking.whatsapp_attempts ?? 0,
                         whatsapp_last_error: booking.whatsapp_last_error ?? null,
+                        has_whatsapp: (booking as any).has_whatsapp,
                       }}
                     />
                   </div>

@@ -8,7 +8,9 @@ import { getBookingByCode } from "@/app/actions/booking"
 import { BookingStatusCard } from "@/components/BookingStatusCard"
 import { PublicShell } from "@/components/PublicShell"
 
-async function ConfirmationContent({ searchParams }: { searchParams: { code?: string } }) {
+type SearchParams = { code?: string }
+
+async function ConfirmationContent({ searchParams }: { searchParams: SearchParams }) {
   const bookingCode = searchParams.code || ''
   const { found, booking } = bookingCode ? await getBookingByCode(bookingCode) : { found: false, booking: null }
   const initialStatus = booking
@@ -38,7 +40,7 @@ async function ConfirmationContent({ searchParams }: { searchParams: { code?: st
         <BookingCode bookingCode={bookingCode} />
 
         {showStatus && (
-          <BookingStatusCard bookingCode={bookingCode} initialStatus={initialStatus as any} booking={booking as any} />
+          <BookingStatusCard bookingCode={bookingCode} initialStatus={initialStatus as any} />
         )}
 
         <Card className="border border-slate-100 shadow-sm">
@@ -69,11 +71,15 @@ async function ConfirmationContent({ searchParams }: { searchParams: { code?: st
   )
 }
 
-export default async function ConfirmationPage({ searchParams }: { searchParams: { code?: string } }) {
+export default async function ConfirmationPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>
+}) {
+  const resolvedSearchParams = await (searchParams ?? Promise.resolve({}))
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      {/* @ts-expect-error Async Server Component */}
-      <ConfirmationContent searchParams={searchParams} />
+      <ConfirmationContent searchParams={resolvedSearchParams} />
     </Suspense>
   )
 }

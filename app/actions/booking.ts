@@ -276,13 +276,18 @@ export async function getBookingByCode(code: string) {
 
     if (!data) return { found: false, booking: null }
 
+    const schedule = Array.isArray(data.daily_schedules) ? data.daily_schedules[0] : data.daily_schedules
+    const busSchedule = schedule
+      ? (Array.isArray(schedule.bus_schedules) ? schedule.bus_schedules[0] : schedule.bus_schedules)
+      : null
+
     const mapped: any = {
       ...data,
-      hotel_name: data.daily_schedules?.bus_schedules?.hotels?.name ?? "",
-      hotel_slug: data.daily_schedules?.bus_schedules?.hotels?.slug ?? "",
-      departure_time: data.daily_schedules?.bus_schedules?.departure_time ?? "",
-      destination: data.daily_schedules?.bus_schedules?.destination ?? "",
-      schedule_date: data.daily_schedules?.schedule_date ?? "",
+      hotel_name: busSchedule?.hotels?.name ?? "",
+      hotel_slug: busSchedule?.hotels?.slug ?? "",
+      departure_time: busSchedule?.departure_time ?? "",
+      destination: busSchedule?.destination ?? "",
+      schedule_date: schedule?.schedule_date ?? "",
     }
 
     return { found: true, booking: mapped }

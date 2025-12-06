@@ -722,7 +722,7 @@ export default function BookingsClient({
                         <Badge className="bg-emerald-100 text-[10px] font-medium text-emerald-700 hover:bg-emerald-100">
                           Sent
                         </Badge>
-                      ) : b.whatsapp_attempts > 0 ? (
+                      ) : (b.whatsapp_attempts ?? 0) > 0 ? (
                         <Badge className="bg-red-100 text-[10px] font-medium text-red-700 hover:bg-red-100">
                           Failed
                         </Badge>
@@ -807,7 +807,7 @@ export default function BookingsClient({
                               <span className="font-semibold">
                                 WA Attempts:
                               </span>{" "}
-                              {b.whatsapp_attempts}
+                              {b.whatsapp_attempts ?? 0}
                             </p>
                             <p>
                               <span className="font-semibold">
