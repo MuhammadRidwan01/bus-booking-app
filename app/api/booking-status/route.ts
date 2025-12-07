@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import { getSupabaseAdmin } from "@/lib/supabase-server"
+import { createClient } from "@supabase/supabase-js"
+import { clientConfig } from "@/lib/supabase-config"
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -10,46 +11,47 @@ export async function GET(req: Request) {
   }
 
   try {
-    const supabase = await getSupabaseAdmin()
-    const { data: booking, error } = await supabase
-      .from("booking_details")
-      .select("id, booking_code, whatsapp_sent, whatsapp_attempts, whatsapp_last_error")
-      .eq("booking_code", code)
-      .maybeSingle()
+    // Create Supabase client to get session
+    const supabase = createClient(clientConfig.supabaseUrl, clientConfig.supabaseAnonKey)
+    const { data: { session } } = await supabase.auth.getSession()
 
-    if (error && error.code === "42703") {
-      const { data } = await supabase
-        .from("bookings")
-        .select("id, booking_code, whatsapp_sent, whatsapp_attempts, whatsapp_last_error")
-        .eq("booking_code", code)
-        .maybeSingle()
-      if (!data) {
-        return NextResponse.json({ ok: false, error: "Booking not found" }, { status: 404 })
-      }
-      return NextResponse.json({
-        ok: true,
-        data: {
-          whatsapp_sent: data.whatsapp_sent,
-          whatsapp_attempts: (data as any)?.whatsapp_attempts ?? 0,
-          whatsapp_last_error: (data as any)?.whatsapp_last_error,
-        },
-      })
+    // Call Edge Function
+    const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/booking-status?code=${encodeURIComponent(code)}`
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    }
+    
+    // Include JWT if available (but not required for public access)
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
+    }
+    
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'GET',
+      headers
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { ok: false, error: result.error || 'Failed to get booking status' },
+        { status: response.status }
+      )
     }
 
-    if (!booking) {
-      return NextResponse.json({ ok: false, error: "Booking not found" }, { status: 404 })
-    }
-
+    // Return the same format as before for backward compatibility
     return NextResponse.json({
       ok: true,
       data: {
-        whatsapp_sent: booking.whatsapp_sent,
-        whatsapp_attempts: booking.whatsapp_attempts ?? 0,
-        whatsapp_last_error: booking.whatsapp_last_error,
+        whatsapp_sent: result.data?.whatsapp_sent,
+        whatsapp_attempts: result.data?.whatsapp_attempts ?? 0,
+        whatsapp_last_error: result.data?.whatsapp_last_error,
       },
     })
   } catch (error) {
-    console.error("booking-status error", error)
+    console.error("booking-status proxy error", error)
     return NextResponse.json({ ok: false, error: "Internal error" }, { status: 500 })
   }
 }
