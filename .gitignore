@@ -37,6 +37,9 @@ supabase/functions/**
 supabase/migrations/**
 !supabase/migrations/.gitkeep
 
+# Supabase seed data (NEVER commit)
+supabase/seed.sql
+
 # Generated database types
 types/supabase.ts
 types/database.ts
