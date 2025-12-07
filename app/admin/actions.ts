@@ -30,6 +30,10 @@ export async function resendWhatsapp(bookingId: string) {
     return { ok: false, error: "Booking tidak ditemukan" }
   }
 
+  if ((booking as any).has_whatsapp === false) {
+    return { ok: false, error: "Number marked inactive; WhatsApp skipped" }
+  }
+
   const normalizedPhone = normalizeTo62(booking.phone)
   const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "") || ""
   const trackLink = `${baseUrl}/track?code=${booking.booking_code}`
@@ -73,6 +77,13 @@ export async function resendWhatsapp(bookingId: string) {
 
 export async function cancelBooking(bookingId: string) {
   const supabase = await getSupabaseAdmin()
+  // Fetch detail before cancellation for notification
+  const { data: bookingDetail } = await supabase
+    .from("booking_details")
+    .select("booking_code, customer_name, phone, schedule_date, departure_time, destination, hotel_name, has_whatsapp, whatsapp_attempts")
+    .eq("id", bookingId)
+    .maybeSingle()
+
   const { data, error } = await supabase.rpc("cancel_booking_and_release_capacity", { p_booking_id: bookingId })
 
   if (error) {
@@ -83,31 +94,98 @@ export async function cancelBooking(bookingId: string) {
   await logAdminAction("CANCEL_BOOKING", { booking_id: bookingId })
   revalidatePath("/admin/bookings")
   revalidatePath("/admin/schedules")
+
+  // Fire-and-forget WhatsApp notification if possible
+  if (bookingDetail && bookingDetail.has_whatsapp !== false) {
+    const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "") || ""
+    const normalizedPhone = normalizeTo62(bookingDetail.phone)
+    const messageParts = [
+      `Halo ${bookingDetail.customer_name}, tiket shuttle kamu dengan kode ${bookingDetail.booking_code} dibatalkan oleh admin.`,
+      bookingDetail.hotel_name ? `Hotel: ${bookingDetail.hotel_name}` : null,
+      bookingDetail.schedule_date ? `Tanggal: ${formatDate(bookingDetail.schedule_date)}` : null,
+      bookingDetail.departure_time ? `Jam: ${formatTime(bookingDetail.departure_time)} WIB` : null,
+      bookingDetail.destination ? `Tujuan: ${bookingDetail.destination}` : null,
+      `Silakan hubungi resepsionis jika perlu penjadwalan ulang.`,
+      baseUrl ? `Lihat status: ${baseUrl}/track?code=${bookingDetail.booking_code}` : null,
+    ].filter(Boolean)
+
+    const waResult = await sendWhatsappMessage({
+      phone: normalizedPhone,
+      message: messageParts.join("\n"),
+      caption: `Tiket dibatalkan - ${bookingDetail.booking_code}`,
+    })
+
+    await supabase
+      .from("bookings")
+      .update({
+        whatsapp_attempts: (bookingDetail as any).whatsapp_attempts ? Number((bookingDetail as any).whatsapp_attempts) + 1 : 1,
+        whatsapp_sent: waResult.ok,
+        whatsapp_last_error: waResult.ok ? null : (waResult.data as any)?.error ?? "Wablas send failed (cancel notice)",
+      })
+      .eq("id", bookingId)
+  }
+
   return { ok: true, data }
 }
 
 export async function exportBookingsCsv(filters: Record<string, any>) {
   const supabase = await getSupabaseAdmin()
-  let query = supabase
-    .from("booking_details")
-    .select("*")
-    .order("created_at", { ascending: false })
+  const buildViewQuery = () => {
+    let query = supabase
+      .from("booking_details")
+      .select("*")
+      .order("created_at", { ascending: false })
 
-  if (filters.startDate) query = query.gte("schedule_date", filters.startDate)
-  if (filters.endDate) query = query.lte("schedule_date", filters.endDate)
-  if (filters.hotelId) query = query.eq("hotel_id", filters.hotelId)
-  if (filters.status) query = query.eq("status", filters.status)
+    if (filters.startDate) query = query.gte("schedule_date", filters.startDate)
+    if (filters.endDate) query = query.lte("schedule_date", filters.endDate)
+    if (filters.hotelId) query = query.eq("hotel_id", filters.hotelId)
+    if (filters.status) query = query.eq("status", filters.status)
 
-  const waStatus = filters.waStatus as string | undefined
-  if (waStatus === "sent") query = query.eq("whatsapp_sent", true)
-  if (waStatus === "failed") query = query.eq("whatsapp_sent", false).gt("whatsapp_attempts", 0)
-  if (waStatus === "not_tried") query = query.eq("whatsapp_attempts", 0)
+    const waStatus = filters.waStatus as string | undefined
+    if (waStatus === "sent") query = query.eq("whatsapp_sent", true)
+    if (waStatus === "failed") query = query.eq("whatsapp_sent", false).gt("whatsapp_attempts", 0)
+    if (waStatus === "not_tried") query = query.eq("whatsapp_attempts", 0)
 
-  if (filters.search) query = query.or(`booking_code.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`)
-  if (filters.dailyScheduleId) query = query.eq("daily_schedule_id", filters.dailyScheduleId)
+    if (filters.search) query = query.or(`booking_code.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`)
+    if (filters.dailyScheduleId) query = query.eq("daily_schedule_id", filters.dailyScheduleId)
+    return query.limit(1000)
+  }
 
-  const { data } = await query.limit(1000)
-  const rows = data ?? []
+  const attempt = await buildViewQuery()
+  let rows = attempt.data ?? []
+
+  if (attempt.error?.code === "42703") {
+    let query = supabase
+      .from("bookings")
+      .select(
+        `booking_code, created_at, customer_name, phone, passenger_count, status, whatsapp_sent, whatsapp_attempts, daily_schedule_id,
+         daily_schedules ( schedule_date, bus_schedules ( destination, departure_time, hotels ( name ) ) )`
+      )
+      .order("created_at", { ascending: false })
+    if (filters.startDate) query = query.gte("daily_schedules.schedule_date", filters.startDate)
+    if (filters.endDate) query = query.lte("daily_schedules.schedule_date", filters.endDate)
+    if (filters.hotelId) query = query.eq("daily_schedules.bus_schedules.hotels.id", filters.hotelId)
+    if (filters.status) query = query.eq("status", filters.status)
+    const waStatus = filters.waStatus as string | undefined
+    if (waStatus === "sent") query = query.eq("whatsapp_sent", true)
+    if (waStatus === "failed") query = query.eq("whatsapp_sent", false).gt("whatsapp_attempts", 0)
+    if (waStatus === "not_tried") query = query.eq("whatsapp_attempts", 0)
+    if (filters.search) query = query.or(`booking_code.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`)
+    if (filters.dailyScheduleId) query = query.eq("daily_schedule_id", filters.dailyScheduleId)
+    query = query.limit(1000)
+
+    const { data, error } = await query
+    if (error) {
+      throw new Error(error.message)
+    }
+    rows = (data ?? []).map((r: any) => ({
+      ...r,
+      hotel_name: r.daily_schedules?.bus_schedules?.hotels?.name ?? "",
+      schedule_date: r.daily_schedules?.schedule_date ?? "",
+      departure_time: r.daily_schedules?.bus_schedules?.departure_time ?? "",
+      destination: r.daily_schedules?.bus_schedules?.destination ?? "",
+    }))
+  }
 
   const header = [
     "booking_code",
@@ -148,13 +226,31 @@ export async function exportBookingsCsv(filters: Record<string, any>) {
 
 export async function fetchPassengerHistory(phone: string) {
   const supabase = await getSupabaseAdmin()
-  const { data } = await supabase
+  const attempt = await supabase
     .from("booking_details")
     .select("booking_code, schedule_date, status")
     .eq("phone", phone)
     .order("schedule_date", { ascending: false })
     .limit(5)
-  return data ?? []
+
+  if (!attempt.error) return attempt.data ?? []
+
+  if (attempt.error?.code === "42703") {
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("booking_code, status, daily_schedules ( schedule_date )")
+      .eq("phone", phone)
+      .order("created_at", { ascending: false })
+      .limit(5)
+    if (error) return []
+    return (data ?? []).map((r: any) => ({
+      booking_code: r.booking_code,
+      status: r.status,
+      schedule_date: r.daily_schedules?.schedule_date ?? null,
+    }))
+  }
+
+  return []
 }
 
 export async function runDailyMaintenance() {
@@ -198,6 +294,78 @@ export async function getSchedulePreview(startDate: string, days: number) {
   const preview = await previewGenerateSchedules(startDate, days)
   await logAdminAction("PREVIEW_GENERATE_SCHEDULES", { startDate, days, count: preview.length })
   return preview
+}
+
+export async function fetchSendQueueAction(filter?: { mode?: "all" | "pending" | "failed" }) {
+  const supabase = await getSupabaseAdmin()
+  const buildViewQuery = () => {
+    let query = supabase
+      .from("booking_details")
+      .select(
+        "id, booking_code, customer_name, phone, schedule_date, departure_time, destination, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, created_at",
+      )
+      .eq("whatsapp_sent", false)
+      .order("created_at", { ascending: false })
+      .limit(400)
+
+    if (filter?.mode === "pending") {
+      query = query.eq("whatsapp_attempts", 0)
+    } else if (filter?.mode === "failed") {
+      query = query.gt("whatsapp_attempts", 0)
+    }
+    return query
+  }
+
+  const attempt = await buildViewQuery()
+
+  if (attempt.error?.code === "42703") {
+    let fb = supabase
+      .from("bookings")
+      .select(
+        `id, booking_code, customer_name, phone, passenger_count, status, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, created_at,
+         daily_schedules ( schedule_date, bus_schedules ( departure_time, destination ) )`
+      )
+      .eq("whatsapp_sent", false)
+      .order("created_at", { ascending: false })
+      .limit(400)
+
+    if (filter?.mode === "pending") {
+      fb = fb.eq("whatsapp_attempts", 0)
+    } else if (filter?.mode === "failed") {
+      fb = fb.gt("whatsapp_attempts", 0)
+    }
+
+    const { data, error } = await fb
+    if (error) {
+      await logAdminAction("FETCH_SEND_QUEUE_FAIL", { error: error.message })
+      throw new Error(error.message)
+    }
+
+    const mapped = (data ?? []).map((row: any) => ({
+      id: row.id,
+      booking_code: row.booking_code,
+      customer_name: row.customer_name,
+      phone: row.phone,
+      schedule_date: row.daily_schedules?.schedule_date ?? "",
+      departure_time: row.daily_schedules?.bus_schedules?.departure_time ?? "",
+      destination: row.daily_schedules?.bus_schedules?.destination ?? "",
+      whatsapp_sent: row.whatsapp_sent,
+      whatsapp_attempts: row.whatsapp_attempts ?? 0,
+      whatsapp_last_error: row.whatsapp_last_error ?? null,
+      created_at: row.created_at,
+    }))
+
+    await logAdminAction("FETCH_SEND_QUEUE", { count: mapped.length, mode: filter?.mode ?? "all", source: "fallback" })
+    return mapped
+  }
+
+  if (attempt.error) {
+    await logAdminAction("FETCH_SEND_QUEUE_FAIL", { error: attempt.error.message })
+    throw new Error(attempt.error.message)
+  }
+
+  await logAdminAction("FETCH_SEND_QUEUE", { count: attempt.data?.length ?? 0, mode: filter?.mode ?? "all" })
+  return attempt.data ?? []
 }
 
 export async function quickSearch(query: string) {
@@ -311,4 +479,80 @@ export async function exportPassengersCsv(scheduleId: string) {
   ].join("\n")
   await logAdminAction("EXPORT_PASSENGERS", { schedule_id: scheduleId, count: rows.length })
   return csv
+}
+
+export async function createBusSchedule(payload: {
+  hotelId: string
+  departureTime: string
+  destination: string
+  maxCapacity: number
+  isActive: boolean
+}) {
+  const supabase = await getSupabaseAdmin()
+  const { error } = await supabase.from("bus_schedules").insert({
+    hotel_id: payload.hotelId,
+    departure_time: payload.departureTime,
+    destination: payload.destination,
+    max_capacity: payload.maxCapacity,
+    is_active: payload.isActive,
+  })
+  await logAdminAction("CREATE_BUS_SCHEDULE", { ok: !error, hotel_id: payload.hotelId, destination: payload.destination })
+  if (error) return { ok: false, error: error.message }
+  revalidatePath("/admin/bus-schedules")
+  return { ok: true }
+}
+
+export async function updateBusSchedule(payload: {
+  id: string
+  hotelId: string
+  departureTime: string
+  destination: string
+  maxCapacity: number
+  isActive: boolean
+}) {
+  const supabase = await getSupabaseAdmin()
+
+  // Safety: do not allow lowering capacity below current bookings
+  const { data: maxRow } = await supabase
+    .from("daily_schedules")
+    .select("current_booked")
+    .eq("bus_schedule_id", payload.id)
+    .order("current_booked", { ascending: false })
+    .limit(1)
+    .single()
+
+  const currentMaxBooked = maxRow?.current_booked ?? 0
+  if (payload.maxCapacity < currentMaxBooked) {
+    return { ok: false, error: `Cannot set capacity below current bookings (${currentMaxBooked}).` }
+  }
+
+  const { error } = await supabase
+    .from("bus_schedules")
+    .update({
+      hotel_id: payload.hotelId,
+      departure_time: payload.departureTime,
+      destination: payload.destination,
+      max_capacity: payload.maxCapacity,
+      is_active: payload.isActive,
+    })
+    .eq("id", payload.id)
+
+  await logAdminAction("UPDATE_BUS_SCHEDULE", { ok: !error, id: payload.id })
+  if (error) return { ok: false, error: error.message }
+  revalidatePath("/admin/bus-schedules")
+  revalidatePath("/admin/schedules")
+  return { ok: true }
+}
+
+export async function toggleBusScheduleActive(id: string, isActive: boolean) {
+  const supabase = await getSupabaseAdmin()
+  const { error } = await supabase
+    .from("bus_schedules")
+    .update({ is_active: isActive })
+    .eq("id", id)
+
+  await logAdminAction("TOGGLE_BUS_SCHEDULE", { ok: !error, id, is_active: isActive })
+  if (error) return { ok: false, error: error.message }
+  revalidatePath("/admin/bus-schedules")
+  return { ok: true }
 }

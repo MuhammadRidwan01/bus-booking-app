@@ -3,8 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase-server"
 import { generateTicketPdf } from "@/lib/ticket"
 import { formatDate, formatTime } from "@/lib/utils"
 
-export async function GET(req: NextRequest, { params }: { params: { code: string } }) {
-  const code = params.code
+export async function GET(req: NextRequest, ctx: { params: Promise<{ code: string }> }) {
+  const { code } = await ctx.params
   const supabase = await getSupabaseAdmin()
   const { data: booking } = await supabase
     .from("booking_details")

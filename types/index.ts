@@ -1,3 +1,66 @@
+// ============================================================================
+// MINIMAL PUBLIC TYPES - Frontend UI Only
+// These types contain NO database internals (no IDs, created_at, foreign keys)
+// ============================================================================
+
+/**
+ * Booking form input data (user-provided fields only)
+ */
+export interface BookingFormData {
+  customerName: string
+  phoneNumber: string
+  countryCode: string
+  bookingDate: string
+  scheduleId: string
+  passengerCount: number
+  roomNumber: string
+  hasWhatsapp: "yes" | "no"
+  idempotencyKey: string
+}
+
+/**
+ * Booking confirmation display data (output only, no sensitive fields)
+ */
+export interface BookingConfirmation {
+  bookingCode: string
+  customerName: string
+  hotelName: string
+  departureTime: string
+  destination: string
+  scheduleDate: string
+  passengerCount: number
+  roomNumber?: string
+  status: "confirmed" | "cancelled"
+  whatsappSent: boolean
+}
+
+/**
+ * Schedule display data for UI (no database IDs or internal fields)
+ */
+export interface ScheduleDisplay {
+  scheduleId: string
+  departureTime: string
+  destination: string
+  availableSeats: number
+  totalCapacity: number
+  status: "available" | "almost-full" | "full"
+  scheduleDate: string
+  isPast?: boolean
+}
+
+/**
+ * Hotel display data (minimal, UI-focused)
+ */
+export interface HotelDisplay {
+  name: string
+  slug: string
+}
+
+// ============================================================================
+// LEGACY TYPES - For backward compatibility with existing code
+// These will be gradually removed as we migrate to Edge Functions
+// ============================================================================
+
 export interface Hotel {
   id: string
   name: string
@@ -33,6 +96,8 @@ export interface Booking {
   passenger_count: number
   status: "confirmed" | "cancelled"
   whatsapp_sent: boolean
+  whatsapp_attempts?: number
+  whatsapp_last_error?: string | null
   created_at: string
 }
 

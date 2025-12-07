@@ -1,92 +1,99 @@
 import { Suspense } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, MessageCircle, Copy, Home } from "lucide-react"
 import Link from "next/link"
 import BookingCode from "@/components/BookingCode"
+import { getBookingByCode } from "@/app/actions/booking"
+import { BookingStatusCard } from "@/components/BookingStatusCard"
+import { PublicShell } from "@/components/PublicShell"
 
-async function ConfirmationContent({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
-   const params = await searchParams
-   const bookingCode = params.code || ''
+type SearchParams = { code?: string }
+
+async function ConfirmationContent({ searchParams }: { searchParams: SearchParams }) {
+  const bookingCode = searchParams.code || ''
+  const { found, booking } = bookingCode ? await getBookingByCode(bookingCode) : { found: false, booking: null }
+  const initialStatus = booking
+    ? {
+        whatsapp_sent: booking.whatsapp_sent,
+        whatsapp_attempts: (booking as any)?.whatsapp_attempts ?? 0,
+        whatsapp_last_error: booking.whatsapp_last_error ?? null,
+        has_whatsapp: (booking as any)?.has_whatsapp,
+      }
+    : null
+
+  const showStatus = (booking as any)?.has_whatsapp !== false
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-6">
-        {/* Success Icon */}
-        <div className="text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="h-12 w-12 text-green-600" />
+    <PublicShell showBack backHref="/booking/ibis-style">
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
+        <div className="rounded-3xl bg-white/70 p-6 shadow-sm ring-1 ring-slate-100">
+          <div className="text-center space-y-3">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shadow-inner">
+              <CheckCircle className="h-10 w-10" />
+            </div>
+            <h1 className="text-2xl font-semibold text-slate-900">Booking confirmed</h1>
+            <p className="text-sm text-slate-600">Your ticket is recorded. We’ll send it to your WhatsApp.</p>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Booking Successful!</h1>
-          <p className="text-gray-600">Your ticket has been successfully created</p>
         </div>
 
-        {/* Booking Code */}
         <BookingCode bookingCode={bookingCode} />
 
-        {/* Instructions */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-blue-600 text-sm font-bold">1</span>
-                </div>
-                <div>
-                  <p className="font-medium">WhatsApp Ticket</p>
-                  <p className="text-sm text-gray-600">Tickets will be sent to your WhatsApp within minutes</p>
-                </div>
-              </div>
+        {showStatus && (
+          <BookingStatusCard bookingCode={bookingCode} initialStatus={initialStatus as any} />
+        )}
 
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-blue-600 text-sm font-bold">2</span>
-                </div>
-                <div>
-                  <p className="font-medium">Save Booking Code</p>
-                  <p className="text-sm text-gray-600">Use this code to track your ticket</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-blue-600 text-sm font-bold">3</span>
-                </div>
-                <div>
-                  <p className="font-medium">Arrived 10 Minutes Earlier</p>
-                  <p className="text-sm text-gray-600">Please arrive at the hotel lobby 10 minutes before departure.</p>
-                </div>
-              </div>
-            </div>
+        <Card className="border border-slate-100 shadow-sm">
+          <CardContent className="space-y-3 pt-5">
+            <Instruction title="WhatsApp ticket" desc="Sent within a few minutes. Keep the number active." number="01" />
+            <Instruction title="Save your booking code" desc="Use it to track or show the driver." number="02" />
+            <Instruction title="Arrive early" desc="Be at the hotel lobby 10 minutes before departure." number="03" />
           </CardContent>
         </Card>
 
-        {/* Action Buttons */}
         <div className="space-y-3">
           <Link href="/track" className="w-full">
-            <Button variant="outline" className="w-full">
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Track Ticket
+            <Button variant="outline" className="w-full rounded-xl">
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Track ticket
             </Button>
           </Link>
 
           <Link href="/" className="w-full">
-            <Button className="w-full">
-              <Home className="h-4 w-4 mr-2" />
-              Back to Home
+            <Button className="w-full rounded-xl">
+              <Home className="mr-2 h-4 w-4" />
+              Back to home
             </Button>
           </Link>
         </div>
       </div>
-    </div>
+    </PublicShell>
   )
 }
 
-export default async function ConfirmationPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
+export default async function ConfirmationPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>
+}) {
+  const resolvedSearchParams = await (searchParams ?? Promise.resolve({}))
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      {/* @ts-expect-error Async Server Component */}
-      <ConfirmationContent searchParams={searchParams} />
+      <ConfirmationContent searchParams={resolvedSearchParams} />
     </Suspense>
+  )
+}
+
+function Instruction({ title, desc, number }: { title: string; desc: string; number: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-semibold">
+        {number}
+      </div>
+      <div>
+        <p className="font-semibold text-slate-900">{title}</p>
+        <p className="text-sm text-slate-600">{desc}</p>
+      </div>
+    </div>
   )
 }

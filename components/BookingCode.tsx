@@ -22,24 +22,26 @@ export default function BookingCode({ bookingCode }: BookingCodeProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Booking Code</CardTitle>
+    <Card className="border border-slate-100 shadow-md">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-semibold text-slate-900">Booking Code</CardTitle>
       </CardHeader>
-    
-        <CardContent>
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <div className="text-2xl font-mono font-bold text-blue-600 mb-2">{bookingCode}</div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={copyToClipboard}              >
-                <Copy className="h-4 w-4 mr-2" />
-                {copied ? 'Copied!' : 'Copy'}
-              </Button>            
-              </div>
-          </CardContent>
+      <CardContent>
+        <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-800 text-white p-6 shadow-inner">
+          <p className="text-xs uppercase tracking-[0.35em] text-white/60 mb-2">Code</p>
+          <div className="text-3xl font-mono font-bold tracking-[0.2em]">{bookingCode}</div>
+          <p className="text-sm text-white/70 mt-1">Keep this code for check-in and tracking</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-4 w-full bg-white text-slate-900 hover:bg-slate-100"
+            onClick={copyToClipboard}
+          >
+            <Copy className="h-4 w-4 mr-2" />
+            {copied ? "Copied" : "Copy code"}
+          </Button>
+        </div>
+      </CardContent>
     </Card>
   )
 }

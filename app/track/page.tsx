@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Search, ArrowLeft, Bus, Calendar, Clock, MapPin, Users, Phone } from "lucide-react"
-import Link from "next/link"
+import { Search, Bus, Calendar, Clock, MapPin, Users, Phone, Download } from "lucide-react"
 import { getBookingByCode } from "@/app/actions/booking"
 import type { BookingDetails } from "@/types"
 import { formatDate, formatTime } from "@/lib/utils"
 import { useSearchParams } from "next/navigation"
+import { BookingStatusCard } from "@/components/BookingStatusCard"
+import { PublicShell } from "@/components/PublicShell"
 
 export default function TrackPage() {
   const [bookingCode, setBookingCode] = useState("")
@@ -52,289 +53,149 @@ export default function TrackPage() {
   }, [searchParams])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-gray-100">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="hover:bg-blue-50">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </Link>
-            <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
-                <Search className="h-5 w-5 text-white" />
+    <PublicShell showBack backHref="/">
+      <div className="mx-auto flex w-full max-w-2xl flex-col space-y-6">
+        <Card className="border border-slate-100 shadow-lg">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-slate-900">
+              <Search className="h-5 w-5 text-primary" />
+              Enter your booking code
+            </CardTitle>
+            <p className="text-sm text-slate-600">Find the code in WhatsApp or on the confirmation page.</p>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="bookingCode" className="text-sm font-semibold text-slate-800">
+                  Booking Code
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="bookingCode"
+                    type="text"
+                    placeholder="Example: IBX1A2B3C4D"
+                    value={bookingCode}
+                    onChange={(e) => setBookingCode(e.target.value.toUpperCase())}
+                    className="h-11 rounded-xl pl-10 font-mono text-lg"
+                    required
+                  />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                </div>
+                <p className="text-xs text-slate-500">Use the code sent after your booking succeeds.</p>
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Track Your Ticket
-              </h1>
-            </div>
-          </div>
-        </div>
-      </header>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="max-w-2xl mx-auto space-y-6">
-          {/* Search Form */}
-          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur">
-            <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
-              <CardTitle className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Search className="h-4 w-4" />
-                </div>
-                <span>Enter Booking Code</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleSearch} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bookingCode" className="text-base font-medium">Booking Code</Label>
-                  <div className="relative">
-                    <Input
-                      id="bookingCode"
-                      type="text"
-                      placeholder="Contoh: IBX1A2B3C4D"
-                      value={bookingCode}
-                      onChange={(e) => setBookingCode(e.target.value.toUpperCase())}
-                      className="font-mono text-lg pl-10 h-12 border-2 focus:border-blue-500 transition-all"
-                      required
-                    />
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Button type="submit" className="h-11 w-full rounded-xl text-base font-semibold shadow-md shadow-primary/15" disabled={loading}>
+                {loading ? "Searching..." : "Track ticket"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {searched && (
+          <>
+            {booking ? (
+              <Card className="overflow-hidden border border-slate-100 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+                  <CardTitle className="flex items-center gap-2">
+                    <Bus className="h-5 w-5" />
+                    Ticket details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-5 pt-6">
+                  <div className="rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-white shadow-inner">
+                    <p className="text-xs uppercase tracking-[0.3em] text-white/70">Booking Code</p>
+                    <p className="mt-1 text-3xl font-mono font-bold tracking-[0.2em]">{booking.booking_code}</p>
                   </div>
-                  <p className="text-sm text-gray-500 flex items-center space-x-1">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                    <span>Enter the booking code you received after confirmation.</span>
-                  </p>
-                </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg hover:shadow-xl transition-all" 
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-5 w-5 mr-2" />
-                      Search Ticket
-                    </>
+                  {(booking.whatsapp_sent || (booking.whatsapp_attempts ?? 0) > 0 || booking.phone) && (
+                    <a
+                      href={`/api/ticket/${booking.booking_code}`}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition"
+                      download
+                    >
+                      <Download className="h-4 w-4" />
+                      Download PDF Ticket
+                    </a>
                   )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
 
-          {/* Search Results */}
-          {searched && (
-            <>
-              {booking ? (
-                <Card className="border-0 shadow-xl bg-white/90 backdrop-blur overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
-                    <CardTitle className="flex items-center space-x-2">
-                      <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                        <Bus className="h-5 w-5" />
-                      </div>
-                      <span>Ticket Details</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6 space-y-6">
-                    {/* Booking Code */}
-                    <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-6 shadow-lg">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
-                      <div className="relative text-center">
-                        <p className="text-sm text-blue-100 mb-2 font-medium">Booking Code</p>
-                        <p className="text-3xl font-mono font-bold text-white tracking-wider">{booking.booking_code}</p>
-                      </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <InfoCard icon={<Users className="h-4 w-4" />} title="Passenger name" value={booking.customer_name} />
+                    <InfoCard icon={<Phone className="h-4 w-4" />} title="WhatsApp number" value={`+${booking.phone}`} />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <InfoCard icon={<Bus className="h-4 w-4" />} title="Hotel" value={booking.hotel_name} />
+                    {booking.room_number && <InfoCard icon={<MapPin className="h-4 w-4" />} title="Room" value={booking.room_number} />}
+                    <InfoCard icon={<Calendar className="h-4 w-4" />} title="Date" value={formatDate(booking.schedule_date)} />
+                    <InfoCard icon={<Clock className="h-4 w-4" />} title="Departure" value={`${formatTime(booking.departure_time)} WIB`} />
+                    <InfoCard icon={<MapPin className="h-4 w-4" />} title="Destination" value={booking.destination} />
+                    <InfoCard icon={<Users className="h-4 w-4" />} title="Passengers" value={`${booking.passenger_count} people`} />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <span className="font-semibold text-slate-800">Ticket status</span>
+                      <span
+                        className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                          booking.status === "confirmed" ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700"
+                        }`}
+                      >
+                        {booking.status === "confirmed" ? "Confirmed" : "Cancelled"}
+                      </span>
                     </div>
 
-                    {/* Customer Info */}
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
-                        <div className="w-1 h-5 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
-                        <span>Passenger Information</span>
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3">
-                        <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-md">
-                            <Users className="h-6 w-6 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">{booking.customer_name}</p>
-                            <p className="text-sm text-gray-600">Passenger Name</p>
-                          </div>
-                        </div>
+                    <BookingStatusCard
+                      bookingCode={booking.booking_code}
+                      initialStatus={{
+                        whatsapp_sent: booking.whatsapp_sent,
+                        whatsapp_attempts: booking.whatsapp_attempts ?? 0,
+                        whatsapp_last_error: booking.whatsapp_last_error ?? null,
+                        has_whatsapp: (booking as any).has_whatsapp,
+                      }}
+                    />
+                  </div>
 
-                        <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-md">
-                            <Phone className="h-6 w-6 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">+{booking.phone}</p>
-                            <p className="text-sm text-gray-600">WhatsApp Number</p>
-                          </div>
-                        </div>
-                      </div>
+                  {booking.status === "confirmed" && (
+                    <div className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                      <p className="font-semibold text-amber-900">Departure instructions</p>
+                      <p>Arrive at the lobby 10 minutes before departure.</p>
+                      <p>Show your WhatsApp ticket to the driver.</p>
+                      <p>Bring a valid ID.</p>
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border border-slate-100 shadow-md">
+                <CardContent className="space-y-4 py-10 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+                    <Search className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-semibold text-slate-900">Ticket not found</h3>
+                    <p className="text-sm text-slate-600">Please check the booking code you entered.</p>
+                  </div>
+                  <div className="space-y-1 text-xs text-slate-500">
+                    <p>Make sure the code matches the one sent on WhatsApp.</p>
+                    <p>Avoid spaces or extra characters.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+    </PublicShell>
+  )
+}
 
-                    {/* Trip Details */}
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
-                        <div className="w-1 h-5 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
-                        <span>Travel Details</span>
-                      </h4>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                            <Bus className="h-6 w-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-gray-900 text-sm">{booking.hotel_name}</p>
-                            <p className="text-xs text-blue-600 font-medium">Hotel</p>
-                          </div>
-                        </div>
-
-                        {booking.room_number && (
-                          <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl border border-pink-200">
-                            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl flex items-center justify-center shadow-md">
-                              <span className="font-bold text-white text-lg">#{booking.room_number}</span>
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-semibold text-gray-900 text-sm">{booking.room_number}</p>
-                              <p className="text-xs text-pink-600 font-medium">Room Number</p>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
-                          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-md">
-                            <Calendar className="h-6 w-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-gray-900 text-sm">{formatDate(booking.schedule_date)}</p>
-                            <p className="text-xs text-green-600 font-medium">Date</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200">
-                          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-md">
-                            <Clock className="h-6 w-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-gray-900 text-sm">{formatTime(booking.departure_time)} WIB</p>
-                            <p className="text-xs text-orange-600 font-medium">Departure</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
-                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
-                            <MapPin className="h-6 w-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-gray-900 text-sm">{booking.destination}</p>
-                            <p className="text-xs text-purple-600 font-medium">Destination</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200">
-                          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-                            <Users className="h-6 w-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-gray-900 text-sm">{booking.passenger_count} passenger</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Status */}
-                    <div className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-gray-700">Ticket Status:</span>
-                        <span
-                          className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
-                            booking.status === "confirmed" 
-                              ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white" 
-                              : "bg-gradient-to-r from-red-500 to-pink-500 text-white"
-                          }`}
-                        >
-                          {booking.status === "confirmed" ? "✓ Confirmed" : "✕ Cancelled"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Instructions */}
-                    {booking.status === "confirmed" && (
-                      <div className="relative bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-2xl p-5 overflow-hidden">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-200/30 rounded-full -mr-12 -mt-12"></div>
-                        <div className="relative">
-                          <h5 className="font-bold text-amber-900 mb-3 flex items-center space-x-2">
-                            <div className="w-6 h-6 bg-amber-500 rounded-lg flex items-center justify-center">
-                              <span className="text-white text-xs">!</span>
-                            </div>
-                            <span>Departure Instructions</span>
-                          </h5>
-                          <ul className="space-y-2">
-                            <li className="flex items-start space-x-2 text-sm text-amber-800">
-                              <span className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5">1</span>
-                              <span>Arrive at the hotel lobby 10 minutes before departure</span>
-                            </li>
-                            <li className="flex items-start space-x-2 text-sm text-amber-800">
-                              <span className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5">2</span>
-                              <span>Show the WhatsApp ticket to the driver</span>
-                            </li>
-                            <li className="flex items-start space-x-2 text-sm text-amber-800">
-                              <span className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5">3</span>
-                              <span>Make sure to bring personal identification</span>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="border-0 shadow-xl bg-white/90 backdrop-blur">
-                  <CardContent className="pt-6">
-                    <div className="text-center py-12">
-                      <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                        <Search className="h-12 w-12 text-gray-400" />
-                      </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-3">Ticket Not Found</h3>
-                      <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                        The booking code you entered was not found in the system.
-                      </p>
-                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 rounded-xl p-5 max-w-md mx-auto">
-                        <p className="font-semibold text-gray-900 mb-3">Make sure:</p>
-                        <div className="space-y-2 text-sm text-gray-700">
-                          <p className="flex items-center space-x-2">
-                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                            <span>Booking code is typed correctly</span>
-                          </p>
-                          <p className="flex items-center space-x-2">
-                            <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                            <span>Using the code received after booking</span>
-                          </p>
-                          <p className="flex items-center space-x-2">
-                            <span className="w-1.5 h-1.5 bg-pink-500 rounded-full"></span>
-                            <span>No spaces or extra characters</span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </>
-          )}
-        </div>
+function InfoCard({ icon, title, value }: { icon: React.ReactNode; title: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm flex items-start gap-2">
+      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary">{icon}</div>
+      <div>
+        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{title}</p>
+        <p className="text-sm font-semibold text-slate-900">{value}</p>
       </div>
     </div>
   )

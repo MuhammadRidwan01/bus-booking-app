@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase-server"
+import { getAdminSession } from "@/lib/admin-auth"
 
 export async function GET(req: NextRequest) {
+  const session = await getAdminSession()
   const adminSecret = process.env.ADMIN_SECRET
-  if (adminSecret) {
-    const url = new URL(req.url)
-    const key = url.searchParams.get("key") || req.cookies.get("admin_key")?.value
-    if (key !== adminSecret) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })
-    }
+  const url = new URL(req.url)
+  const key = url.searchParams.get("key") || req.cookies.get("admin_key")?.value
+
+  if (!session && adminSecret && key !== adminSecret) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })
   }
 
   const { searchParams } = new URL(req.url)

@@ -1,30 +1,38 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useRef, useState, type ReactNode } from "react"
+import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Bus, User, Phone, Users, MapPin, Star, Wifi, Coffee } from "lucide-react"
+import { Bus, User, Users, MapPin, Shield, KeyRound, Clock } from "lucide-react"
 import Link from "next/link"
 import { ScheduleSelector } from "@/components/ScheduleSelector"
 import { useRealTimeCapacity } from "@/hooks/useRealTimeCapacity"
 import { createBooking } from "@/app/actions/booking"
 import { useActionState } from "react"
+import { useFormStatus } from "react-dom"
 import Image from "next/image"
+import { PublicShell } from "@/components/PublicShell"
 
+/* ------------------------------------------------------------
+   PAGE
+------------------------------------------------------------ */
 export default function BookingPage() {
   const params = useParams()
-  const router = useRouter()
   const hotelSlug = params.hotel as string
 
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>("")
   const [passengerCount, setPassengerCount] = useState<number>(1)
   const [roomNumber, setRoomNumber] = useState<string>("")
-  const [isMounted, setIsMounted] = useState(false)
+  const [phoneNumber, setPhoneNumber] = useState<string>("")
+  const [hasWhatsapp, setHasWhatsapp] = useState<string>("yes")
+  const [countryCode, setCountryCode] = useState<string>("62")
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
+  const formRef = useRef<HTMLDivElement | null>(null)
 
   const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug)
 
@@ -46,286 +54,323 @@ export default function BookingPage() {
 
   const currentHotel = hotelImages[hotelSlug as keyof typeof hotelImages]
 
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
   const handleScheduleSelect = (scheduleId: string, date: string) => {
     setSelectedScheduleId(scheduleId)
     setSelectedDate(date)
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150)
   }
 
-  const isFormValid = selectedScheduleId && selectedDate && passengerCount >= 1 && roomNumber.trim()
+  const isFormValid =
+    Boolean(selectedScheduleId && selectedDate && passengerCount >= 1 && roomNumber.trim() && idempotencyKey && phoneNumber.trim())
 
   async function bookingFormAction(prevState: any, formData: FormData) {
     try {
       await createBooking(formData)
       return { error: null }
     } catch (error: any) {
-      return { error: error?.message || "Terjadi kesalahan saat booking" }
+      return { error: error?.message || "Booking failed, please try again" }
     }
   }
+
   const [state, formAction] = useActionState(bookingFormAction, { error: null })
 
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <header className="bg-white shadow-md sticky top-0 z-10 border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="hover:bg-gray-100">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-              </Link>
-              <div className="flex items-center space-x-3">
-                <Bus className="h-6 w-6 text-blue-600" />
-                <h1 className="text-xl font-bold text-gray-800">Shuttle Booking</h1>
+    <PublicShell showBack backHref="/">
+      <div className="space-y-6">
+
+        {/* HOTEL HEADER CARD */}
+        <Card className="overflow-hidden border border-slate-100 shadow-lg rounded-2xl">
+          <div className="relative h-56 sm:h-64 md:h-72">
+            {currentHotel?.main && (
+              <Image src={currentHotel.main} alt={hotelName} fill priority className="object-cover" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
+
+            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 md:p-8 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 bg-white/90 rounded-2xl p-2 shadow-md">
+                  <Image src={currentHotel.logo} alt={`${hotelShortName} logo`} width={60} height={60} className="object-contain" />
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/70">Hotel pickup</p>
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold">{hotelName}</h2>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 mt-3 text-sm text-white/80">
+                <BadgeInfo icon={<MapPin />} label="Jakarta Airport" />
+                <BadgeInfo icon={<Clock />} label="06:00 - 22:00" />
+                <BadgeInfo icon={<Shield />} label="Free for guests" />
               </div>
             </div>
           </div>
-        </div>
-      </header>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Card className="overflow-hidden shadow-xl border-0">
-            <div className="relative h-64 md:h-80 bg-gradient-to-r from-blue-600 to-blue-800">
-              {currentHotel?.main && (
-                <Image
-                  src={currentHotel.main}
-                  alt={hotelName}
-                  fill
-                  className="object-cover opacity-90"
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              
-              <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-3 mb-2">
-                      {currentHotel?.logo && (
-                        <div className="w-16 h-16 bg-white rounded-lg p-2 shadow-lg">
-                          <Image
-                            src={currentHotel.logo}
-                            alt={`${hotelShortName} logo`}
-                            width={60}
-                            height={60}
-                            className="object-contain"
+          <div className="grid grid-cols-3 gap-2 p-4 bg-slate-50">
+            {currentHotel?.photos.slice(0, 3).map((p, i) => (
+              <div key={i} className="relative h-20 sm:h-24 rounded-xl overflow-hidden">
+                <Image src={p} alt={hotelName} fill className="object-cover" />
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* STEPS */}
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <StepPill active>1. Choose schedule</StepPill>
+            <StepPill active={Boolean(selectedScheduleId)}>2. Passenger details</StepPill>
+          </div>
+
+          {/* GRID — SCHEDULE + FORM */}
+          <div className="grid lg:grid-cols-[1.6fr,1fr] gap-8 items-start">
+
+            {/* SCHEDULE */}
+            <div className="space-y-4">
+              <ScheduleSelector
+                todaySchedules={todaySchedules}
+                tomorrowSchedules={tomorrowSchedules}
+                selectedScheduleId={selectedScheduleId}
+                onScheduleSelect={handleScheduleSelect}
+                loading={loading}
+              />
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Next step</p>
+                  <p className="text-xs text-slate-600">Fill passenger details after choosing a schedule.</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="rounded-xl"
+                  disabled={!selectedScheduleId}
+                  onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                >
+                  Open passenger form
+                </Button>
+              </div>
+            </div>
+
+            {/* FORM SIDEBAR */}
+            <div className="space-y-6 lg:sticky lg:top-24" ref={formRef}>
+              <Card className="shadow-lg border border-slate-100 rounded-2xl">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-xl md:text-2xl text-slate-900">
+                    <User className="h-6 w-6 text-primary" />
+                    Passenger Details
+                  </CardTitle>
+                  <p className="text-sm text-slate-600">Ticket is sent to WhatsApp after confirmation.</p>
+                </CardHeader>
+
+                <CardContent className="pt-4">
+                  <form action={formAction} className="space-y-5">
+                    <input type="hidden" name="scheduleId" value={selectedScheduleId || ""} />
+                    <input type="hidden" name="bookingDate" value={selectedDate} />
+                    <input type="hidden" name="passengerCount" value={passengerCount} />
+                    <input type="hidden" name="roomNumber" value={roomNumber} />
+                    <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+
+                    {/* FORM — NAME */}
+                    <FormField label="Full name">
+                      <Input
+                        id="customerName"
+                        name="customerName"
+                        required
+                        placeholder="Full name as per ID"
+                        className="h-11 rounded-xl"
+                      />
+                    </FormField>
+
+                    {/* WHATSAPP */}
+                    <FormField label="WhatsApp number">
+                      <div className="grid grid-cols-[120px_1fr] gap-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm text-slate-500">+</span>
+                          <Input
+                            name="countryCode"
+                            type="tel"
+                            list="dial-codes"
+                            className="h-11 rounded-xl px-2"
+                            value={countryCode}
+                            onChange={(e) => setCountryCode(e.target.value.replace(/\D/g, ""))}
+                            placeholder="62"
                           />
                         </div>
-                      )}
-                      <div>
-                        <h2 className="text-3xl font-bold drop-shadow-lg">{hotelName}</h2>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <MapPin className="h-4 w-4" />
-                          <span className="text-sm">Jakarta Airport Area</span>
-                        </div>
+                        <Input
+                          id="phoneNumber"
+                          name="phoneNumber"
+                          type="tel"
+                          required
+                          placeholder="812xxxxxx"
+                          className="h-11 rounded-xl flex-1"
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value)}
+                        />
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4 mt-3">
-                      <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="text-sm font-medium">Premium</span>
-                      </div>
-                      <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
-                        <Wifi className="h-4 w-4" />
-                        <span className="text-sm">Free WiFi</span>
-                      </div>
-                      <div className="flex items-center space-x-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
-                        <Coffee className="h-4 w-4" />
-                        <span className="text-sm">Breakfast</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 p-4 bg-gray-50">
-              {currentHotel?.photos.slice(0, 3).map((photo, idx) => (
-                <div key={idx} className="relative h-24 rounded-lg overflow-hidden group cursor-pointer">
-                  <Image
-                    src={photo}
-                    alt={`${hotelName} photo ${idx + 1}`}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <div className="bg-white rounded-xl shadow-lg p-1">
-            <ScheduleSelector
-              todaySchedules={todaySchedules}
-              tomorrowSchedules={tomorrowSchedules}
-              selectedScheduleId={selectedScheduleId}
-              onScheduleSelect={handleScheduleSelect}
-              loading={loading}
-            />
-          </div>
-
-          <Card className="shadow-xl border-0">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-              <CardTitle className="flex items-center space-x-2 text-2xl">
-                <User className="h-6 w-6 text-blue-600" />
-                <span>Passenger Form</span>
-              </CardTitle>
-              <p className="text-sm text-gray-600 mt-2">
-                Please complete the form below to complete your booking.
-              </p>
-            </CardHeader>
-            <CardContent className="p-6">
-              <form action={formAction} className="space-y-6">
-                <input type="hidden" name="scheduleId" value={selectedScheduleId || ""} />
-                <input type="hidden" name="bookingDate" value={selectedDate} />
-                <input type="hidden" name="passengerCount" value={passengerCount} />
-                <input type="hidden" name="roomNumber" value={roomNumber} />
-
-                <div className="space-y-2">
-                  <Label htmlFor="customerName" className="flex items-center space-x-2 text-base font-semibold">
-                    <User className="h-5 w-5 text-blue-600" />
-                    <span>Full Name</span>
-                  </Label>
-                  <Input
-                    id="customerName"
-                    name="customerName"
-                    type="text"
-                    placeholder="Enter your full name according to your identity"
-                    required
-                    className="w-full h-12 text-base border-2 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phoneNumber" className="flex items-center space-x-2 text-base font-semibold">
-                    <Phone className="h-5 w-5 text-blue-600" />
-                    <span>Nomor WhatsApp</span>
-                  </Label>
-                  <Input
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    type="tel"
-                    placeholder="08xxxxxxxxxx"
-                    required
-                    className="w-full h-12 text-base border-2 focus:border-blue-500 transition-colors"
-                  />
-                  <div className="flex items-start space-x-2 bg-blue-50 p-3 rounded-lg">
-                    <div className="text-blue-600 mt-0.5">ℹ️</div>
-                    <p className="text-sm text-blue-800">
-                      Booking confirmation and e-ticket will be sent to this WhatsApp number
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="flex items-center space-x-2 text-base font-semibold">
-                      <Users className="h-5 w-5 text-blue-600" />
-                      <span>Number of Passengers</span>
-                    </Label>
-                    <Select
-                      value={passengerCount.toString()}
-                      onValueChange={(value) => setPassengerCount(Number.parseInt(value))}
-                    >
-                      <SelectTrigger className="h-12 text-base border-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[1, 2, 3, 4, 5].map((count) => (
-                          <SelectItem key={count} value={count.toString()}>
-                            {count} {count === 1 ? "passenger" : "passengers"}
-                          </SelectItem>
+                      <datalist id="dial-codes">
+                        {dialCodeOptions.map((opt) => (
+                          <option key={opt.code} value={opt.dial}>{`${opt.label}`}</option>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      </datalist>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="roomNumber" className="flex items-center space-x-2 text-base font-semibold">
-                      <span>🚪</span>
-                      <span>Room Number</span>
-                    </Label>
-                    <Input
-                      id="roomNumber"
-                      type="text"
-                      placeholder="Example: 101, 205, 192"
-                      value={roomNumber}
-                      onChange={(e) => setRoomNumber(e.target.value)}
-                      required
-                      className="w-full h-12 text-base border-2 focus:border-blue-500 transition-colors"
-                    />
-                  </div>
-                </div>
+                      <Label className="text-xs font-semibold text-slate-700 mt-2">Is this number active on WhatsApp?</Label>
+                      <Select name="hasWhatsapp" value={hasWhatsapp} onValueChange={setHasWhatsapp}>
+                        <SelectTrigger className="h-10 rounded-xl">
+                          <SelectValue placeholder="WhatsApp status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="yes">Yes, active</SelectItem>
+                          <SelectItem value="no">No / not active</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormField>
 
-                {state && typeof state === "object" && "error" in state && state.error && (
-                  <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start space-x-3">
-                    <span className="text-red-600 text-xl">⚠️</span>
-                    <p className="text-red-800 text-base font-medium">{state.error}</p>
-                  </div>
-                )}
+                    {/* PASSENGERS + ROOM */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <FormField label="Number of passengers">
+                        <Select
+                          value={passengerCount.toString()}
+                          onValueChange={(v) => setPassengerCount(Number(v))}
+                        >
+                          <SelectTrigger className="h-11 rounded-xl">
+                            <SelectValue placeholder="Select total" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <SelectItem key={n} value={n.toString()}>{n} person</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormField>
 
-                <div className="pt-4">
-                  <Button 
-                    type="submit" 
-                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300" 
-                    disabled={!isFormValid}
-                  >
-                    {isFormValid ? "✓ Konfirmasi Booking" : "Lengkapi Data Booking"}
-                  </Button>
-
-                  {!isFormValid && (
-                    <div className="mt-4 text-center bg-amber-50 p-4 rounded-lg border border-amber-200">
-                      <p className="text-sm text-amber-800 font-medium">
-                        📋 Select a schedule and complete all form to continue.
-                      </p>
+                      <FormField label="Room number">
+                        <div className="relative">
+                          <Input
+                            id="roomNumber"
+                            required
+                            placeholder="e.g., 101, 205"
+                            className="h-11 rounded-xl pl-11"
+                            value={roomNumber}
+                            onChange={(e) => setRoomNumber(e.target.value)}
+                          />
+                          <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        </div>
+                      </FormField>
                     </div>
-                  )}
-                </div>
-              </form>
-            </CardContent>
-          </Card>
 
-          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-lg">
-            <CardContent className="p-6">
-              <h3 className="font-semibold text-lg mb-3 flex items-center space-x-2">
-                <span>💡</span>
-                <span>Important Information</span>
-              </h3>
-              <ul className="space-y-2 text-sm text-gray-700">
-                <li className="flex items-start space-x-2">
-                  <span className="text-blue-600 mt-0.5">•</span>
-                  <span>Please arrive at the lobby 10 minutes before the scheduled departure time.</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-blue-600 mt-0.5">•</span>
-                  <span>E-ticket will be sent via WhatsApp after booking is confirmed.</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-blue-600 mt-0.5">•</span>
-                  <span>Make sure the room number and number of passengers are correct.</span>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
+                    {/* ERRORS */}
+                    {state?.error && (
+                      <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-sm text-rose-800">
+                        {state.error}
+                      </div>
+                    )}
+
+                    {/* SUBMIT */}
+                    <div className="pt-2 space-y-3">
+                      <SubmitButton isFormValid={isFormValid} />
+                      {!isFormValid && (
+                        <div className="text-center text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                          Choose a schedule and fill all fields to continue.
+                        </div>
+                      )}
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* INFO BOX */}
+              <Card className="border border-slate-100 shadow-md rounded-2xl">
+                <CardContent className="p-5 space-y-2">
+                  <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    Important info
+                  </h3>
+                  <ul className="space-y-1 text-sm text-slate-700">
+                    <li>Arrive at the lobby 10 minutes before departure.</li>
+                    <li>Show your WhatsApp ticket when boarding.</li>
+                    <li>Ensure room number and passenger count are correct.</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
+
       </div>
+    </PublicShell>
+  )
+}
+
+/* ------------------------------------------------------------
+   COMPONENTS
+------------------------------------------------------------ */
+
+function FormField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-semibold text-slate-800">{label}</Label>
+      {children}
     </div>
+  )
+}
+
+function BadgeInfo({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20">
+      {icon}
+      {label}
+    </span>
+  )
+}
+
+function StepPill({ active, children }: { active?: boolean; children: ReactNode }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${
+        active ? "bg-primary/10 text-primary border-primary/20" : "bg-white text-slate-600 border-slate-200"
+      }`}
+    >
+      {children}
+    </span>
+  )
+}
+
+const countryOptions = [
+  { code: "ID", dial: "62", label: "Indonesia" },
+  { code: "SG", dial: "65", label: "Singapore" },
+  { code: "MY", dial: "60", label: "Malaysia" },
+  { code: "PH", dial: "63", label: "Philippines" },
+  { code: "VN", dial: "84", label: "Vietnam" },
+  { code: "TH", dial: "66", label: "Thailand" },
+  { code: "US", dial: "1", label: "United States" },
+  { code: "GB", dial: "44", label: "United Kingdom" },
+  { code: "AU", dial: "61", label: "Australia" },
+  { code: "NZ", dial: "64", label: "New Zealand" },
+  { code: "IN", dial: "91", label: "India" },
+  { code: "AE", dial: "971", label: "UAE" },
+  { code: "SA", dial: "966", label: "Saudi Arabia" },
+]
+
+const dialCodeOptions = countryOptions
+
+function countryToDialCode(country?: string) {
+  if (!country) return null
+  const found = countryOptions.find((c) => c.code === country)
+  return found?.dial ?? null
+}
+
+function SubmitButton({ isFormValid }: { isFormValid: boolean }) {
+  const { pending } = useFormStatus()
+  const disabled = !isFormValid || pending
+
+  return (
+    <Button
+      type="submit"
+      className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
+      disabled={disabled}
+    >
+      {pending ? "Processing..." : isFormValid ? "✓ Confirm Booking" : "Complete booking details"}
+    </Button>
   )
 }

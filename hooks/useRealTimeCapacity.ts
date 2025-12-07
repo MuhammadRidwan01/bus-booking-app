@@ -54,7 +54,7 @@ export function useRealTimeCapacity(hotelSlug: string) {
     const busScheduleIds = busSchedules.map((b) => b.id)
 
     // Step 3: Ambil daily_schedules untuk today dan tomorrow dengan bus_schedule_id di busScheduleIds
-    const fetchDailySchedules = async (date) => {
+    const fetchDailySchedules = async (date: string) => {
       const { data, error } = await supabase
         .from("daily_schedules")
         .select(`
@@ -84,31 +84,38 @@ export function useRealTimeCapacity(hotelSlug: string) {
     const tomorrowData = await fetchDailySchedules(tomorrow)
 
     // Step 4: Proses data hasil query
-    const processedToday = todayData
-      .map((schedule) => {
-        const isPast = !isScheduleAvailable(schedule.bus_schedules?.departure_time, schedule.schedule_date)
-        return {
-          id: schedule.id,
-          departure_time: schedule.bus_schedules?.departure_time,
-          destination: schedule.bus_schedules?.destination,
-          current_booked: schedule.current_booked,
-          max_capacity: schedule.bus_schedules?.max_capacity,
-          status: getCapacityStatus(schedule.current_booked, schedule.bus_schedules?.max_capacity),
-          schedule_date: schedule.schedule_date,
-          isPast,
-        }
-      })
+    const processedToday = todayData.map((schedule) => {
+      const busSchedule = Array.isArray(schedule.bus_schedules)
+        ? schedule.bus_schedules[0]
+        : schedule.bus_schedules
+      const isPast = !isScheduleAvailable(busSchedule?.departure_time, schedule.schedule_date)
+      return {
+        id: schedule.id,
+        departure_time: busSchedule?.departure_time,
+        destination: busSchedule?.destination,
+        current_booked: schedule.current_booked,
+        max_capacity: busSchedule?.max_capacity,
+        status: getCapacityStatus(schedule.current_booked, busSchedule?.max_capacity),
+        schedule_date: schedule.schedule_date,
+        isPast,
+      }
+    })
 
-    const processedTomorrow = tomorrowData.map((schedule) => ({
-      id: schedule.id,
-      departure_time: schedule.bus_schedules?.departure_time,
-      destination: schedule.bus_schedules?.destination,
-      current_booked: schedule.current_booked,
-      max_capacity: schedule.bus_schedules?.max_capacity,
-      status: getCapacityStatus(schedule.current_booked, schedule.bus_schedules?.max_capacity),
-      schedule_date: schedule.schedule_date,
-      isPast: false,
-    }))
+    const processedTomorrow = tomorrowData.map((schedule) => {
+      const busSchedule = Array.isArray(schedule.bus_schedules)
+        ? schedule.bus_schedules[0]
+        : schedule.bus_schedules
+      return {
+        id: schedule.id,
+        departure_time: busSchedule?.departure_time,
+        destination: busSchedule?.destination,
+        current_booked: schedule.current_booked,
+        max_capacity: busSchedule?.max_capacity,
+        status: getCapacityStatus(schedule.current_booked, busSchedule?.max_capacity),
+        schedule_date: schedule.schedule_date,
+        isPast: false,
+      }
+    })
 
     setTodaySchedules(processedToday)
     setTomorrowSchedules(processedTomorrow)

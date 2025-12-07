@@ -1,7 +1,11 @@
 // lib/send-wa.ts
 export async function sendWhatsappTemplate(to: string, variables: Record<string, string>) {
   try {
-    const res = await fetch("https://sby.wablas.com/api/v2/send-template", {
+    // Use environment variable for WhatsApp API base URL
+    const baseUrl = process.env.WABLAS_BASE_URL || "https://sby.wablas.com"
+    const apiUrl = `${baseUrl}/api/v2/send-template`
+    
+    const res = await fetch(apiUrl, {
       method: "POST",
       headers: {
         Authorization: process.env.WABLAS_API_KEY!,

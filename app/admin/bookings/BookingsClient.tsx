@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import Flatpickr from "react-flatpickr"
+import "flatpickr/dist/themes/airbnb.css"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
@@ -140,16 +142,16 @@ export default function BookingsClient({
 
   const handleResetFilters = () => {
     load(initialFilters)
-    toast.success("Filter direset")
+    toast.success("Filters reset")
   }
 
   const handleResend = async (id: string) => {
     startTransition(async () => {
       const res = await resendWhatsapp(id)
       if (res.ok) {
-        toast.success("WA terkirim")
+        toast.success("WhatsApp resent")
       } else {
-        toast.error(`WA gagal: ${res.error ?? "unknown"}`)
+        toast.error(`WhatsApp failed: ${res.error ?? "unknown"}`)
       }
       const data = await fetchBookingsAction(filters as any)
       setBookings(data as any)
@@ -158,13 +160,13 @@ export default function BookingsClient({
 
   const handleCancel = async (id: string) => {
     const confirmed = confirm(
-      "Yakin batalkan booking ini dan kembalikan kapasitas?",
+      "Confirm cancellation and release capacity?",
     )
     if (!confirmed) return
     startTransition(async () => {
       const res = await cancelBooking(id)
-      if (res.ok) toast.success("Booking dibatalkan")
-      else toast.error(res.error ?? "Gagal membatalkan")
+      if (res.ok) toast.success("Booking cancelled")
+      else toast.error(res.error ?? "Cancellation failed")
       const data = await fetchBookingsAction(filters as any)
       setBookings(data as any)
     })
@@ -218,7 +220,7 @@ export default function BookingsClient({
           setForm((f) => ({ ...f, scheduleId: "none" }))
         }
       } else {
-        toast.error(res.error ?? "Gagal mengambil jadwal")
+        toast.error(res.error ?? "Failed to fetch schedules")
       }
     } finally {
       setSchedulesLoading(false)
@@ -260,9 +262,9 @@ export default function BookingsClient({
       }).then((r) => r.json())
 
       if (!res.ok) {
-        toast.error(res.error ?? "Gagal membuat booking")
+        toast.error(res.error ?? "Failed to create booking")
       } else {
-        toast.success("Booking dibuat")
+        toast.success("Booking created")
         setCreateOpen(false)
         setForm({
           hotelId: form.hotelId,
@@ -272,10 +274,13 @@ export default function BookingsClient({
           passengerCount: 1,
           roomNumber: "",
         })
-        load(filters)
+        startTransition(async () => {
+          const data = await fetchBookingsAction(filters as any)
+          setBookings(data as any)
+        })
       }
     } catch (err) {
-      toast.error("Gagal membuat booking")
+      toast.error("Failed to create booking")
     } finally {
       setCreating(false)
     }
@@ -295,7 +300,7 @@ export default function BookingsClient({
                 Filters
               </CardTitle>
               <p className="text-xs text-muted-foreground">
-                Batasi data booking supaya lebih mudah dibaca.
+                Narrow the dataset to focus on the right bookings.
               </p>
             </div>
           </div>
@@ -313,24 +318,24 @@ export default function BookingsClient({
         <CardContent className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
           <div className="space-y-1.5">
             <Label className="text-xs">Start date</Label>
-            <Input
-              type="date"
+            <Flatpickr
               value={filters.startDate ?? ""}
-              onChange={(e) =>
-                load({ ...filters, startDate: e.target.value || undefined })
+              options={{ dateFormat: "Y-m-d" }}
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(dates) =>
+                load({ ...filters, startDate: dates[0] ? dates[0].toISOString().slice(0, 10) : undefined })
               }
-              className="h-9 text-xs"
             />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">End date</Label>
-            <Input
-              type="date"
+            <Flatpickr
               value={filters.endDate ?? ""}
-              onChange={(e) =>
-                load({ ...filters, endDate: e.target.value || undefined })
+              options={{ dateFormat: "Y-m-d" }}
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(dates) =>
+                load({ ...filters, endDate: dates[0] ? dates[0].toISOString().slice(0, 10) : undefined })
               }
-              className="h-9 text-xs"
             />
           </div>
           <div className="space-y-1.5">
@@ -355,7 +360,7 @@ export default function BookingsClient({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Status booking</Label>
+            <Label className="text-xs">Booking status</Label>
             <Select
               value={filters.status ?? "all"}
               onValueChange={(val) =>
@@ -435,7 +440,7 @@ export default function BookingsClient({
               Bookings
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              {bookings.length} rows • data real-time berdasarkan filter.
+              {bookings.length} rows • live data filtered in real time.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -448,10 +453,9 @@ export default function BookingsClient({
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
                 <DialogHeader className="space-y-1">
-                  <DialogTitle>Buat Booking</DialogTitle>
+                  <DialogTitle>Create booking</DialogTitle>
                   <DialogDescription className="text-xs">
-                    Tambah booking baru secara manual. Pastikan jadwal dan
-                    kapasitas masih tersedia.
+                    Create a booking manually. Ensure the schedule still has capacity.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -459,7 +463,7 @@ export default function BookingsClient({
                 <div className="mt-1 grid gap-4">
                   <div className="grid gap-4 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
                     <p className="font-medium text-foreground">
-                      Ringkasan Jadwal
+                      Schedule summary
                     </p>
                     {selectedSchedule ? (
                       <div className="space-y-1">
@@ -471,7 +475,7 @@ export default function BookingsClient({
                           {selectedSchedule.destination}
                         </p>
                         <p>
-                          Sisa kursi:{" "}
+                          Seats left:{" "}
                           <span className="font-semibold">
                             {selectedSchedule.available_seats}
                           </span>
@@ -479,7 +483,7 @@ export default function BookingsClient({
                       </div>
                     ) : (
                       <p className="text-xs">
-                        Pilih hotel & jadwal terlebih dahulu.
+                        Select a hotel & schedule first.
                       </p>
                     )}
                   </div>
@@ -494,7 +498,7 @@ export default function BookingsClient({
                         }
                       >
                         <SelectTrigger className="h-9 text-xs">
-                          <SelectValue placeholder="Pilih hotel" />
+                          <SelectValue placeholder="Select hotel" />
                         </SelectTrigger>
                         <SelectContent>
                           {hotels.map((h) => (
@@ -506,7 +510,7 @@ export default function BookingsClient({
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">Rentang hari</Label>
+                      <Label className="text-xs">Day range</Label>
                       <Input
                         type="number"
                         min={1}
@@ -518,13 +522,13 @@ export default function BookingsClient({
                         className="h-9 text-xs"
                       />
                       <p className="text-[10px] text-muted-foreground">
-                        Tampilkan jadwal hingga {scheduleDays} hari ke depan.
+                        Show schedules up to {scheduleDays} days ahead.
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs">Jadwal</Label>
+                    <Label className="text-xs">Schedule</Label>
                     <Select
                       value={form.scheduleId}
                       onValueChange={(v) =>
@@ -532,15 +536,15 @@ export default function BookingsClient({
                       }
                     >
                       <SelectTrigger className="h-9 text-xs">
-                        <SelectValue placeholder="Pilih jadwal" />
+                        <SelectValue placeholder="Select schedule" />
                       </SelectTrigger>
                       <SelectContent className="max-h-72">
                         <SelectItem value="none" disabled>
-                          Pilih jadwal
+                          Select a schedule
                         </SelectItem>
                         {schedules.length === 0 && (
                           <SelectItem value="no-available" disabled>
-                            Tidak ada jadwal
+                            No schedules available
                           </SelectItem>
                         )}
                         {schedules.map((s: any) => (
@@ -557,14 +561,14 @@ export default function BookingsClient({
                     {schedulesLoading && (
                       <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        Memuat jadwal...
+                        Loading schedules...
                       </p>
                     )}
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label className="text-xs">Nama</Label>
+                      <Label className="text-xs">Customer name</Label>
                       <Input
                         value={form.customerName}
                         onChange={(e) =>
@@ -594,7 +598,7 @@ export default function BookingsClient({
 
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label className="text-xs">Jumlah Penumpang</Label>
+                      <Label className="text-xs">Passengers</Label>
                       <Input
                         type="number"
                         min={1}
@@ -610,9 +614,9 @@ export default function BookingsClient({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">Nomor Kamar</Label>
+                      <Label className="text-xs">Room number</Label>
                       <Input
-                        placeholder="Contoh: 305 / 5A"
+                        placeholder="e.g. 305 / 5A"
                         value={form.roomNumber}
                         onChange={(e) =>
                           setForm((f) => ({
@@ -628,13 +632,13 @@ export default function BookingsClient({
 
                 <DialogFooter className="mt-5 flex items-center justify-between gap-3">
                   <p className="text-[10px] text-muted-foreground">
-                    Data akan langsung tersimpan dan kapasitas ikut terpotong.
+                    Changes apply immediately and reduce capacity.
                   </p>
                   <Button onClick={handleCreate} disabled={creating}>
                     {creating && (
                       <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                     )}
-                    {creating ? "Membuat..." : "Buat Booking"}
+                    {creating ? "Creating..." : "Create booking"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -650,12 +654,12 @@ export default function BookingsClient({
             <Table className="min-w-full text-xs">
               <TableHeader className="sticky top-0 z-10 bg-muted/60">
                 <TableRow className="border-b">
-                  <TableHead className="whitespace-nowrap">Kode</TableHead>
+                  <TableHead className="whitespace-nowrap">Code</TableHead>
                   <TableHead className="whitespace-nowrap">Created</TableHead>
                   <TableHead className="whitespace-nowrap">Hotel</TableHead>
-                  <TableHead className="whitespace-nowrap">Tanggal</TableHead>
-                  <TableHead className="whitespace-nowrap">Jam</TableHead>
-                  <TableHead className="whitespace-nowrap">Tujuan</TableHead>
+                  <TableHead className="whitespace-nowrap">Date</TableHead>
+                  <TableHead className="whitespace-nowrap">Time</TableHead>
+                  <TableHead className="whitespace-nowrap">Destination</TableHead>
                   <TableHead className="whitespace-nowrap">Customer</TableHead>
                   <TableHead className="whitespace-nowrap">Phone</TableHead>
                   <TableHead className="whitespace-nowrap text-center">
@@ -666,7 +670,7 @@ export default function BookingsClient({
                     WA Status
                   </TableHead>
                   <TableHead className="whitespace-nowrap text-right">
-                    Aksi
+                    Actions
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -677,7 +681,7 @@ export default function BookingsClient({
                       colSpan={12}
                       className="py-8 text-center text-xs text-muted-foreground"
                     >
-                      Belum ada booking untuk filter ini.
+                      No bookings for this filter.
                     </TableCell>
                   </TableRow>
                 )}
@@ -718,7 +722,7 @@ export default function BookingsClient({
                         <Badge className="bg-emerald-100 text-[10px] font-medium text-emerald-700 hover:bg-emerald-100">
                           Sent
                         </Badge>
-                      ) : b.whatsapp_attempts > 0 ? (
+                      ) : (b.whatsapp_attempts ?? 0) > 0 ? (
                         <Badge className="bg-red-100 text-[10px] font-medium text-red-700 hover:bg-red-100">
                           Failed
                         </Badge>
@@ -776,11 +780,11 @@ export default function BookingsClient({
                               {(b as any).hotel_name}
                             </p>
                             <p>
-                              <span className="font-semibold">Tanggal/Jam:</span>{" "}
+                              <span className="font-semibold">Date/Time:</span>{" "}
                               {b.schedule_date} {b.departure_time}
                             </p>
                             <p>
-                              <span className="font-semibold">Tujuan:</span>{" "}
+                              <span className="font-semibold">Destination:</span>{" "}
                               {b.destination}
                             </p>
                             <p>
@@ -792,7 +796,7 @@ export default function BookingsClient({
                               {b.phone}
                             </p>
                             <p>
-                              <span className="font-semibold">Penumpang:</span>{" "}
+                              <span className="font-semibold">Passengers:</span>{" "}
                               {b.passenger_count}
                             </p>
                             <p>
@@ -803,7 +807,7 @@ export default function BookingsClient({
                               <span className="font-semibold">
                                 WA Attempts:
                               </span>{" "}
-                              {b.whatsapp_attempts}
+                              {b.whatsapp_attempts ?? 0}
                             </p>
                             <p>
                               <span className="font-semibold">
@@ -813,12 +817,12 @@ export default function BookingsClient({
                             </p>
                             <div className="mt-4">
                               <p className="font-semibold">
-                                Riwayat nomor ini
+                                Phone history
                               </p>
                               <div className="space-y-1">
                                 {history.length === 0 && (
                                   <p className="text-[11px] text-muted-foreground">
-                                    Belum ada data
+                                    No history found
                                   </p>
                                 )}
                                 {history.map((h) => (
