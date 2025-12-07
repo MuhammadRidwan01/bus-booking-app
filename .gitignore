@@ -43,3 +43,8 @@ types/database.ts
 
 # Supabase local state
 supabase/.branches/**
+
+#IDE
+
+.kiro
+.vscode
