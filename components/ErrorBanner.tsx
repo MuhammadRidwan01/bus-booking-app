@@ -11,6 +11,7 @@ export function ErrorBanner() {
 
   useEffect(() => {
     if (error) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShow(true)
       // Auto-hide after 10 seconds
       const timer = setTimeout(() => setShow(false), 10000)

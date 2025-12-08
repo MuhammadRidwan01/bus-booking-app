@@ -91,7 +91,7 @@ export default async function ConfirmationPage({
               <CheckCircle className="h-10 w-10" />
             </div>
             <h1 className="text-2xl font-semibold text-slate-900">Booking confirmed</h1>
-            <p className="text-sm text-slate-600">Your ticket is recorded. We'll send it to your WhatsApp.</p>
+            <p className="text-sm text-slate-600">Your ticket is recorded. We&apos;ll send it to your WhatsApp.</p>
           </div>
         </div>
 
