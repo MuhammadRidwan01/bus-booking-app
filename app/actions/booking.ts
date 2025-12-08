@@ -72,6 +72,59 @@ export async function createBooking(formData: FormData) {
   }
 }
 
+// New function for optimistic booking - returns booking code without redirect
+export async function createBookingOptimistic(formData: FormData) {
+  if (!formData) {
+    return { success: false, error: "formData is null" }
+  }
+
+  const customerName = formData.get("customerName")
+  if (!customerName) {
+    return { success: false, error: "Nama lengkap harus diisi" }
+  }
+
+  try {
+    // Validasi data form
+    const rawData = {
+      customerName: formData.get("customerName") as string,
+      phoneNumber: formData.get("phoneNumber") as string,
+      bookingDate: formData.get("bookingDate") as string,
+      scheduleId: formData.get("scheduleId") as string,
+      passengerCount: Number.parseInt(formData.get("passengerCount") as string),
+      roomNumber: formData.get("roomNumber") as string,
+      idempotencyKey: formData.get("idempotencyKey") as string,
+      hasWhatsapp: ((formData.get("hasWhatsapp") as string) || "yes") as "yes" | "no",
+      countryCode: (formData.get("countryCode") as string) || "62",
+    }
+
+    const validatedData = bookingSchema.parse(rawData)
+
+    // Call Edge Function with anon key (public booking)
+    const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/booking`
+    
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      },
+      body: JSON.stringify(validatedData)
+    })
+
+    const result = await response.json()
+
+    if (!response.ok || !result.ok) {
+      return { success: false, error: result.error || 'Gagal membuat booking' }
+    }
+
+    return { success: true, bookingCode: result.data.bookingCode }
+  } catch (error: any) {
+    console.error("Booking error:", error)
+    return { success: false, error: error?.message || "Booking failed" }
+  }
+}
+
 /**
  * Get booking by code - now proxies to Edge Function
  */

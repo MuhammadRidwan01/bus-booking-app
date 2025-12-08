@@ -19,7 +19,6 @@ import {
   Sparkles,
   Tag,
 } from "lucide-react"
-
 export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col bg-canvas">

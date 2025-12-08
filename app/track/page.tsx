@@ -20,6 +20,7 @@ export default function TrackPage() {
   const [booking, setBooking] = useState<BookingDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const searchParams = useSearchParams()
 
   const searchBooking = async (code: string) => {
@@ -108,14 +109,30 @@ export default function TrackPage() {
                   </div>
 
                   {(booking.whatsapp_sent || (booking.whatsapp_attempts ?? 0) > 0 || booking.phone) && (
-                    <a
-                      href={`/api/ticket/${booking.booking_code}`}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition"
-                      download
+                    <Button
+                      onClick={() => {
+                        if (downloading) return
+                        setDownloading(true)
+                        
+                        const link = document.createElement('a')
+                        link.href = `/api/ticket/${booking.booking_code}`
+                        link.download = `shuttle-ticket-${booking.booking_code}.pdf`
+                        link.style.display = 'none'
+                        document.body.appendChild(link)
+                        link.click()
+                        
+                        // Clean up and reset state after a delay
+                        setTimeout(() => {
+                          document.body.removeChild(link)
+                          setDownloading(false)
+                        }, 2000)
+                      }}
+                      disabled={downloading}
+                      className="w-full rounded-xl bg-slate-900 hover:bg-slate-800"
                     >
-                      <Download className="h-4 w-4" />
-                      Download PDF Ticket
-                    </a>
+                      <Download className="h-4 w-4 mr-2" />
+                      {downloading ? 'Downloading...' : 'Download PDF Ticket'}
+                    </Button>
                   )}
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

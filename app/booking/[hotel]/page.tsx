@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef, useState, type ReactNode } from "react"
-import { useParams } from "next/navigation"
+import { useRef, useState, useTransition, type ReactNode } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,11 +11,9 @@ import { Bus, User, Users, MapPin, Shield, KeyRound, Clock } from "lucide-react"
 import Link from "next/link"
 import { ScheduleSelector } from "@/components/ScheduleSelector"
 import { useRealTimeCapacity } from "@/hooks/useRealTimeCapacity"
-import { createBooking } from "@/app/actions/booking"
-import { useActionState } from "react"
-import { useFormStatus } from "react-dom"
 import Image from "next/image"
 import { PublicShell } from "@/components/PublicShell"
+import { BookingRecovery } from "@/components/BookingRecovery"
 
 /* ------------------------------------------------------------
    PAGE
@@ -33,6 +31,8 @@ export default function BookingPage() {
   const [countryCode, setCountryCode] = useState<string>("62")
   const [idempotencyKey] = useState(() => crypto.randomUUID())
   const formRef = useRef<HTMLDivElement | null>(null)
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
 
   const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug)
 
@@ -63,19 +63,90 @@ export default function BookingPage() {
   const isFormValid =
     Boolean(selectedScheduleId && selectedDate && passengerCount >= 1 && roomNumber.trim() && idempotencyKey && phoneNumber.trim())
 
-  async function bookingFormAction(prevState: any, formData: FormData) {
+  const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const formDataRef = useRef<FormData | null>(null)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError(null)
+    setIsSubmitting(true)
+
+    const formData = new FormData(e.currentTarget)
+    formDataRef.current = formData
+    
+    // Store pending booking for recovery
+    const { storePendingBooking } = await import("@/lib/booking-recovery")
+    storePendingBooking(idempotencyKey, Date.now())
+    
+    // Optimistic navigation - navigate immediately
+    startTransition(() => {
+      router.push(`/booking/confirmation?code=loading`)
+    })
+
     try {
-      await createBooking(formData)
-      return { error: null }
-    } catch (error: any) {
-      return { error: error?.message || "Booking failed, please try again" }
+      // Import the optimistic version with timeout
+      const { createBookingOptimistic } = await import("@/app/actions/booking")
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Request timeout - please try again")), 30000)
+      )
+      
+      const result = await Promise.race([
+        createBookingOptimistic(formData),
+        timeoutPromise
+      ]) as { success: boolean; bookingCode?: string; error?: string }
+      
+      if (result.success && result.bookingCode) {
+        // Success - clear pending and replace URL with actual booking code
+        const { clearPendingBooking } = await import("@/lib/booking-recovery")
+        clearPendingBooking()
+        router.replace(`/booking/confirmation?code=${result.bookingCode}`)
+        setIsSubmitting(false)
+      } else {
+        // Failed - stay on page and show error
+        handleBookingError(result.error || "Booking failed")
+      }
+    } catch (err: any) {
+      handleBookingError(err?.message || "Booking failed, please try again")
     }
   }
 
-  const [state, formAction] = useActionState(bookingFormAction, { error: null })
+  function handleBookingError(errorMessage: string) {
+    // Clear pending booking
+    import("@/lib/booking-recovery").then(({ clearPendingBooking }) => {
+      clearPendingBooking()
+    })
+    
+    // Navigate back to booking page (stay on current page)
+    router.replace(`/booking/${hotelSlug}`)
+    
+    // Map error messages to user-friendly English
+    let displayError = errorMessage
+    if (errorMessage.includes('Kapasitas tidak mencukupi') || errorMessage.includes('capacity')) {
+      displayError = '❌ Sorry, the shuttle is fully booked for this schedule. Please choose another time.'
+    } else if (errorMessage.includes('timeout')) {
+      displayError = '⏱️ Request timed out. Please try again.'
+    } else if (errorMessage.includes('network')) {
+      displayError = '🌐 Network error occurred. Please check your connection.'
+    } else if (errorMessage.includes('Jadwal tidak ditemukan') || errorMessage.includes('not found')) {
+      displayError = '📅 Schedule not found. Please select an available schedule.'
+    }
+    
+    // Show error message on the form
+    setError(displayError)
+    setIsSubmitting(false)
+    
+    // Scroll to form to show error message
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }, 200)
+  }
 
   return (
     <PublicShell showBack backHref="/">
+      <BookingRecovery />
       <div className="space-y-6">
 
         {/* HOTEL HEADER CARD */}
@@ -164,7 +235,7 @@ export default function BookingPage() {
                 </CardHeader>
 
                 <CardContent className="pt-4">
-                  <form action={formAction} className="space-y-5">
+                  <form onSubmit={handleSubmit} className="space-y-5">
                     <input type="hidden" name="scheduleId" value={selectedScheduleId || ""} />
                     <input type="hidden" name="bookingDate" value={selectedDate} />
                     <input type="hidden" name="passengerCount" value={passengerCount} />
@@ -260,15 +331,31 @@ export default function BookingPage() {
                     </div>
 
                     {/* ERRORS */}
-                    {state?.error && (
-                      <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-sm text-rose-800">
-                        {state.error}
+                    {error && (
+                      <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-4 shadow-md animate-in slide-in-from-top-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            <svg className="h-5 w-5 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-rose-900 mb-1">Booking Failed</h4>
+                            <p className="text-sm text-rose-800">{error}</p>
+                          </div>
+                        </div>
                       </div>
                     )}
 
                     {/* SUBMIT */}
                     <div className="pt-2 space-y-3">
-                      <SubmitButton isFormValid={isFormValid} />
+                      <Button
+                        type="submit"
+                        className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                        disabled={!isFormValid || isSubmitting || isPending}
+                      >
+                        {isSubmitting || isPending ? "Processing..." : isFormValid ? "✓ Confirm Booking" : "Complete booking details"}
+                      </Button>
                       {!isFormValid && (
                         <div className="text-center text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
                           Choose a schedule and fill all fields to continue.
@@ -358,19 +445,4 @@ function countryToDialCode(country?: string) {
   if (!country) return null
   const found = countryOptions.find((c) => c.code === country)
   return found?.dial ?? null
-}
-
-function SubmitButton({ isFormValid }: { isFormValid: boolean }) {
-  const { pending } = useFormStatus()
-  const disabled = !isFormValid || pending
-
-  return (
-    <Button
-      type="submit"
-      className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
-      disabled={disabled}
-    >
-      {pending ? "Processing..." : isFormValid ? "✓ Confirm Booking" : "Complete booking details"}
-    </Button>
-  )
 }

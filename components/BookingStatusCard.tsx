@@ -25,6 +25,7 @@ export function BookingStatusCard({ bookingCode, initialStatus }: Props) {
   const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
   const [resendError, setResendError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
   const statusSentRef = useRef(status?.whatsapp_sent ?? false)
   const checksRef = useRef(checks)
 
@@ -131,14 +132,30 @@ export function BookingStatusCard({ bookingCode, initialStatus }: Props) {
 
         {(skipByUser || status?.has_whatsapp || status?.whatsapp_sent) && bookingCode && (
           <div className="space-y-2">
-            <a
-              href={`/api/ticket/${bookingCode}`}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition"
-              download
+            <Button
+              onClick={() => {
+                if (downloading) return
+                setDownloading(true)
+                
+                const link = document.createElement('a')
+                link.href = `/api/ticket/${bookingCode}`
+                link.download = `shuttle-ticket-${bookingCode}.pdf`
+                link.style.display = 'none'
+                document.body.appendChild(link)
+                link.click()
+                
+                // Clean up and reset state after a delay
+                setTimeout(() => {
+                  document.body.removeChild(link)
+                  setDownloading(false)
+                }, 2000)
+              }}
+              disabled={downloading}
+              className="w-full rounded-xl bg-slate-900 hover:bg-slate-800"
             >
-              <Download className="h-4 w-4" />
-              Download PDF Ticket
-            </a>
+              <Download className="h-4 w-4 mr-2" />
+              {downloading ? 'Downloading...' : 'Download PDF Ticket'}
+            </Button>
           </div>
         )}
 
