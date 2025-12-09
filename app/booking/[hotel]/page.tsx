@@ -38,7 +38,7 @@ export default function BookingPage() {
 
   const hotelName = hotelSlug === "ibis-style" ? "Ibis Style Jakarta Airport" : "Ibis Budget Jakarta Airport"
   const hotelShortName = hotelSlug === "ibis-style" ? "Ibis Style" : "Ibis Budget"
-  
+
   const hotelImages = {
     "ibis-style": {
       logo: "/ibis-styles-logo.png",
@@ -74,11 +74,11 @@ export default function BookingPage() {
 
     const formData = new FormData(e.currentTarget)
     formDataRef.current = formData
-    
+
     // Store pending booking for recovery
     const { storePendingBooking } = await import("@/lib/booking-recovery")
     storePendingBooking(idempotencyKey, Date.now())
-    
+
     // Optimistic navigation - navigate immediately
     startTransition(() => {
       router.push(`/booking/confirmation?code=loading`)
@@ -87,17 +87,17 @@ export default function BookingPage() {
     try {
       // Import the optimistic version with timeout
       const { createBookingOptimistic } = await import("@/app/actions/booking")
-      
+
       // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Request timeout - please try again")), 30000)
       )
-      
+
       const result = await Promise.race([
         createBookingOptimistic(formData),
         timeoutPromise
       ]) as { success: boolean; bookingCode?: string; error?: string }
-      
+
       if (result.success && result.bookingCode) {
         // Success - clear pending and replace URL with actual booking code
         const { clearPendingBooking } = await import("@/lib/booking-recovery")
@@ -118,10 +118,10 @@ export default function BookingPage() {
     import("@/lib/booking-recovery").then(({ clearPendingBooking }) => {
       clearPendingBooking()
     })
-    
+
     // Navigate back to booking page (stay on current page)
     router.replace(`/booking/${hotelSlug}`)
-    
+
     // Map error messages to user-friendly English
     let displayError = errorMessage
     if (errorMessage.includes('Kapasitas tidak mencukupi') || errorMessage.includes('capacity')) {
@@ -133,11 +133,11 @@ export default function BookingPage() {
     } else if (errorMessage.includes('Jadwal tidak ditemukan') || errorMessage.includes('not found')) {
       displayError = '📅 Schedule not found. Please select an available schedule.'
     }
-    
+
     // Show error message on the form
     setError(displayError)
     setIsSubmitting(false)
-    
+
     // Scroll to form to show error message
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
@@ -145,7 +145,7 @@ export default function BookingPage() {
   }
 
   return (
-    <PublicShell showBack backHref="/">
+    <PublicShell showBack backHref="/" hideCta>
       <BookingRecovery />
       <div className="space-y-6">
 
@@ -157,22 +157,22 @@ export default function BookingPage() {
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
 
-            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 md:p-8 text-white">
+            <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 text-white">
               <div className="flex items-center gap-3">
-                <div className="w-16 h-16 bg-white/90 rounded-2xl p-2 shadow-md">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/90 rounded-2xl p-2 shadow-md shrink-0">
                   <Image src={currentHotel.logo} alt={`${hotelShortName} logo`} width={60} height={60} className="object-contain" />
                 </div>
 
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/70">Hotel pickup</p>
-                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold">{hotelName}</h2>
+                <div className="min-w-0 flex-1">
+                  <p className="hidden sm:block text-xs uppercase tracking-[0.2em] text-white/70">Hotel pickup</p>
+                  <h2 className="text-xl sm:text-3xl md:text-4xl font-semibold leading-tight">{hotelName}</h2>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 mt-3 text-sm text-white/80">
-                <BadgeInfo icon={<MapPin />} label="Jakarta Airport" />
-                <BadgeInfo icon={<Clock />} label="06:00 - 22:00" />
-                <BadgeInfo icon={<Shield />} label="Free for guests" />
+              <div className="flex flex-wrap items-center gap-2 mt-3 text-xs sm:text-sm text-white/90 font-medium">
+                <BadgeInfo icon={<MapPin className="h-3.5 w-3.5" />} label="Jakarta Airport" />
+                <BadgeInfo icon={<Clock className="h-3.5 w-3.5" />} label="06:00 - 22:00" />
+                <BadgeInfo icon={<Shield className="h-3.5 w-3.5" />} label="Free for guests" />
               </div>
             </div>
           </div>
@@ -414,9 +414,8 @@ function BadgeInfo({ icon, label }: { icon: ReactNode; label: string }) {
 function StepPill({ active, children }: { active?: boolean; children: ReactNode }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${
-        active ? "bg-primary/10 text-primary border-primary/20" : "bg-white text-slate-600 border-slate-200"
-      }`}
+      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${active ? "bg-primary/10 text-primary border-primary/20" : "bg-white text-slate-600 border-slate-200"
+        }`}
     >
       {children}
     </span>

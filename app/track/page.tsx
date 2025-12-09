@@ -14,6 +14,7 @@ import { formatDate, formatTime } from "@/lib/utils"
 import { useSearchParams } from "next/navigation"
 import { BookingStatusCard } from "@/components/BookingStatusCard"
 import { PublicShell } from "@/components/PublicShell"
+import TrackSkeleton from "@/components/TrackSkeleton"
 
 export default function TrackPage() {
   const [bookingCode, setBookingCode] = useState("")
@@ -94,7 +95,9 @@ export default function TrackPage() {
 
         {searched && (
           <>
-            {booking ? (
+            {loading ? (
+              <TrackSkeleton />
+            ) : booking ? (
               <Card className="overflow-hidden border border-slate-100 shadow-lg">
                 <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
                   <CardTitle className="flex items-center gap-2">
@@ -217,3 +220,5 @@ function InfoCard({ icon, title, value }: { icon: React.ReactNode; title: string
     </div>
   )
 }
+
+// Skeleton moved to `components/TrackSkeleton.tsx`

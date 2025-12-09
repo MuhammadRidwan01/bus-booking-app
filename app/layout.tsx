@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="id" className="h-full">
+    <html lang="id" className="h-full scroll-smooth">
       <body className={`${fontSans.variable} bg-canvas text-ink antialiased min-h-full`}>
         {children}
       </body>

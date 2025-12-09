@@ -169,9 +169,8 @@ export function ScheduleSelector({
                 <button
                   key={schedule.id}
                   type="button"
-                  className={`w-full text-left rounded-2xl border transition-all duration-200 p-4 bg-white/70 hover:shadow-md hover:-translate-y-[1px] ${
-                    selectedScheduleId === schedule.id ? "border-primary ring-2 ring-primary/10" : "border-slate-200"
-                  } ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                  className={`w-full text-left rounded-2xl border transition-all duration-200 p-4 bg-white/70 hover:shadow-md hover:-translate-y-[1px] ${selectedScheduleId === schedule.id ? "border-primary ring-2 ring-primary/10" : "border-slate-200"
+                    } ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                   onClick={() => {
                     if (!disabled) onScheduleSelect(schedule.id, currentDateString)
                   }}

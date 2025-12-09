@@ -10,42 +10,80 @@ type Props = {
   ctaLabel?: string
   showBack?: boolean
   backHref?: string
+  hideCta?: boolean
 }
 
-export function PublicNav({ ctaHref = "/booking/ibis-style", ctaLabel = "Book now", showBack = false, backHref = "/" }: Props) {
+export function PublicNav({
+  ctaHref = "/booking/ibis-style",
+  ctaLabel = "Book now",
+  showBack = false,
+  backHref = "/",
+  hideCta = false,
+}: Props) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-lg">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 md:px-6">
-        <div className="flex items-center gap-3">
-          {showBack ? (
-            <Link href={backHref}>
-              <Button variant="ghost" size="sm" className="rounded-full">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4">
+
+        {/* LEFT SIDE */}
+        <div className="flex items-center gap-2 min-w-0">
+          {showBack && (
+            <Link href={backHref} className="flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full sm:w-auto sm:px-3"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="ml-1 hidden text-xs sm:inline">Back</span>
               </Button>
             </Link>
-          ) : null}
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/ISJA-IBJA-Logo-updated.png" alt="Ibis Hotels" width={120} height={32} className="h-8 w-auto" />
+          )}
+
+          <Link href="/" className="flex min-w-0 items-center gap-2">
+            {/* HIDE LOGO ON MOBILE */}
+            <Image
+              src="/ISJA-IBJA-Logo-updated.png"
+              alt="Ibis Hotels"
+              width={120}
+              height={32}
+              className="hidden h-8 w-auto sm:block"
+            />
+
+            {/* TEXT ALWAYS SHOWS */}
             <div className="leading-tight">
-              <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Jakarta Airport</p>
-              <p className="text-sm font-semibold text-slate-900">Shuttle Service</p>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px]">
+                Jakarta Airport
+              </p>
+              <p className="text-xs font-semibold text-slate-900 sm:text-sm">
+                Shuttle Service
+              </p>
             </div>
           </Link>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* RIGHT SIDE */}
+        <div className="flex items-center gap-1 sm:gap-2">
           <Link href="/track">
-            <Button variant="outline" size="sm" className="rounded-full border-slate-200">
-              <Ticket className="mr-2 h-4 w-4" />
-              Track ticket
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-full border-slate-200 px-2 text-xs sm:px-3 sm:text-sm"
+            >
+              <Ticket className="mr-0 h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Track ticket</span>
             </Button>
           </Link>
-          <Link href={ctaHref}>
-            <Button size="sm" className="rounded-full shadow-sm">
-              {ctaLabel}
-            </Button>
-          </Link>
+
+          {!hideCta && (
+            <Link href={ctaHref}>
+              <Button
+                size="sm"
+                className="h-8 rounded-full px-3 text-xs shadow-sm sm:px-4 sm:text-sm"
+              >
+                {ctaLabel}
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </header>
