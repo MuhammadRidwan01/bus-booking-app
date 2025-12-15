@@ -44,22 +44,22 @@ describe('E2E Security - Repository Clone Safety', () => {
       /pk_live_[a-zA-Z0-9]{20,}/,
       // Service role key with actual value
       /SUPABASE_SERVICE_ROLE_KEY\s*=\s*ey[a-zA-Z0-9_-]{100,}/,
-      // Wablas token with actual value
-      /WABLAS.*TOKEN\s*=\s*[a-zA-Z0-9]{30,}/,
+      // Fonnte token with actual value
+      /FONNTE_TOKEN\s*=\s*[a-zA-Z0-9]{10,}/,
     ]
 
     const filesWithSecrets: string[] = []
 
     for (const file of trackedFiles) {
       if (!fs.existsSync(file)) continue
-      
+
       // Skip binary files and certain safe files
       if (file.match(/\.(png|jpg|jpeg|gif|ico|pdf|woff|woff2|ttf|eot)$/)) continue
       if (file.includes('node_modules/')) continue
-      
+
       try {
         const content = fs.readFileSync(file, 'utf-8')
-        
+
         for (const pattern of secretPatterns) {
           if (pattern.test(content)) {
             // Exclude documentation, test files, and scripts (which reference secrets but don't contain them)
@@ -111,19 +111,19 @@ describe('E2E Security - Repository Scanning', () => {
     try {
       // Check if git-secrets is installed
       execSync('git secrets --version', { stdio: 'ignore' })
-      
+
       // Run git-secrets scan
       const result = execSync('git secrets --scan', { encoding: 'utf-8' })
-      
+
       // Should complete without finding secrets
       expect(result).toBeDefined()
     } catch (error: any) {
       // git-secrets not installed or command failed
       const errorMessage = error.message || ''
-      
-      if (errorMessage.includes('not found') || 
-          errorMessage.includes('not recognized') ||
-          errorMessage.includes('Command failed')) {
+
+      if (errorMessage.includes('not found') ||
+        errorMessage.includes('not recognized') ||
+        errorMessage.includes('Command failed')) {
         console.warn('git-secrets not installed or not configured, skipping scan')
         // This is acceptable - git-secrets is optional
         expect(true).toBe(true)
@@ -141,7 +141,7 @@ describe('E2E Security - Repository Scanning', () => {
         'git log --all --source -S "service_role" --pretty=format:"%h %s" | head -5 || true',
         { encoding: 'utf-8' }
       )
-      
+
       // If found, it's in commit messages or documentation, not code
       if (result.trim()) {
         console.warn('Found "service_role" in git history (may be in docs/commits)')
@@ -157,7 +157,7 @@ describe('E2E Security - Repository Scanning', () => {
         'git grep -E "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\\.[a-zA-Z0-9_-]{100,}" -- ":!*.md" ":!scripts/*" ":!tests/*" || true',
         { encoding: 'utf-8' }
       )
-      
+
       expect(result.trim()).toBe('')
     } catch (error) {
       // No matches is good
@@ -170,7 +170,7 @@ describe('E2E Security - Repository Scanning', () => {
         'git grep -E "(sk_live_|pk_live_|api_key.*=.*[a-zA-Z0-9]{20,})" -- ":!*.md" ":!scripts/*" ":!tests/*" || true',
         { encoding: 'utf-8' }
       )
-      
+
       expect(result.trim()).toBe('')
     } catch (error) {
       // No matches is good
@@ -270,7 +270,7 @@ describe('E2E Security - Edge Functions Authentication', { timeout: TEST_TIMEOUT
 
       // Should get 200 OK (even if booking not found)
       expect(response.status).toBe(200)
-      
+
       const data = await response.json()
       expect(data).toHaveProperty('ok')
     } catch (error: any) {
@@ -308,7 +308,7 @@ describe('E2E Security - Rate Limiting', { timeout: TEST_TIMEOUT }, () => {
 
       // Should have at least one 429 (Too Many Requests)
       const hasRateLimitError = statusCodes.includes(429)
-      
+
       expect(hasRateLimitError).toBe(true)
     } catch (error: any) {
       if (error.message.includes('fetch failed')) {
@@ -340,7 +340,7 @@ describe('E2E Security - Rate Limiting', { timeout: TEST_TIMEOUT }, () => {
 
       // Should have at least one 429 (Too Many Requests)
       const hasRateLimitError = statusCodes.includes(429)
-      
+
       expect(hasRateLimitError).toBe(true)
     } catch (error: any) {
       if (error.message.includes('fetch failed')) {
@@ -368,7 +368,7 @@ describe('E2E Security - Rate Limiting', { timeout: TEST_TIMEOUT }, () => {
 
       // Should have at least one 429 (Too Many Requests)
       const hasRateLimitError = statusCodes.includes(429)
-      
+
       expect(hasRateLimitError).toBe(true)
     } catch (error: any) {
       if (error.message.includes('fetch failed')) {
@@ -462,7 +462,7 @@ describe('E2E Security - Error Message Safety', { timeout: TEST_TIMEOUT }, () =>
 
       // Should not contain configuration details
       expect(text).not.toMatch(/SUPABASE_SERVICE_ROLE_KEY/)
-      expect(text).not.toMatch(/WABLAS.*TOKEN/)
+      expect(text).not.toMatch(/FONNTE_TOKEN/)
       expect(text).not.toMatch(/DATABASE_URL/)
       expect(text).not.toMatch(/postgres:\/\//)
     } catch (error: any) {

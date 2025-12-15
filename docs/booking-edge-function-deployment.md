@@ -36,7 +36,7 @@ supabase secrets set SUPABASE_ANON_KEY="<your-anon-key>"
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY="<your-service-role-key>"
 
 # WhatsApp integration
-supabase secrets set WABLAS_API_KEY="<your-wablas-api-key>"
+supabase secrets set FONNTE_TOKEN="<your-fonnte-token>"
 
 # Application URL
 supabase secrets set APP_BASE_URL="https://your-domain.com"
@@ -47,7 +47,7 @@ supabase secrets set APP_BASE_URL="https://your-domain.com"
 1. **SUPABASE_URL**: Project Settings → API → Project URL
 2. **SUPABASE_ANON_KEY**: Project Settings → API → Project API keys → anon public
 3. **SUPABASE_SERVICE_ROLE_KEY**: Project Settings → API → Project API keys → service_role (⚠️ Keep secret!)
-4. **WABLAS_API_KEY**: Your Wablas dashboard
+4. **FONNTE_TOKEN**: Your Fonnte dashboard
 5. **APP_BASE_URL**: Your production domain (e.g., https://shuttle.ibisjakarta.com)
 
 ### Verify Secrets
@@ -150,7 +150,7 @@ supabase functions logs booking
 
 **Common issues:**
 - Missing SUPABASE_SERVICE_ROLE_KEY
-- Invalid WABLAS_API_KEY
+- Invalid FONNTE_TOKEN
 - Wrong SUPABASE_URL format
 
 ### Authentication Errors (401)
@@ -177,9 +177,9 @@ supabase functions logs booking
 
 ### WhatsApp Not Sending
 
-**Check Wablas configuration:**
+**Check Fonnte configuration:**
 ```bash
-supabase secrets list | grep WABLAS
+supabase secrets list | grep FONNTE
 ```
 
 **Verify phone number format:**
@@ -260,7 +260,7 @@ If you encounter issues:
 1. Check function logs in Supabase Dashboard
 2. Verify all secrets are set correctly
 3. Test with curl to isolate frontend issues
-4. Check Wablas API status
+4. Check Fonnte API status
 5. Review error messages in logs
 
 ## Related Documentation

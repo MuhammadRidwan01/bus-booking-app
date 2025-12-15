@@ -88,7 +88,7 @@ Edge Functions are serverless functions that run on Supabase infrastructure. The
 1. **Set Secrets**:
    ```bash
    supabase secrets set SUPABASE_SERVICE_ROLE_KEY="..."
-   supabase secrets set WABLAS_TOKEN="..."
+   supabase secrets set FONNTE_TOKEN="..."
    ```
 
 2. **Deploy Functions**:
@@ -171,8 +171,7 @@ These utilities are safe to commit as they contain no secrets or business logic.
 
 ```bash
 SUPABASE_SERVICE_ROLE_KEY  # Database admin access
-WABLAS_TOKEN               # WhatsApp API token
-WABLAS_SECRET_KEY          # WhatsApp API secret
+FONNTE_TOKEN               # WhatsApp API token
 APP_BASE_URL               # Application base URL
 ```
 

@@ -110,9 +110,8 @@ NEXTAUTH_URL=http://localhost:3000
 CRON_SECRET=local-dev-secret
 
 # WhatsApp (use test credentials or mock)
-WABLAS_BASE_URL=https://bdg.wablas.com
-WABLAS_TOKEN=your-test-token
-WABLAS_SECRET_KEY=your-test-secret
+# WhatsApp (Fonnte)
+FONNTE_TOKEN=your-test-token
 ```
 
 ### Step 3: Verify Setup
@@ -300,8 +299,7 @@ supabase link --project-ref your-project-ref
 ```bash
 # Set all required secrets
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY="your-production-service-role-key"
-supabase secrets set WABLAS_TOKEN="your-production-wablas-token"
-supabase secrets set WABLAS_SECRET_KEY="your-production-wablas-secret"
+supabase secrets set FONNTE_TOKEN="your-production-fonnte-token"
 supabase secrets set APP_BASE_URL="https://your-production-domain.com"
 
 # Verify secrets are set (values are encrypted)
@@ -366,7 +364,7 @@ supabase secrets list
 # Output:
 # NAME                          CREATED_AT
 # SUPABASE_SERVICE_ROLE_KEY    2024-01-15 10:30:00
-# WABLAS_TOKEN                 2024-01-15 10:31:00
+# FONNTE_TOKEN                 2024-01-15 10:31:00
 ```
 
 ### Updating Secrets
@@ -391,7 +389,7 @@ supabase secrets unset SECRET_NAME
 ```typescript
 // In your Edge Function
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-const wablasToken = Deno.env.get('WABLAS_TOKEN')
+const fonnteToken = Deno.env.get('FONNTE_TOKEN')
 
 // Always check if secret exists
 if (!serviceRoleKey) {
@@ -475,7 +473,7 @@ return new Response(JSON.stringify(data), {
    ```typescript
    console.log('Environment check:', {
      hasServiceKey: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-     hasWablasToken: !!Deno.env.get('WABLAS_TOKEN'),
+     hasFonnteToken: !!Deno.env.get('FONNTE_TOKEN'),
    })
    ```
 
@@ -553,8 +551,7 @@ supabase secrets unset KEY                        # Delete secret
 | Variable | Purpose | Where to Set |
 |----------|---------|--------------|
 | `SUPABASE_SERVICE_ROLE_KEY` | Database admin access | Supabase secrets |
-| `WABLAS_TOKEN` | WhatsApp API | Supabase secrets |
-| `WABLAS_SECRET_KEY` | WhatsApp API | Supabase secrets |
+| `FONNTE_TOKEN` | WhatsApp API | Supabase secrets |
 | `APP_BASE_URL` | App URL for links | Supabase secrets |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase URL | Frontend env |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public key | Frontend env |

@@ -125,7 +125,7 @@ export async function POST(req: Request) {
         caption: `Tiket Shuttle - ${item.booking_code}`,
       })
 
-      const waErrorMessage = waResult.ok ? null : (waResult.data as any)?.error ?? "Wablas send failed"
+      const waErrorMessage = waResult.ok ? null : (waResult.data as any)?.error ?? "Fonnte send failed"
       const nextAttempts = (item.whatsapp_attempts ?? 0) + 1
 
       await supabase

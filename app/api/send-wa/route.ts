@@ -8,157 +8,88 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "phone and message are required" }, { status: 400 })
     }
 
-    const token = process.env.WABLAS_TOKEN
-    const secretKey = process.env.WABLAS_SECRET_KEY
-    const baseUrl = process.env.WABLAS_BASE_URL ?? "https://bdg.wablas.com"
+    const token = process.env.FONNTE_TOKEN
 
-    if (!token || !secretKey) {
-      return NextResponse.json({ ok: false, error: "Wablas credentials not configured" }, { status: 500 })
+    if (!token) {
+      return NextResponse.json({ ok: false, error: "Fonnte token not configured" }, { status: 500 })
     }
+
+    // Fonnte API endpoint
+    const FONNTE_URL = "https://api.fonnte.com/send"
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10_000)
 
-    // Helper to send text-only message
-    const sendText = async () => {
-      const body = new URLSearchParams({
-        phone,
-        message,
-        flag: "instant",
-      })
+    try {
+      const formData = new FormData()
+      formData.append("target", phone)
+      formData.append("message", message)
+      formData.append("countryCode", "62") // Default to Indonesia
 
-      const wablasResponse = await fetch(`${baseUrl}/api/send-message`, {
+      if (pdfUrl) {
+        // Attempt to fetch the PDF server-side to handle localhost/internal URLs
+        try {
+          console.log("[send-wa] Fetching PDF from:", pdfUrl)
+          const pdfRes = await fetch(pdfUrl)
+          if (pdfRes.ok) {
+            const pdfBuffer = await pdfRes.arrayBuffer()
+            // Append file with filename 'ticket.pdf'
+            formData.append("file", new Blob([pdfBuffer], { type: "application/pdf" }), "ticket.pdf")
+          } else {
+            console.warn("[send-wa] Failed to fetch PDF, falling back to URL:", pdfRes.status)
+            formData.append("url", pdfUrl)
+            formData.append("filename", "ticket.pdf")
+          }
+        } catch (err) {
+          console.error("[send-wa] Error fetching PDF:", err)
+          // Fallback to URL if fetch fails completely
+          formData.append("url", pdfUrl)
+          formData.append("filename", "ticket.pdf")
+        }
+      }
+
+      const response = await fetch(FONNTE_URL, {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Authorization: `${token}.${secretKey}`,
+          Authorization: token,
+          // Note: When using FormData, Content-Type header should not be set manually 
+          // to let the browser/runtime set the boundary.
         },
-        body,
+        body: formData,
         signal: controller.signal,
       })
 
+      clearTimeout(timeout)
+
       let data: unknown = null
       try {
-        data = await wablasResponse.json()
+        data = await response.json()
       } catch {
         data = null
       }
 
-      const wablasStatus = Boolean((data as any)?.status)
-      const isSuccess = wablasResponse.ok && wablasStatus
+      // Fonnte returns { status: true, ... } on success
+      const isSuccess = response.ok && Boolean((data as any)?.status)
 
-      return { isSuccess, status: wablasResponse.status, data }
-    }
-
-    // Helper to send PDF as document if provided (use direct URL; caller must provide publicly reachable link)
-    const sendPdf = async () => {
-      if (!pdfUrl) return null
-      try {
-        const body = new URLSearchParams({
-          phone,
-          caption: caption || message,
-          document: pdfUrl,
-          filename: pdfUrl.split("/").pop() || "ticket.pdf",
-          flag: "instant",
-        })
-
-        const resp = await fetch(`${baseUrl}/api/send-document`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: `${token}.${secretKey}`,
-          },
-          body,
-          signal: controller.signal,
-        })
-
-        let data: unknown = null
-        try {
-          data = await resp.json()
-        } catch {
-          data = null
-        }
-        const wablasStatus = Boolean((data as any)?.status)
-        const isSuccess = resp.ok && wablasStatus
-        return { isSuccess, status: resp.status, data }
-      } catch (err) {
-        console.error("Wablas PDF send failed", { message: (err as Error)?.message })
-        return null
+      if (isSuccess) {
+        return NextResponse.json({ ok: true, data })
+      } else {
+        console.error("Fonnte send failed", { status: response.status, data })
+        return NextResponse.json(
+          { ok: false, error: "Failed to send WhatsApp via Fonnte", data },
+          { status: response.status >= 500 ? 502 : 400 }
+        )
       }
-    }
-
-    try {
-      // Try PDF first if available
-      let pdfTried = false
-      let pdfFailedData: unknown = null
-      if (pdfUrl) {
-        pdfTried = true
-        const pdfResult = await sendPdf()
-        if (pdfResult?.isSuccess) {
-          clearTimeout(timeout)
-          return NextResponse.json({ ok: true, data: pdfResult.data })
-        } else if (pdfResult) {
-          pdfFailedData = pdfResult.data
-          // Downgrade quietly if package does not support document; avoid noisy logs
-          const message = (pdfResult.data as any)?.message || ""
-          const shouldLog = !String(message).toLowerCase().includes("not support")
-          if (shouldLog) {
-            console.error("Wablas send-document failed", { status: pdfResult.status, data: pdfResult.data })
-          }
-        }
-      }
-
-      const textMessage = pdfUrl && pdfFailedData
-        ? `${message}\nPDF: ${pdfUrl}`
-        : message
-
-      const body = new URLSearchParams({
-        phone,
-        message: textMessage,
-        flag: "instant",
-      })
-
-      const textResultRaw = await fetch(`${baseUrl}/api/send-message`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Authorization: `${token}.${secretKey}`,
-        },
-        body,
-        signal: controller.signal,
-      })
-
-      let textData: unknown = null
-      try {
-        textData = await textResultRaw.json()
-      } catch {
-        textData = null
-      }
-
-      const textSuccess = textResultRaw.ok && Boolean((textData as any)?.status)
-      clearTimeout(timeout)
-      if (textSuccess) {
-        // If PDF failed, include link info so caller can notify user
-        return NextResponse.json({ ok: true, data: textData, pdfSent: !pdfFailedData && pdfUrl ? true : false, pdfUrl: pdfUrl ?? null })
-      }
-
-      console.error("Wablas send failed", {
-        status: textResultRaw.status,
-        data: textData,
-      })
-      return NextResponse.json(
-        { ok: false, error: "Failed to send WhatsApp", data: textData },
-        { status: 502 },
-      )
     } catch (error) {
+      clearTimeout(timeout)
       if ((error as Error)?.name === "AbortError") {
         return NextResponse.json(
-          { ok: false, error: "Network or timeout error to Wablas" },
+          { ok: false, error: "Network or timeout error to Fonnte" },
           { status: 504 },
         )
       }
 
-      console.error("Wablas network error", { message: (error as Error)?.message })
+      console.error("Fonnte network error", { message: (error as Error)?.message })
       return NextResponse.json(
         { ok: false, error: "Internal error while sending WhatsApp" },
         { status: 500 },

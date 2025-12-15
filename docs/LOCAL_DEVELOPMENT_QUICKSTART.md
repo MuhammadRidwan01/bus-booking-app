@@ -46,6 +46,8 @@ SUPABASE_SERVICE_ROLE_KEY=<paste-service-role-key-here>
 APP_BASE_URL=http://localhost:3000
 NEXTAUTH_URL=http://localhost:3000
 CRON_SECRET=local-dev-secret
+# WhatsApp (Fonnte)
+FONNTE_TOKEN=your-test-token
 ```
 
 ### 4. Create Edge Functions (Optional for Initial Testing)
@@ -211,8 +213,7 @@ supabase logs               # View all logs
 | `APP_BASE_URL` | Application URL | `http://localhost:3000` |
 | `NEXTAUTH_URL` | Auth callback URL | `http://localhost:3000` |
 | `CRON_SECRET` | Cron job auth | `local-dev-secret` |
-| `WABLAS_TOKEN` | WhatsApp API token | (optional for local) |
-| `WABLAS_SECRET_KEY` | WhatsApp API secret | (optional for local) |
+| `FONNTE_TOKEN` | WhatsApp API token | (optional for local) |
 
 ## Quick Reference Card
 

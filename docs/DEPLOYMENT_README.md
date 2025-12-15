@@ -87,8 +87,7 @@ supabase link --project-ref YOUR_PROJECT_REF
 
 # Set secrets
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY="..."
-supabase secrets set WABLAS_TOKEN="..."
-supabase secrets set WABLAS_SECRET_KEY="..."
+supabase secrets set FONNTE_TOKEN="..."
 supabase secrets set APP_BASE_URL="https://your-domain.com"
 
 # Deploy functions
@@ -263,9 +262,8 @@ In Vercel Dashboard:
 
 ### WhatsApp Not Sending
 
-1. Verify WABLAS_TOKEN is set correctly
-2. Check WABLAS_SECRET_KEY is correct
-3. Test Wablas API directly
+1. Verify FONNTE_TOKEN is set correctly
+2. Test Fonnte API directly
 4. Check Edge Function logs for errors
 
 ## Support

@@ -10,7 +10,7 @@ Before starting deployment, ensure you have:
 - [ ] Supabase account with project created
 - [ ] Project reference ID from Supabase Dashboard
 - [ ] Production service role key from Supabase Dashboard
-- [ ] Wablas API credentials (token and secret key)
+- [ ] Fonnte API credentials (token)
 - [ ] Production domain name
 - [ ] Vercel account (or other hosting provider)
 - [ ] Git repository is clean (no uncommitted changes)
@@ -48,9 +48,7 @@ supabase link --project-ref YOUR_PROJECT_REF
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY="YOUR_SERVICE_ROLE_KEY"
 
 # Set WhatsApp API credentials
-supabase secrets set WABLAS_TOKEN="YOUR_WABLAS_TOKEN"
-supabase secrets set WABLAS_SECRET_KEY="YOUR_WABLAS_SECRET_KEY"
-supabase secrets set WABLAS_BASE_URL="https://bdg.wablas.com"
+supabase secrets set FONNTE_TOKEN="YOUR_FONNTE_TOKEN"
 
 # Set application base URL
 supabase secrets set APP_BASE_URL="https://your-production-domain.com"
@@ -74,9 +72,7 @@ Expected output:
 ```
 NAME                          CREATED_AT
 SUPABASE_SERVICE_ROLE_KEY    2024-XX-XX XX:XX:XX
-WABLAS_TOKEN                 2024-XX-XX XX:XX:XX
-WABLAS_SECRET_KEY            2024-XX-XX XX:XX:XX
-WABLAS_BASE_URL              2024-XX-XX XX:XX:XX
+FONNTE_TOKEN                 2024-XX-XX XX:XX:XX
 APP_BASE_URL                 2024-XX-XX XX:XX:XX
 ADMIN_SECRET                 2024-XX-XX XX:XX:XX
 ```
@@ -271,8 +267,7 @@ git ls-files | grep "supabase/functions/.*\.ts"
 ```bash
 # Search for potential secrets
 git grep -i "service_role"
-git grep -i "wablas.*token"
-git grep -i "secret.*key"
+git grep -i "fonnte.*token"
 
 # Should return no matches in committed files
 ```
@@ -586,9 +581,8 @@ In Vercel Dashboard:
 
 ### WhatsApp Not Sending
 
-1. Verify WABLAS_TOKEN is set correctly
-2. Check WABLAS_SECRET_KEY is correct
-3. Test Wablas API directly
+1. Verify FONNTE_TOKEN is set correctly
+2. Test Fonnte API directly
 4. Check Edge Function logs for errors
 5. Verify phone number format
 

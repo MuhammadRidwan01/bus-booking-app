@@ -56,7 +56,7 @@ export async function resendWhatsapp(bookingId: string) {
     pdfUrl: pdfLink,
     caption: `Tiket Shuttle - ${booking.booking_code}`,
   })
-  const waErrorMessage = waResult.ok ? null : (waResult.data as any)?.error ?? "Wablas send failed"
+  const waErrorMessage = waResult.ok ? null : (waResult.data as any)?.error ?? "Fonnte send failed"
 
   await supabase
     .from("bookings")
@@ -120,7 +120,7 @@ export async function cancelBooking(bookingId: string) {
       .update({
         whatsapp_attempts: (bookingDetail as any).whatsapp_attempts ? Number((bookingDetail as any).whatsapp_attempts) + 1 : 1,
         whatsapp_sent: waResult.ok,
-        whatsapp_last_error: waResult.ok ? null : (waResult.data as any)?.error ?? "Wablas send failed (cancel notice)",
+        whatsapp_last_error: waResult.ok ? null : (waResult.data as any)?.error ?? "Fonnte send failed (cancel notice)",
       })
       .eq("id", bookingId)
   }

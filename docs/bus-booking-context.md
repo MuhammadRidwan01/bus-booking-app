@@ -3,7 +3,7 @@
 ## 1. Tech Stack & Overview
 - Detected main language(s): TypeScript + React (Next.js App Router).
 - Framework(s): Next.js 15 (app/ directory), shadcn/ui + Radix primitives, Tailwind CSS.
-- Build / runtime tools: pnpm (lockfile present) or npm, Next.js dev/build/start scripts, node-cron for background jobs, Supabase (DB + Realtime), Wablas API for WhatsApp.
+- Build / runtime tools: pnpm (lockfile present) or npm, Next.js dev/build/start scripts, node-cron for background jobs, Supabase (DB + Realtime), Fonnte API for WhatsApp.
 - High-level description: Landing + booking flow untuk shuttle bus hotel Ibis (Style & Budget) dengan pilihan jadwal real-time, pembuatan tiket via Supabase, pengiriman kode booking lewat WhatsApp, serta halaman pelacakan tiket.
 
 ## 2. Folder & Module Structure
@@ -38,7 +38,7 @@
    - Form fields: `customerName`, `phoneNumber`, `passengerCount` (1–5), `roomNumber`, hidden `scheduleId` & `bookingDate`.
    - Validasi zod di server action `createBooking` (jumlah penumpang, format nomor, uuid schedule, room number wajib ada).
 4. **Booking / Checkout**
-   - Server action `createBooking` memeriksa kapasitas `daily_schedules`, generate kode (`IBX...`), insert ke `bookings`, panggil RPC `increment_capacity`, kirim WhatsApp template via `sendWhatsappTemplate` (Wablas), set `whatsapp_sent`, lalu redirect ke `/booking/confirmation?code=...`.
+   - Server action `createBooking` memeriksa kapasitas `daily_schedules`, generate kode (`IBX...`), insert ke `bookings`, panggil RPC `increment_capacity`, kirim WhatsApp via `sendWhatsappMessage` (Fonnte), set `whatsapp_sent`, lalu redirect ke `/booking/confirmation?code=...`.
    - Booking code ditampilkan di `BookingCode` dengan tombol copy.
 5. **Tracking Tiket**
    - Halaman `/track` menggunakan `getBookingByCode` (select dari view `booking_details`) untuk menampilkan hotel, tanggal, jam, tujuan, jumlah penumpang, status, room number, phone.
@@ -47,7 +47,7 @@
 
 ## 5. API / Routes (Jika Ada)
 - `GET /api/cron/daily-maintenance` → handler di `app/api/cron/daily-maintenance/route.ts`, butuh header `Authorization: Bearer <CRON_SECRET>`, menjalankan RPC `daily_maintenance` di Supabase.
-- `POST /api/send-wa` → `app/api/send-wa/route.ts`, proxy ke Wablas `send-message` (Authorization masih placeholder) dengan body `{ phone, message }`.
+- `POST /api/send-wa` → `app/api/send-wa/route.ts`, proxy ke Fonnte `send-message` (Authorization placeholder) dengan body `{ phone, message }`.
 - `GET /api/hello` → default Next sample.
 - Page routes: `/` (landing), `/booking/[hotel]`, `/booking/confirmation`, `/track`.
 
@@ -59,7 +59,7 @@
 ## 7. Configuration & Environment
 - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, service role `SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_SERVICE_ROLE_KEYY` (ada dua versi; action/config memakai yang berakhiran `KEYY`).
 - Cron: `CRON_SECRET` (auth header), `NEXTAUTH_URL` dipakai sebagai base URL untuk memanggil endpoint cron.
-- WhatsApp (Wablas): `WABLAS_API_KEY`, `WABLAS_TEMPLATE_ID` untuk template API; `/api/send-wa` masih kosong authorization.
+- WhatsApp (Fonnte): `FONNTE_TOKEN`; `/api/send-wa` memakai token ini.
 - Lain: Next middleware aktif di `/api/*` dan `/booking/*` menambah header `x-url`.
 
 ## 8. Known Limitations / TODO (From Code Comments)
@@ -73,4 +73,4 @@
 - Install deps: `pnpm install` (atau `npm install`/`yarn` sesuai preferensi; pnpm lock tersedia).
 - Jalankan dev server: `pnpm dev` (Next.js).
 - Build: `pnpm build`, lalu `pnpm start` untuk production server.
-- Pastikan env Supabase + Wablas + cron sudah diisi sebelum run agar booking/cron berfungsi.
+- Pastikan env Supabase + Fonnte + cron sudah diisi sebelum run agar booking/cron berfungsi.

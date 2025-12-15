@@ -187,8 +187,7 @@ Use the same value you set in Supabase secrets.
 
 **DO NOT SET THESE IN VERCEL:**
 - ❌ `SUPABASE_SERVICE_ROLE_KEY` - This should ONLY exist in Supabase Edge Functions
-- ❌ `WABLAS_TOKEN` - This should ONLY exist in Supabase Edge Functions
-- ❌ `WABLAS_SECRET_KEY` - This should ONLY exist in Supabase Edge Functions
+- ❌ `FONNTE_TOKEN` - This should ONLY exist in Supabase Edge Functions
 
 **Why?** These secrets should never be accessible from the frontend or build process.
 
@@ -462,13 +461,13 @@ pnpm build
 ### WhatsApp Not Sending
 
 **Check:**
-- WABLAS secrets are set in Supabase
+- FONNTE secrets are set in Supabase
 - Edge Function has access to secrets
 - Phone number format is correct
 
 **Solution:**
 1. Check Edge Function logs in Supabase
-2. Test Wablas API directly
+2. Test Fonnte API directly
 3. Verify secrets are correct
 
 ## Post-Deployment Checklist

@@ -1,25 +1,46 @@
+
 // lib/send-wa.ts
-export async function sendWhatsappTemplate(to: string, variables: Record<string, string>) {
+export async function sendWhatsappTemplate(
+  phone: string,
+  customerName: string,
+  bookingCode: string,
+  hotelName: string,
+  date: string,
+  time: string,
+  seats: number
+) {
   try {
-    // Use environment variable for WhatsApp API base URL
-    const baseUrl = process.env.WABLAS_BASE_URL || "https://sby.wablas.com"
-    const apiUrl = `${baseUrl}/api/v2/send-template`
-    
-    const res = await fetch(apiUrl, {
-      method: "POST",
+    const token = process.env.FONNTE_TOKEN
+
+    if (!token) {
+      console.error('FONNTE_TOKEN is not set')
+      return { success: false, error: 'Configuration error' }
+    }
+
+    const message = `Halo ${customerName}, booking shuttle kamu berhasil.
+  Hotel: ${hotelName}
+Tanggal: ${date}
+Jam: ${time} WIB
+Kursi: ${seats} penumpang
+Kode Booking: ${bookingCode}
+
+Harap simpan kode ini untuk naik shuttle.Terima kasih.`
+
+    const formData = new FormData()
+    formData.append('target', phone)
+    formData.append('message', message)
+    formData.append('countryCode', '62')
+
+    const response = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
       headers: {
-        Authorization: process.env.WABLAS_API_KEY!,
-        "Content-Type": "application/json",
+        'Authorization': token,
       },
-      body: JSON.stringify({
-        phone: to, // format: 628xxxxx
-        template_id: process.env.WABLAS_TEMPLATE_ID, // masukkan ID template kamu
-        data: variables,
-      }),
+      body: formData,
     })
 
-    const json = await res.json()
-    return { success: res.ok, response: json }
+    const data = await response.json()
+    return { success: response.ok && !!data.status, data }
   } catch (error) {
     return { success: false, error }
   }

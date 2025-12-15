@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       caption: `Tiket Shuttle - ${booking.booking_code}`,
     })
 
-    const waErrorMessage = waResult.ok ? null : (waResult.data as any)?.error ?? "Wablas send failed"
+    const waErrorMessage = waResult.ok ? null : (waResult.data as any)?.error ?? "Fonnte send failed"
 
     const { error: logError } = await supabase
       .from("bookings")

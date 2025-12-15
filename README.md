@@ -7,7 +7,7 @@ A hotel shuttle bus booking system for Ibis Jakarta Airport hotels (Ibis styles 
 - **Real-time shuttle booking** with live capacity tracking
 - **Hotel selection** between Ibis styles and Ibis Budget Jakarta Airport
 - **Schedule selection** with visual capacity indicators
-- **WhatsApp ticket delivery** using Wablas API integration
+- **WhatsApp ticket delivery** using Fonnte API integration
 - **Booking tracking** via unique booking codes
 - **Admin dashboard** for managing bookings and schedules
 - **Secure Edge Functions** for protected business logic
@@ -90,9 +90,8 @@ NEXTAUTH_URL=http://localhost:3000
 CRON_SECRET=local-dev-secret
 
 # WhatsApp (use test credentials or leave as-is for development)
-WABLAS_BASE_URL=https://bdg.wablas.com
-WABLAS_TOKEN=your-test-token
-WABLAS_SECRET_KEY=your-test-secret
+# WhatsApp (Fonnte)
+FONNTE_TOKEN=your-fonnte-token
 ```
 
 ### Step 4: Create Edge Functions (Local Only)
@@ -249,8 +248,7 @@ All sensitive credentials are managed via Supabase CLI secrets:
 ```bash
 # Set secrets (NEVER commit these)
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY="..."
-supabase secrets set WABLAS_TOKEN="..."
-supabase secrets set WABLAS_SECRET_KEY="..."
+supabase secrets set FONNTE_TOKEN="your-token"
 supabase secrets set APP_BASE_URL="..."
 
 # List secrets (values are encrypted)
@@ -270,10 +268,18 @@ supabase login
 # Link to your production project
 supabase link --project-ref <your-project-ref>
 
-# Set production secrets
+### 6. WhatsApp Integration
+
+We use **Fonnte** for sending WhatsApp notifications (OTP, Tickets, etc).
+
+1.  Register at [Fonnte.com](https://fonnte.com).
+2.  Link your WhatsApp device.
+3.  Get your **API Token** from the dashboard.
+4.  Set the token in Supabase secrets:
+
+```bash
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY="<your-key>"
-supabase secrets set WABLAS_TOKEN="<your-token>"
-supabase secrets set WABLAS_SECRET_KEY="<your-secret>"
+supabase secrets set FONNTE_TOKEN="<your-token>"
 supabase secrets set APP_BASE_URL="https://your-domain.com"
 
 # Deploy Edge Functions
