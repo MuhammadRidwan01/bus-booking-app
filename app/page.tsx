@@ -60,7 +60,7 @@ export default function HomePage() {
               </Button>
             </Link>
 
-            <Link href="/booking/ibis-style">
+            <Link href="/booking/ibis-styles">
               <Button
                 size="sm"
                 className="rounded-full shadow-md px-4 text-xs sm:text-sm"
@@ -175,8 +175,8 @@ export default function HomePage() {
 
                   <CardContent className="grid grid-cols-1 gap-4" >
                     <HotelCard
-                      name="Ibis Style Jakarta Airport"
-                      slug="/booking/ibis-style"
+                      name="Ibis styles Jakarta Airport"
+                      slug="/booking/ibis-styles"
                       image="/ISJA-depan.jpeg"
                       logo="/ibis-styles-logo.png"
                       badge="Style"
@@ -288,14 +288,14 @@ export default function HomePage() {
 
             <div className="flex items-center gap-2 text-sm text-slate-300">
               <MapPin className="h-4 w-4" />
-              Ibis Style & Budget Jakarta Airport lobbies
+              Ibis styles & Budget Jakarta Airport lobbies
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm text-slate-300">
             <div>
               <p className="font-semibold text-slate-100 mb-2">Contact</p>
-              <p>Ibis Style: +62 21 xxxx xxxx</p>
+              <p>Ibis styles: +62 21 xxxx xxxx</p>
               <p>Ibis Budget: +62 21 xxxx xxxx</p>
             </div>
             <div>

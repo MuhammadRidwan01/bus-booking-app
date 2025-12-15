@@ -13,7 +13,7 @@ const bookingSchema = z.object({
   bookingDate: z.string().min(1, "Tanggal booking harus dipilih"),
   scheduleId: z.string().uuid("Schedule ID tidak valid"),
   passengerCount: z.number().min(1).max(5, "Jumlah penumpang maksimal 5 orang"),
-  roomNumber: z.string().min(1, "Nomor kamar harus diisi"),
+  flightNumber: z.string().min(1, "Nomor penerbangan harus diisi"),
   idempotencyKey: z.string().min(8, "Idempotency key tidak valid"),
   hasWhatsapp: z.enum(["yes", "no"]).default("yes"),
   countryCode: z.string().min(1, "Kode negara harus diisi"),
@@ -37,7 +37,7 @@ export async function createBooking(formData: FormData) {
       bookingDate: formData.get("bookingDate") as string,
       scheduleId: formData.get("scheduleId") as string,
       passengerCount: Number.parseInt(formData.get("passengerCount") as string),
-      roomNumber: formData.get("roomNumber") as string,
+      flightNumber: formData.get("flightNumber") as string,
       idempotencyKey: formData.get("idempotencyKey") as string,
       hasWhatsapp: ((formData.get("hasWhatsapp") as string) || "yes") as "yes" | "no",
       countryCode: (formData.get("countryCode") as string) || "62",
@@ -47,7 +47,7 @@ export async function createBooking(formData: FormData) {
 
     // Call Edge Function with anon key (public booking)
     const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/booking`
-    
+
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
@@ -91,7 +91,7 @@ export async function createBookingOptimistic(formData: FormData) {
       bookingDate: formData.get("bookingDate") as string,
       scheduleId: formData.get("scheduleId") as string,
       passengerCount: Number.parseInt(formData.get("passengerCount") as string),
-      roomNumber: formData.get("roomNumber") as string,
+      flightNumber: formData.get("flightNumber") as string,
       idempotencyKey: formData.get("idempotencyKey") as string,
       hasWhatsapp: ((formData.get("hasWhatsapp") as string) || "yes") as "yes" | "no",
       countryCode: (formData.get("countryCode") as string) || "62",
@@ -101,7 +101,7 @@ export async function createBookingOptimistic(formData: FormData) {
 
     // Call Edge Function with anon key (public booking)
     const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/booking`
-    
+
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
@@ -132,7 +132,7 @@ export async function getBookingByCode(code: string) {
   try {
     // Call Edge Function with anon key (public access)
     const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/booking-status?code=${encodeURIComponent(code)}`
-    
+
     const response = await fetch(edgeFunctionUrl, {
       method: 'GET',
       headers: {

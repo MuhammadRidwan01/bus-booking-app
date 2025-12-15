@@ -12,7 +12,7 @@ export interface BookingFormData {
   bookingDate: string
   scheduleId: string
   passengerCount: number
-  roomNumber: string
+  flightNumber: string
   idempotencyKey: string
   hasWhatsapp: "yes" | "no"
 }
@@ -39,9 +39,9 @@ export async function createBooking(data: BookingFormData): Promise<{
   try {
     // Get user session for JWT token
     const { data: { session } } = await supabase.auth.getSession()
-    
+
     const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/booking`
-    
+
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
@@ -50,16 +50,16 @@ export async function createBooking(data: BookingFormData): Promise<{
       },
       body: JSON.stringify(data)
     })
-    
+
     const result = await response.json()
-    
+
     if (!response.ok) {
       return {
         ok: false,
         error: result.error || 'Failed to create booking'
       }
     }
-    
+
     return {
       ok: true,
       data: result.data
@@ -85,32 +85,32 @@ export async function getBookingStatus(code: string): Promise<{
   try {
     // Get user session for JWT token (optional for public access)
     const { data: { session } } = await supabase.auth.getSession()
-    
+
     const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/booking-status?code=${encodeURIComponent(code)}`
-    
+
     const headers: HeadersInit = {
       'Content-Type': 'application/json'
     }
-    
+
     // Include JWT if available (but not required for public access)
     if (session?.access_token) {
       headers['Authorization'] = `Bearer ${session.access_token}`
     }
-    
+
     const response = await fetch(edgeFunctionUrl, {
       method: 'GET',
       headers
     })
-    
+
     const result = await response.json()
-    
+
     if (!response.ok) {
       return {
         ok: false,
         error: result.error || 'Failed to get booking status'
       }
     }
-    
+
     return {
       ok: true,
       found: result.found,
@@ -134,7 +134,7 @@ export async function createAdminBooking(data: {
   customerName: string
   phoneNumber: string
   passengerCount: number
-  roomNumber: string
+  flightNumber: string
 }): Promise<{
   ok: boolean
   data?: any
@@ -144,9 +144,9 @@ export async function createAdminBooking(data: {
   try {
     // Get admin session for JWT token
     const { data: { session } } = await supabase.auth.getSession()
-    
+
     const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/admin-booking`
-    
+
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
@@ -155,16 +155,16 @@ export async function createAdminBooking(data: {
       },
       body: JSON.stringify(data)
     })
-    
+
     const result = await response.json()
-    
+
     if (!response.ok) {
       return {
         ok: false,
         error: result.error || 'Failed to create admin booking'
       }
     }
-    
+
     return {
       ok: true,
       data: result.data,

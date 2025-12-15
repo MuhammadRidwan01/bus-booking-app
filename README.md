@@ -1,11 +1,11 @@
 # Shuttle Bus Booking System
 
-A hotel shuttle bus booking system for Ibis Jakarta Airport hotels (Ibis Style and Ibis Budget). This application provides a streamlined booking flow for guests to reserve seats on airport shuttle buses with real-time capacity tracking.
+A hotel shuttle bus booking system for Ibis Jakarta Airport hotels (Ibis styles and Ibis Budget). This application provides a streamlined booking flow for guests to reserve seats on airport shuttle buses with real-time capacity tracking.
 
 ## 🚀 Features
 
 - **Real-time shuttle booking** with live capacity tracking
-- **Hotel selection** between Ibis Style and Ibis Budget Jakarta Airport
+- **Hotel selection** between Ibis styles and Ibis Budget Jakarta Airport
 - **Schedule selection** with visual capacity indicators
 - **WhatsApp ticket delivery** using Wablas API integration
 - **Booking tracking** via unique booking codes

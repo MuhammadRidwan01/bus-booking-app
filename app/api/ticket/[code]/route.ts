@@ -6,7 +6,7 @@ import { formatDate, formatTime } from "@/lib/utils"
 export async function GET(req: NextRequest, ctx: { params: Promise<{ code: string }> }) {
   try {
     const { code } = await ctx.params
-    
+
     // Validate booking code format
     if (!code || code.trim().length === 0) {
       console.error('[Ticket API] Invalid booking code: empty or missing')
@@ -66,12 +66,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
       departureTime: booking.departure_time ? formatTime(booking.departure_time) : undefined,
       destination: booking.destination,
       passengerCount: booking.passenger_count,
-      roomNumber: (booking as any).room_number,
+      flightNumber: (booking as any).flight_number,
       trackUrl,
     })
 
     const buffer = Buffer.from(pdfBytes)
-    
+
     return new NextResponse(buffer, {
       status: 200,
       headers: {
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     })
-    
+
     return NextResponse.json(
       { ok: false, error: "Gagal membuat tiket PDF. Silakan coba lagi." },
       { status: 500 }

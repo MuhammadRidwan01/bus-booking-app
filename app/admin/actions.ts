@@ -466,11 +466,11 @@ export async function exportPassengersCsv(scheduleId: string) {
   const supabase = await getSupabaseAdmin()
   const { data } = await supabase
     .from("booking_details")
-    .select("booking_code, customer_name, phone, passenger_count, room_number, schedule_date, departure_time")
+    .select("booking_code, customer_name, phone, passenger_count, flight_number, schedule_date, departure_time")
     .eq("daily_schedule_id", scheduleId)
 
   const rows = data ?? []
-  const header = ["booking_code","customer_name","phone","passenger_count","room_number","schedule_date","departure_time"]
+  const header = ["booking_code", "customer_name", "phone", "passenger_count", "flight_number", "schedule_date", "departure_time"]
   const csv = [
     header.join(","),
     ...rows.map((r) =>

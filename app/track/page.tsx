@@ -116,14 +116,14 @@ export default function TrackPage() {
                       onClick={() => {
                         if (downloading) return
                         setDownloading(true)
-                        
+
                         const link = document.createElement('a')
                         link.href = `/api/ticket/${booking.booking_code}`
                         link.download = `shuttle-ticket-${booking.booking_code}.pdf`
                         link.style.display = 'none'
                         document.body.appendChild(link)
                         link.click()
-                        
+
                         // Clean up and reset state after a delay
                         setTimeout(() => {
                           document.body.removeChild(link)
@@ -145,7 +145,7 @@ export default function TrackPage() {
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <InfoCard icon={<Bus className="h-4 w-4" />} title="Hotel" value={booking.hotel_name} />
-                    {booking.room_number && <InfoCard icon={<MapPin className="h-4 w-4" />} title="Room" value={booking.room_number} />}
+                    {booking.flight_number && <InfoCard icon={<MapPin className="h-4 w-4" />} title="Flight" value={booking.flight_number} />}
                     <InfoCard icon={<Calendar className="h-4 w-4" />} title="Date" value={formatDate(booking.schedule_date)} />
                     <InfoCard icon={<Clock className="h-4 w-4" />} title="Departure" value={`${formatTime(booking.departure_time)} WIB`} />
                     <InfoCard icon={<MapPin className="h-4 w-4" />} title="Destination" value={booking.destination} />
@@ -156,9 +156,8 @@ export default function TrackPage() {
                     <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <span className="font-semibold text-slate-800">Ticket status</span>
                       <span
-                        className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                          booking.status === "confirmed" ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700"
-                        }`}
+                        className={`rounded-full px-3 py-1 text-sm font-semibold ${booking.status === "confirmed" ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700"
+                          }`}
                       >
                         {booking.status === "confirmed" ? "Confirmed" : "Cancelled"}
                       </span>

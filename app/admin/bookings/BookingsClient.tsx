@@ -82,7 +82,7 @@ export default function BookingsClient({
     customerName: "",
     phoneNumber: "",
     passengerCount: 1,
-    roomNumber: "",
+    flightNumber: "",
   })
   const [schedules, setSchedules] = useState<any[]>([])
   const [schedulesLoading, setSchedulesLoading] = useState(false)
@@ -176,9 +176,9 @@ export default function BookingsClient({
     const payload =
       range === "today"
         ? {
-            startDate: format(new Date(), "yyyy-MM-dd"),
-            endDate: format(new Date(), "yyyy-MM-dd"),
-          }
+          startDate: format(new Date(), "yyyy-MM-dd"),
+          endDate: format(new Date(), "yyyy-MM-dd"),
+        }
         : filters
     const csv = await exportBookingsCsv(payload as any)
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
@@ -240,7 +240,7 @@ export default function BookingsClient({
       form.scheduleId === "none" ||
       !form.customerName ||
       !form.phoneNumber ||
-      !form.roomNumber
+      !form.flightNumber
     ) {
       toast.error("Lengkapi semua field")
       return
@@ -257,7 +257,7 @@ export default function BookingsClient({
           customerName: form.customerName,
           phoneNumber: form.phoneNumber,
           passengerCount: form.passengerCount,
-          roomNumber: form.roomNumber,
+          flightNumber: form.flightNumber,
         }),
       }).then((r) => r.json())
 
@@ -272,7 +272,7 @@ export default function BookingsClient({
           customerName: "",
           phoneNumber: "",
           passengerCount: 1,
-          roomNumber: "",
+          flightNumber: "",
         })
         startTransition(async () => {
           const data = await fetchBookingsAction(filters as any)
@@ -614,14 +614,14 @@ export default function BookingsClient({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">Room number</Label>
+                      <Label className="text-xs">Flight number</Label>
                       <Input
                         placeholder="e.g. 305 / 5A"
-                        value={form.roomNumber}
+                        value={form.flightNumber}
                         onChange={(e) =>
                           setForm((f) => ({
                             ...f,
-                            roomNumber: e.target.value,
+                            flightNumber: e.target.value,
                           }))
                         }
                         className="h-9 text-xs"
@@ -800,8 +800,8 @@ export default function BookingsClient({
                               {b.passenger_count}
                             </p>
                             <p>
-                              <span className="font-semibold">Room:</span>{" "}
-                              {(b as any).room_number ?? "-"}
+                              <span className="font-semibold">Flight:</span>{" "}
+                              {(b as any).flight_number ?? "-"}
                             </p>
                             <p>
                               <span className="font-semibold">

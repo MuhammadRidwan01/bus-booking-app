@@ -9,7 +9,7 @@ interface TicketPayload {
   departureTime?: string
   destination?: string
   passengerCount?: number
-  roomNumber?: string | null
+  flightNumber?: string | null
   trackUrl: string
 }
 
@@ -35,7 +35,7 @@ function sanitizeText(text: string, font: PDFFont): string {
       if (char === '"' || char === '"') return '"'
       if (char === '\u2018' || char === '\u2019') return "'"  // Left/right single quotes
       if (char === '…') return '...'
-      
+
       // For other characters, check if it's a letter/number or replace with space
       return char.match(/[\p{L}\p{N}]/u) ? '?' : ' '
     }
@@ -53,7 +53,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   const indigo500 = rgb(0.388, 0.376, 0.957)    // #6366F1 - Indigo accent
   const emerald500 = rgb(0.063, 0.725, 0.557)   // #10B981 - Emerald accent
   const sky500 = rgb(0.055, 0.678, 0.957)       // #0EA5E9 - Sky blue
-  
+
   // Slate Scale (text & backgrounds)
   const slate900 = rgb(0.059, 0.078, 0.114)     // #0F172A - Darkest text
   const slate700 = rgb(0.2, 0.247, 0.333)       // #334155 - Dark text
@@ -62,10 +62,10 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   const slate400 = rgb(0.58, 0.639, 0.722)      // #94A3B8 - Lighter text
   const slate300 = rgb(0.796, 0.835, 0.886)     // #CBD5E1 - Borders
   const slate50 = rgb(0.976, 0.984, 0.992)      // #F8FAFC - Lightest backgrounds
-  
+
   // Functional Colors
   const white = rgb(1, 1, 1)                    // #FFFFFF
-  
+
   // Accent Colors
   const warningAmber = rgb(1, 0.973, 0.882)     // #FFF8E1 - Warning background
   const warningAmberBorder = rgb(0.976, 0.843, 0.467) // #F9D777 - Warning border
@@ -126,7 +126,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   // Subtle, refined shadow - professional restraint
   const drawSubtleShadow = (x: number, y: number, width: number, height: number) => {
     const shadowColor = rgb(0, 0, 0)
-    
+
     // Single elegant shadow layer
     page.drawRectangle({
       x: x + 1,
@@ -159,7 +159,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     color: indigo500,
     opacity: 0.25,
   })
-  
+
   // NIRMANA TITIK - BOLD dot pattern composition throughout header
   // Large constellation pattern - top right
   const headerDotsLarge = [
@@ -174,7 +174,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     { x: 390, y: 605, size: 3, opacity: 0.16 },
     { x: 365, y: 585, size: 2.5, opacity: 0.13 },
   ]
-  
+
   // Scattered dots across header - creates texture
   const headerDotsScattered = [
     { x: 50, y: 620, size: 2, opacity: 0.1 },
@@ -192,7 +192,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     { x: 280, y: 600, size: 1.5, opacity: 0.08 },
     { x: 300, y: 615, size: 2, opacity: 0.1 },
   ]
-  
+
   // Bottom header dots - creates flow
   const headerDotsBottom = [
     { x: 60, y: 495, size: 2, opacity: 0.09 },
@@ -202,7 +202,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     { x: 180, y: 495, size: 2, opacity: 0.09 },
     { x: 210, y: 500, size: 1.5, opacity: 0.08 },
   ]
-  
+
   const allHeaderDots = headerDotsLarge.concat(headerDotsScattered).concat(headerDotsBottom)
   allHeaderDots.forEach(dot => {
     page.drawCircle({
@@ -217,10 +217,10 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   // Header content with better hierarchy
   drawText("SHUTTLE TICKET", 35, 600, 16, rgb(0.9, 0.93, 0.98))
   drawText(payload.bookingCode || "-", 35, 565, 28, white, true)
-  
+
   // Hotel name
   drawText(payload.hotelName || "-", 35, 537, 13, white, true)
-  
+
   // Service tagline
   drawText("Ibis Airport Shuttle Service • Free for Hotel Guests", 35, 495, 9, rgb(0.85, 0.88, 0.95))
 
@@ -233,10 +233,10 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     height: 75,
     color: blue600,
   })
-  
+
   // Subtle shadow
   drawSubtleShadow(35, 395, 360, 75)
-  
+
   // Clean white card
   page.drawRectangle({
     x: 35,
@@ -247,7 +247,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     borderColor: slate300,
     borderWidth: 0.5,
   })
-  
+
   // BOLD dot pattern around route section
   const routeDots = [
     // Right side cluster
@@ -267,7 +267,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     { x: 250, y: 467, size: 2, opacity: 0.09 },
     { x: 300, y: 464, size: 1.5, opacity: 0.08 },
   ]
-  
+
   routeDots.forEach(dot => {
     page.drawCircle({
       x: dot.x,
@@ -312,7 +312,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     color: slate50,
   })
   drawText(payload.scheduleDate || "-", 55, 410, 9, slate900)
-  
+
   page.drawRectangle({
     x: 238,
     y: 405,
@@ -334,9 +334,9 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     { label: "DATE", value: payload.scheduleDate || "-", accent: blue600 },
     { label: "TIME", value: payload.departureTime ? `${payload.departureTime} WIB` : "-", accent: indigo500 },
     { label: "PASSENGERS", value: payload.passengerCount ? `${payload.passengerCount} Person(s)` : "-", accent: emerald500 },
-    { label: "ROOM", value: payload.roomNumber || "-", accent: sky500 },
+    { label: "FLIGHT", value: payload.flightNumber || "-", accent: sky500 },
   ]
-  
+
   // EXTENSIVE dot pattern around cards - creates strong visual flow
   const cardAreaDots = [
     // Left vertical line
@@ -364,7 +364,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     { x: 210, y: 290, size: 2, opacity: 0.08 },
     { x: 210, y: 270, size: 1.5, opacity: 0.07 },
   ]
-  
+
   cardAreaDots.forEach(dot => {
     page.drawCircle({
       x: dot.x,
@@ -380,7 +380,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     const col = idx % 2
     const x = gridStartX + col * (cardWidth + cardSpacing)
     const y = gridStartY - row * (cardHeight + cardSpacing)
-    
+
     // Refined accent bar - thin and elegant
     page.drawRectangle({
       x,
@@ -389,10 +389,10 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
       height: 2,
       color: card.accent,
     })
-    
+
     // Subtle shadow
     drawSubtleShadow(x, y, cardWidth, cardHeight)
-    
+
     // Clean card background
     page.drawRectangle({
       x,
@@ -406,7 +406,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
 
     // Label
     drawText(card.label, x + 12, y + cardHeight - 18, 8, slate500, true)
-    
+
     // Value
     drawWrapped(card.value, x + 12, y + cardHeight - 36, cardWidth - 24, 14, slate900, true)
   })
@@ -420,10 +420,10 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     height: 95,
     color: blue600,
   })
-  
+
   // Subtle shadow
   drawSubtleShadow(35, 115, 360, 95)
-  
+
   // Clean white card
   page.drawRectangle({
     x: 35,
@@ -434,7 +434,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     borderColor: slate300,
     borderWidth: 0.5,
   })
-  
+
   // BOLD dot pattern around passenger & QR section
   const passengerDots = [
     // Left cluster near passenger
@@ -460,7 +460,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     { x: 385, y: 165, size: 2, opacity: 0.09 },
     { x: 380, y: 155, size: 1.5, opacity: 0.08 },
   ]
-  
+
   passengerDots.forEach(dot => {
     page.drawCircle({
       x: dot.x,
@@ -476,7 +476,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   drawWrapped(payload.customerName || "-", 50, 173, 200, 16, slate900, true, 4)
 
   // QR code with refined frame
-  const qrDataUrl = await QRCode.toDataURL(payload.trackUrl || "", { 
+  const qrDataUrl = await QRCode.toDataURL(payload.trackUrl || "", {
     width: 300,
     margin: 2,
     errorCorrectionLevel: 'M',
@@ -489,10 +489,10 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   const qrImage = await pdfDoc.embedPng(Buffer.from(qrBase64, "base64"))
   const qrSize = 75
   const qrDims = qrImage.scale(qrSize / qrImage.width)
-  
+
   const qrX = 300
   const qrY = 130
-  
+
   // Subtle shadow
   page.drawRectangle({
     x: qrX - 4,
@@ -502,7 +502,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     color: rgb(0, 0, 0),
     opacity: 0.04,
   })
-  
+
   // Refined thin border
   page.drawRectangle({
     x: qrX - 3,
@@ -518,21 +518,21 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     height: qrDims.height + 4,
     color: white,
   })
-  
+
   page.drawImage(qrImage, {
     x: qrX,
     y: qrY,
     width: qrDims.width,
     height: qrDims.height,
   })
-  
+
   // Clean label
   drawText("SCAN TO TRACK", 295, 122, 7, slate600, true)
 
   // IMPORTANT INFO - Refined warning section
   // Subtle shadow
   drawSubtleShadow(30, 30, 360, 70)
-  
+
   // Clean warning box
   page.drawRectangle({
     x: 30,
@@ -543,7 +543,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     borderColor: warningAmberBorder,
     borderWidth: 1,
   })
-  
+
   // BOLD dot pattern on warning section - strong emphasis
   const warningDots = [
     // Right cluster
@@ -567,7 +567,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     { x: 250, y: 80, size: 2, opacity: 0.1 },
     { x: 300, y: 85, size: 1.5, opacity: 0.09 },
   ]
-  
+
   warningDots.forEach(dot => {
     page.drawCircle({
       x: dot.x,
@@ -577,10 +577,10 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
       opacity: dot.opacity,
     })
   })
-  
+
   // Clean title
   drawText("IMPORTANT INFORMATION", 45, 87, 10, warningAmberText, true)
-  
+
   // Bullet points with better spacing
   drawText("• Arrive 10 minutes before departure", 45, 70, 8, warningAmberText)
   drawText("• Bring valid identification", 45, 58, 8, warningAmberText)
@@ -595,7 +595,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     height: 20,
     color: slate50,
   })
-  
+
   // Dot pattern in footer - final touch
   const footerDots = [
     { x: 25, y: 12, size: 1.5, opacity: 0.08 },
@@ -603,7 +603,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     { x: 395, y: 12, size: 1.5, opacity: 0.08 },
     { x: 395, y: 8, size: 1, opacity: 0.06 },
   ]
-  
+
   footerDots.forEach(dot => {
     page.drawCircle({
       x: dot.x,
@@ -613,11 +613,11 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
       opacity: dot.opacity,
     })
   })
-  
+
   drawText("Ibis Airport Shuttle", 35, 10, 8, slate500, true)
   drawText("•", 125, 10, 8, slate400)
   drawText("Free for Hotel Guests", 135, 10, 8, slate500)
-  
+
   // Booking code in colored box
   page.drawRectangle({
     x: 270,

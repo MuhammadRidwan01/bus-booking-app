@@ -10,7 +10,7 @@ const bodySchema = z.object({
   customerName: z.string().min(1),
   phoneNumber: z.string().min(5),
   passengerCount: z.number().int().positive().max(5),
-  roomNumber: z.string().min(1),
+  flightNumber: z.string().min(1),
 })
 
 export async function POST(req: NextRequest) {
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     // Call Edge Function
     const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/admin-booking`
-    
+
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {

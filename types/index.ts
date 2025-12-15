@@ -13,7 +13,7 @@ export interface BookingFormData {
   bookingDate: string
   scheduleId: string
   passengerCount: number
-  roomNumber: string
+  flightNumber: string
   hasWhatsapp: "yes" | "no"
   idempotencyKey: string
 }
@@ -29,7 +29,7 @@ export interface BookingConfirmation {
   destination: string
   scheduleDate: string
   passengerCount: number
-  roomNumber?: string
+  flightNumber?: string
   status: "confirmed" | "cancelled"
   whatsappSent: boolean
 }
@@ -106,7 +106,7 @@ export interface BookingDetails extends Booking {
   departure_time: string
   destination: string
   schedule_date: string
-  room_number?: string
+  flight_number?: string
 }
 
 export interface ScheduleWithCapacity {
@@ -120,9 +120,9 @@ export interface ScheduleWithCapacity {
   isPast?: boolean
 }
 
-export interface RoomNumber {
+export interface FlightNumber {
   id: string
   hotel_id: string
-  room_number: string
+  flight_number: string
   is_active: boolean
 }

@@ -25,7 +25,7 @@ export default function BookingPage() {
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>("")
   const [passengerCount, setPassengerCount] = useState<number>(1)
-  const [roomNumber, setRoomNumber] = useState<string>("")
+  const [flightNumber, setFlightNumber] = useState<string>("")
   const [phoneNumber, setPhoneNumber] = useState<string>("")
   const [hasWhatsapp, setHasWhatsapp] = useState<string>("yes")
   const [countryCode, setCountryCode] = useState<string>("62")
@@ -36,11 +36,11 @@ export default function BookingPage() {
 
   const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug)
 
-  const hotelName = hotelSlug === "ibis-style" ? "Ibis Style Jakarta Airport" : "Ibis Budget Jakarta Airport"
-  const hotelShortName = hotelSlug === "ibis-style" ? "Ibis Style" : "Ibis Budget"
+  const hotelName = hotelSlug === "ibis-styles" ? "Ibis styles Jakarta Airport" : "Ibis Budget Jakarta Airport"
+  const hotelShortName = hotelSlug === "ibis-styles" ? "Ibis styles" : "Ibis Budget"
 
   const hotelImages = {
-    "ibis-style": {
+    "ibis-styles": {
       logo: "/ibis-styles-logo.png",
       main: "/ISJA-depan.jpeg",
       photos: ["/ISJA-depan.jpeg", "/ISJA-resize.jpg", "/photi1a.jpg"]
@@ -61,7 +61,7 @@ export default function BookingPage() {
   }
 
   const isFormValid =
-    Boolean(selectedScheduleId && selectedDate && passengerCount >= 1 && roomNumber.trim() && idempotencyKey && phoneNumber.trim())
+    Boolean(selectedScheduleId && selectedDate && passengerCount >= 1 && flightNumber.trim() && idempotencyKey && phoneNumber.trim())
 
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -239,7 +239,7 @@ export default function BookingPage() {
                     <input type="hidden" name="scheduleId" value={selectedScheduleId || ""} />
                     <input type="hidden" name="bookingDate" value={selectedDate} />
                     <input type="hidden" name="passengerCount" value={passengerCount} />
-                    <input type="hidden" name="roomNumber" value={roomNumber} />
+                    <input type="hidden" name="flightNumber" value={flightNumber} />
                     <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
                     {/* FORM — NAME */}
@@ -315,15 +315,15 @@ export default function BookingPage() {
                         </Select>
                       </FormField>
 
-                      <FormField label="Room number">
+                      <FormField label="Flight number">
                         <div className="relative">
                           <Input
-                            id="roomNumber"
+                            id="flightNumber"
                             required
-                            placeholder="e.g., 101, 205"
+                            placeholder="e.g., GA123"
                             className="h-11 rounded-xl pl-11"
-                            value={roomNumber}
-                            onChange={(e) => setRoomNumber(e.target.value)}
+                            value={flightNumber}
+                            onChange={(e) => setFlightNumber(e.target.value)}
                           />
                           <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         </div>
@@ -376,7 +376,7 @@ export default function BookingPage() {
                   <ul className="space-y-1 text-sm text-slate-700">
                     <li>Arrive at the lobby 10 minutes before departure.</li>
                     <li>Show your WhatsApp ticket when boarding.</li>
-                    <li>Ensure room number and passenger count are correct.</li>
+                    <li>Ensure flight number and passenger count are correct.</li>
                   </ul>
                 </CardContent>
               </Card>
