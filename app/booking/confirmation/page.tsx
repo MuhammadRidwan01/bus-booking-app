@@ -29,7 +29,7 @@ export default async function ConfirmationPage({
   if (bookingCode === 'loading') {
     const { ConfirmationTimeout } = await import("@/components/ConfirmationTimeout")
     return (
-      <PublicShell showBack backHref="/booking/ibis-style">
+      <PublicShell showBack backHref="/booking/ibis-styles">
         <ConfirmationTimeout />
         <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
           <div className="rounded-3xl bg-white/70 p-6 shadow-sm ring-1 ring-slate-100 animate-pulse">
@@ -83,7 +83,7 @@ export default async function ConfirmationPage({
   }
 
   return (
-    <PublicShell showBack backHref="/booking/ibis-style">
+    <PublicShell showBack backHref="/booking/ibis-styles">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
         <div className="rounded-3xl bg-white/70 p-6 shadow-sm ring-1 ring-slate-100">
           <div className="text-center space-y-3">

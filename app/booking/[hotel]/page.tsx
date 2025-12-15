@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useTransition, type ReactNode } from "react"
+import { useRef, useState, useTransition, useEffect, type ReactNode } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,8 +19,16 @@ import { BookingRecovery } from "@/components/BookingRecovery"
    PAGE
 ------------------------------------------------------------ */
 export default function BookingPage() {
+  const router = useRouter()
   const params = useParams()
   const hotelSlug = params.hotel as string
+
+  // Redirect legacy slug
+  useEffect(() => {
+    if (hotelSlug === "ibis-style") {
+      router.replace("/booking/ibis-styles")
+    }
+  }, [hotelSlug, router])
 
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>("")
@@ -31,7 +39,7 @@ export default function BookingPage() {
   const [countryCode, setCountryCode] = useState<string>("62")
   const [idempotencyKey] = useState(() => crypto.randomUUID())
   const formRef = useRef<HTMLDivElement | null>(null)
-  const router = useRouter()
+
   const [isPending, startTransition] = useTransition()
 
   const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug)

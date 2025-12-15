@@ -14,7 +14,7 @@ type Props = {
 }
 
 export function PublicNav({
-  ctaHref = "/booking/ibis-style",
+  ctaHref = "/booking/ibis-styles",
   ctaLabel = "Book now",
   showBack = false,
   backHref = "/",

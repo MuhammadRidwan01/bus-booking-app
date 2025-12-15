@@ -3,7 +3,7 @@ import { PublicShell } from "@/components/PublicShell"
 
 export default function ConfirmationLoading() {
   return (
-    <PublicShell showBack backHref="/booking/ibis-style">
+    <PublicShell showBack backHref="/booking/ibis-styles">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
         {/* Success Card Skeleton */}
         <div className="rounded-3xl bg-white/70 p-6 shadow-sm ring-1 ring-slate-100 animate-pulse">
