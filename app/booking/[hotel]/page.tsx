@@ -15,6 +15,18 @@ import Image from "next/image"
 import { PublicShell } from "@/components/PublicShell"
 import { BookingRecovery } from "@/components/BookingRecovery"
 
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // Fallback UUID generator
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
 /* ------------------------------------------------------------
    PAGE
 ------------------------------------------------------------ */
@@ -37,7 +49,7 @@ export default function BookingPage() {
   const [phoneNumber, setPhoneNumber] = useState<string>("")
   const [hasWhatsapp, setHasWhatsapp] = useState<string>("yes")
   const [countryCode, setCountryCode] = useState<string>("62")
-  const [idempotencyKey] = useState(() => crypto.randomUUID())
+  const [idempotencyKey] = useState(() => generateUUID())
   const formRef = useRef<HTMLDivElement | null>(null)
 
   const [isPending, startTransition] = useTransition()

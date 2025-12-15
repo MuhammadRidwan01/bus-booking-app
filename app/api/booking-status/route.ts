@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { clientConfig } from "@/lib/supabase-config"
+import { getSupabaseAdmin } from "@/lib/supabase-server"
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -11,47 +12,35 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Create Supabase client to get session
-    const supabase = createClient(clientConfig.supabaseUrl, clientConfig.supabaseAnonKey)
-    const { data: { session } } = await supabase.auth.getSession()
+    // 1. Fetch current WhatsApp status from Edge Function (for real-time accuracy if needed)
+    //    or rely on DB. Let's rely on DB for simplicity and speed, but maybe check edge for "latest" status if pending.
+    //    Actually, to keep it fast, let's just query the DB directly.
 
-    // Call Edge Function
-    const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/booking-status?code=${encodeURIComponent(code)}`
-    
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json'
-    }
-    
-    // Include JWT if available (but not required for public access)
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`
-    }
-    
-    const response = await fetch(edgeFunctionUrl, {
-      method: 'GET',
-      headers
-    })
+    const supabaseAdmin = await getSupabaseAdmin()
 
-    const result = await response.json()
+    // Fetch full details
+    const { data: booking, error } = await supabaseAdmin
+      .from("booking_details")
+      .select("*")
+      .eq("booking_code", code)
+      .single()
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { ok: false, error: result.error || 'Failed to get booking status' },
-        { status: response.status }
-      )
+    if (error || !booking) {
+      return NextResponse.json({ ok: false, error: "Booking not found" }, { status: 404 })
     }
 
-    // Return the same format as before for backward compatibility
     return NextResponse.json({
       ok: true,
       data: {
-        whatsapp_sent: result.data?.whatsapp_sent,
-        whatsapp_attempts: result.data?.whatsapp_attempts ?? 0,
-        whatsapp_last_error: result.data?.whatsapp_last_error,
+        whatsapp_sent: booking.whatsapp_sent,
+        whatsapp_attempts: booking.whatsapp_attempts ?? 0,
+        whatsapp_last_error: booking.whatsapp_last_error,
+        // Detailed info for UI
+        ...booking
       },
     })
   } catch (error) {
-    console.error("booking-status proxy error", error)
+    console.error("booking-status error", error)
     return NextResponse.json({ ok: false, error: "Internal error" }, { status: 500 })
   }
 }
