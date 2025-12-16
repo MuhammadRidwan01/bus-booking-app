@@ -111,7 +111,7 @@ export default function TrackPage() {
                     <p className="mt-1 text-3xl font-mono font-bold tracking-[0.2em]">{booking.booking_code}</p>
                   </div>
 
-                  {(booking.whatsapp_sent || (booking.whatsapp_attempts ?? 0) > 0 || booking.phone) && (
+                  {booking.status === "confirmed" && (booking.whatsapp_sent || (booking.whatsapp_attempts ?? 0) > 0 || booking.phone) && (
                     <Button
                       onClick={() => {
                         if (downloading) return
@@ -163,15 +163,22 @@ export default function TrackPage() {
                       </span>
                     </div>
 
-                    <BookingStatusCard
-                      bookingCode={booking.booking_code}
-                      initialStatus={{
-                        whatsapp_sent: booking.whatsapp_sent,
-                        whatsapp_attempts: booking.whatsapp_attempts ?? 0,
-                        whatsapp_last_error: booking.whatsapp_last_error ?? null,
-                        has_whatsapp: (booking as any).has_whatsapp,
-                      }}
-                    />
+                    {booking.status === "confirmed" ? (
+                      <BookingStatusCard
+                        bookingCode={booking.booking_code}
+                        initialStatus={{
+                          whatsapp_sent: booking.whatsapp_sent,
+                          whatsapp_attempts: booking.whatsapp_attempts ?? 0,
+                          whatsapp_last_error: booking.whatsapp_last_error ?? null,
+                          has_whatsapp: (booking as any).has_whatsapp,
+                        }}
+                      />
+                    ) : (
+                      <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                        <p className="font-semibold text-rose-900">Booking Cancelled</p>
+                        <p>This ticket has been cancelled. The schedule may have been cancelled by the operator.</p>
+                      </div>
+                    )}
                   </div>
 
                   {booking.status === "confirmed" && (

@@ -14,13 +14,19 @@ export function generateBookingCode(): string {
   return `${prefix}${timestamp}${random}`
 }
 
-export function formatDate(date: string | Date): string {
-  return format(new Date(date), "dd MMMM yyyy", { locale: id })
+export function formatDate(date: string | Date | null | undefined): string {
+  if (!date) return "-"
+  const parsed = new Date(date)
+  if (isNaN(parsed.getTime())) return "-"
+  return format(parsed, "dd MMMM yyyy", { locale: id })
 }
 
-export function formatTime(time: string): string {
+
+export function formatTime(time: string | null | undefined): string {
+  if (!time) return "-"
   return format(new Date(`2000-01-01T${time}`), "HH:mm")
 }
+
 
 export function getCapacityStatus(current: number, max: number): "available" | "almost-full" | "full" {
   const percentage = (current / max) * 100

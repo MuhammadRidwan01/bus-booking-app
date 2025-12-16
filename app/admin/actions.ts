@@ -437,9 +437,18 @@ export async function fetchSchedulesAction(filters: Record<string, any>) {
 
 export async function cancelSchedule(scheduleId: string) {
   const supabase = await getSupabaseAdmin()
+
+  // Get schedule with hotel info
   const { data: schedule } = await supabase
     .from("daily_schedules")
-    .select("id, schedule_date, status")
+    .select(`
+      id, schedule_date, status,
+      bus_schedules (
+        departure_time,
+        destination,
+        hotels ( name )
+      )
+    `)
     .eq("id", scheduleId)
     .single()
 
@@ -451,16 +460,110 @@ export async function cancelSchedule(scheduleId: string) {
     return { ok: false, error: "Tidak bisa membatalkan jadwal yang sudah lewat" }
   }
 
+  // Get all confirmed bookings BEFORE cancelling (to send notifications)
+  const { data: affectedBookings } = await supabase
+    .from("bookings")
+    .select("id, booking_code, customer_name, phone, has_whatsapp, whatsapp_attempts")
+    .eq("daily_schedule_id", scheduleId)
+    .eq("status", "confirmed")
+
+  // Cancel the schedule
   const { error } = await supabase
     .from("daily_schedules")
     .update({ status: "cancelled" })
     .eq("id", scheduleId)
 
-  await logAdminAction("CANCEL_SCHEDULE", { schedule_id: scheduleId, ok: !error })
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    await logAdminAction("CANCEL_SCHEDULE", { schedule_id: scheduleId, ok: false })
+    return { ok: false, error: error.message }
+  }
+
+  // Cancel all confirmed bookings on this schedule
+  const { data: cancelledBookings, error: bookingsError } = await supabase
+    .from("bookings")
+    .update({ status: "cancelled" })
+    .eq("daily_schedule_id", scheduleId)
+    .eq("status", "confirmed")
+    .select("id, booking_code")
+
+  if (bookingsError) {
+    console.error("Error cancelling bookings:", bookingsError)
+  }
+
+  // Send WhatsApp notifications to all affected passengers (fire-and-forget)
+  const busSchedule = Array.isArray(schedule.bus_schedules)
+    ? schedule.bus_schedules[0]
+    : schedule.bus_schedules
+  const hotelName = (busSchedule as any)?.hotels?.name ?? "Hotel"
+  const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "") || ""
+
+  let notificationsSent = 0
+  if (affectedBookings && affectedBookings.length > 0) {
+    for (const booking of affectedBookings) {
+      if ((booking as any).has_whatsapp === false) continue
+
+      const normalizedPhone = normalizeTo62(booking.phone)
+      const messageParts = [
+        `PEMBERITAHUAN PEMBATALAN JADWAL`,
+        ``,
+        `Yth. ${booking.customer_name},`,
+        ``,
+        `Dengan ini kami informasikan bahwa jadwal shuttle Anda telah dibatalkan.`,
+        ``,
+        `Detail Booking:`,
+        `Kode: ${booking.booking_code}`,
+        `Hotel: ${hotelName}`,
+        schedule.schedule_date ? `Tanggal: ${formatDate(schedule.schedule_date)}` : null,
+        busSchedule?.departure_time ? `Jam: ${formatTime(busSchedule.departure_time)} WIB` : null,
+        busSchedule?.destination ? `Tujuan: ${busSchedule.destination}` : null,
+        ``,
+        `Mohon maaf atas ketidaknyamanan ini. Silakan hubungi resepsionis hotel untuk penjadwalan ulang.`,
+        ``,
+        baseUrl ? `Lihat status tiket: ${baseUrl}/track?code=${booking.booking_code}` : null,
+        ``,
+        `Terima kasih.`,
+      ].filter(Boolean)
+
+
+      try {
+        const waResult = await sendWhatsappMessage({
+          phone: normalizedPhone,
+          message: messageParts.join("\n"),
+          caption: `Jadwal dibatalkan - ${booking.booking_code}`,
+        })
+
+        await supabase
+          .from("bookings")
+          .update({
+            whatsapp_attempts: ((booking as any).whatsapp_attempts ?? 0) + 1,
+            whatsapp_sent: waResult.ok,
+            whatsapp_last_error: waResult.ok ? null : (waResult.data as any)?.error ?? "Fonnte send failed (cancel notice)",
+          })
+          .eq("id", booking.id)
+
+        if (waResult.ok) notificationsSent++
+      } catch (waError) {
+        console.error("Error sending cancel notification:", waError)
+      }
+    }
+  }
+
+  await logAdminAction("CANCEL_SCHEDULE", {
+    schedule_id: scheduleId,
+    ok: true,
+    cancelled_bookings: cancelledBookings?.length ?? 0,
+    notifications_sent: notificationsSent
+  })
+
   revalidatePath("/admin/schedules")
-  return { ok: true }
+  return {
+    ok: true,
+    cancelledBookings: cancelledBookings?.length ?? 0,
+    notificationsSent
+  }
 }
+
+
 
 export async function exportPassengersCsv(scheduleId: string) {
   const supabase = await getSupabaseAdmin()

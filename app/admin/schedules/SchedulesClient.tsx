@@ -109,16 +109,30 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
   }
 
   const handleCancel = async (id: string) => {
-    const confirmed = confirm("Batalkan jadwal ini?")
+    // Get the schedule to show booking count in confirmation
+    const schedule = schedules.find(s => s.id === id)
+    const bookedCount = schedule?.current_booked ?? 0
+
+    const warningMessage = bookedCount > 0
+      ? `PERINGATAN!\n\nJadwal ini memiliki ${bookedCount} penumpang yang sudah booking.\n\nJika dibatalkan:\n• Semua tiket akan di-cancel\n• Notifikasi WhatsApp akan dikirim ke semua penumpang\n\nLanjutkan pembatalan?`
+      : `Batalkan jadwal ini?\n\nTidak ada booking pada jadwal ini.`
+
+    const confirmed = confirm(warningMessage)
     if (!confirmed) return
+
+    toast.info("Membatalkan jadwal dan mengirim notifikasi...")
     const res = await cancelSchedule(id)
     if (res.ok) {
-      toast.success("Jadwal dibatalkan")
+      const msg = (res as any).notificationsSent > 0
+        ? `Jadwal dibatalkan. ${(res as any).cancelledBookings} tiket di-cancel, ${(res as any).notificationsSent} notifikasi terkirim.`
+        : `Jadwal dibatalkan. ${(res as any).cancelledBookings ?? 0} tiket di-cancel.`
+      toast.success(msg)
       reload(filters)
     } else {
       toast.error(res.error ?? "Gagal batalkan jadwal")
     }
   }
+
 
   const handleExportPassengers = async (id: string) => {
     const csv = await exportPassengersCsv(id)
