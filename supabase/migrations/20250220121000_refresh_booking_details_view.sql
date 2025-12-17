@@ -1,0 +1,31 @@
+-- Refresh booking_details view to ensure daily_schedule_id and logging fields exist
+set local check_function_bodies = false;
+
+drop view if exists public.booking_details;
+create or replace view public.booking_details as
+select
+  b.id,
+  b.booking_code,
+  b.hotel_id,
+  b.daily_schedule_id,
+  b.customer_name,
+  b.phone,
+  b.passenger_count,
+  b.status,
+  b.whatsapp_sent,
+  b.whatsapp_attempts,
+  b.whatsapp_last_error,
+  b.room_number,
+  b.created_at,
+  b.updated_at,
+  h.name as hotel_name,
+  h.slug as hotel_slug,
+  bs.departure_time,
+  bs.destination,
+  ds.schedule_date
+from public.bookings b
+join public.hotels h on h.id = b.hotel_id
+join public.daily_schedules ds on ds.id = b.daily_schedule_id
+join public.bus_schedules bs on bs.id = ds.bus_schedule_id;
+
+comment on view public.booking_details is 'Aggregated booking info for admin/ops with schedule_id, logging, and room number.';

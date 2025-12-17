@@ -30,15 +30,15 @@ next-env.d.ts
 supabase/.temp/*
 
 # Supabase Edge Functions (NEVER commit)
-supabase/functions/**
-!supabase/functions/.gitkeep
+# supabase/functions/**
+# !supabase/functions/.gitkeep
 
 # Supabase migrations (NEVER commit)
-supabase/migrations/**
-!supabase/migrations/.gitkeep
+# supabase/migrations/**
+# !supabase/migrations/.gitkeep
 
 # Supabase seed data (NEVER commit)
-supabase/seed.sql
+# supabase/seed.sql
 
 # Generated database types
 types/supabase.ts
