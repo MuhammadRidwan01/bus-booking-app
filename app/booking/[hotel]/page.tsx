@@ -48,6 +48,8 @@ export default function BookingPage() {
   const [flightNumber, setFlightNumber] = useState<string>("")
   const [phoneNumber, setPhoneNumber] = useState<string>("")
   const [hasWhatsapp, setHasWhatsapp] = useState<string>("yes")
+  const [terminal, setTerminal] = useState<number>(1)
+  const [surfboard, setSurfboard] = useState<string>("no")
   const [countryCode, setCountryCode] = useState<string>("62")
   const [idempotencyKey] = useState(() => generateUUID())
   const formRef = useRef<HTMLDivElement | null>(null)
@@ -56,8 +58,8 @@ export default function BookingPage() {
 
   const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug)
 
-  const hotelName = hotelSlug === "ibis-styles" ? "Ibis styles Jakarta Airport" : "Ibis Budget Jakarta Airport"
-  const hotelShortName = hotelSlug === "ibis-styles" ? "Ibis styles" : "Ibis Budget"
+  const hotelName = hotelSlug === "ibis-styles" ? "Ibis styles Jakarta Airport" : "ibis Budget Jakarta Airport"
+  const hotelShortName = hotelSlug === "ibis-styles" ? "ibis styles" : "ibis Budget"
 
   const hotelImages = {
     "ibis-styles": {
@@ -335,7 +337,7 @@ export default function BookingPage() {
                         </Select>
                       </FormField>
 
-                      <FormField label="Flight number">
+                      <FormField label="Hotel Room Number">
                         <div className="relative">
                           <Input
                             id="flightNumber"
@@ -348,6 +350,38 @@ export default function BookingPage() {
                           <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         </div>
                       </FormField>
+                    </div>
+
+                    {/* Terminal */}
+                    <div className="">
+                      <FormField label="Terminal Destination">
+                        <Select
+                          value={terminal.toString()}
+                          onValueChange={(v) => setTerminal(Number(v))}
+                        >
+                          <SelectTrigger className="h-11 rounded-xl">
+                            <SelectValue placeholder="Select Terminal" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3].map((n) => (
+                              <SelectItem key={n} value={n.toString()}>Terminal {n}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormField>
+                    </div>
+
+                    <div className="">
+                      <Label className="text-sm font-semibold text-slate-800 mb-2">Bringing Surfboard?</Label>
+                      <Select name="surfboard" value={surfboard} onValueChange={setSurfboard}>
+                        <SelectTrigger className="h-10 rounded-xl">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="yes">Yes</SelectItem>
+                          <SelectItem value="no">No</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     {/* ERRORS */}
@@ -403,6 +437,7 @@ export default function BookingPage() {
             </div>
           </div>
         </div>
+      
 
       </div>
     </PublicShell>

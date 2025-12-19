@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createClient } from "@supabase/supabase-js"
 import { clientConfig } from "@/lib/supabase-config"
+import { Terminal } from "lucide-react"
 
 // Validation schema
 const bookingSchema = z.object({
@@ -95,6 +96,8 @@ export async function createBookingOptimistic(formData: FormData) {
       idempotencyKey: formData.get("idempotencyKey") as string,
       hasWhatsapp: ((formData.get("hasWhatsapp") as string) || "yes") as "yes" | "no",
       countryCode: (formData.get("countryCode") as string) || "62",
+      terminal: Number.parseInt(formData.get("terminal") as string),
+      surfboard: ((formData.get("surfboard") as string) || "yes") as "yes" | "no",
     }
 
     const validatedData = bookingSchema.parse(rawData)
