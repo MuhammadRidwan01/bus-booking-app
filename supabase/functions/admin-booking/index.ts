@@ -191,6 +191,8 @@ Deno.serve(async (req) => {
       busSchedule.destination ? `Destination: ${busSchedule.destination}` : null,
       `Date: ${formatDate(schedule.schedule_date)}`,
       busSchedule.departure_time ? `Time: ${formatTime(busSchedule.departure_time)} WIB` : null,
+      `Terminal: ${validatedData.terminal || 'N/A'}`,
+      `Surfboard: ${validatedData.surfboard === 'yes' ? 'Yes' : 'No'}`,
       `Booking code: ${bookingCode}`,
       `Track your ticket: ${trackLink}`,
       'Thank you.',

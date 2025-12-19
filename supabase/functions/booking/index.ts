@@ -27,6 +27,8 @@ const bookingRequestSchema = z.object({
   flightNumber: z.string().min(1, 'Nomor penerbangan harus diisi'),
   idempotencyKey: z.string().min(8, 'Idempotency key tidak valid'),
   hasWhatsapp: z.enum(['yes', 'no']).default('yes'),
+  terminal: z.string().optional(),
+  surfboard: z.enum(['yes', 'no']).default('no'),
 })
 
 type BookingRequest = z.infer<typeof bookingRequestSchema>
@@ -150,7 +152,7 @@ Deno.serve(async (req) => {
           hotel_id,
           max_capacity,
           departure_time,
-          destination
+          destination,
         )
       `)
       .eq('id', validatedData.scheduleId)
@@ -197,6 +199,8 @@ Deno.serve(async (req) => {
       status: 'confirmed',
       flight_number: validatedData.flightNumber,
       has_whatsapp: validatedData.hasWhatsapp === 'yes',
+      terminal: validatedData.terminal || null,
+      is_surfboard: validatedData.surfboard === 'yes',
     }
 
     if (idempotencySupported) {
@@ -255,12 +259,14 @@ Deno.serve(async (req) => {
 
     const messageParts = [
       `Halo ${validatedData.customerName}, booking shuttle kamu sudah berhasil.`,
-      `Hotel: ${hotel?.name ?? 'Ibis Hotel'}`,
+      `Hotel: ${hotel?.name ?? 'ibis Hotel'}`,
       `Tanggal: ${formatDate(validatedData.bookingDate)}`,
       busSchedule?.departure_time ? `Jam: ${formatTime(busSchedule.departure_time)} WIB` : null,
       busSchedule?.destination ? `Tujuan: ${busSchedule.destination}` : null,
       `Kode Booking: ${bookingCode}`,
       `Lacak tiket: ${trackLink}`,
+      `Terminal: ${validatedData.terminal ? validatedData.terminal : 'N/A'}`,
+      `Surfboard: ${validatedData.surfboard === 'yes' ? 'Yes' : 'No'}`,
       'Terima kasih.',
     ].filter(Boolean)
     const whatsappMessage = messageParts.join('\n')
@@ -304,6 +310,8 @@ Deno.serve(async (req) => {
           phone: normalizedPhone,
           passenger_count: validatedData.passengerCount,
           flight_number: validatedData.flightNumber,
+          terminal: validatedData.terminal || null,
+          is_surfboard: validatedData.surfboard === 'yes',
           status: 'confirmed',
         },
       },
