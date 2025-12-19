@@ -159,7 +159,7 @@ export default function HomePage() {
                         Start from your hotel
                       </CardDescription>
                       <CardTitle className="text-xl font-semibold text-slate-900">
-                        Choose your pickup
+                        Choose your hotel
                       </CardTitle>
                       <p className="text-sm text-slate-600">
                         Select the hotel where you are staying.
@@ -278,7 +278,7 @@ export default function HomePage() {
                 />
                 <div>
                   <p className="text-[10px] md:text-xs uppercase tracking-[0.25em] text-slate-400">
-                    Ibis Jakarta Airport
+                    ibis Jakarta Airport
                   </p>
                   <p className="font-semibold text-slate-50">Shuttle Service</p>
                 </div>
@@ -298,7 +298,7 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-slate-100 mb-2">Operating hours</p>
-                <p>Every day 06:00 - 22:00 WIB</p>
+                <p>Every day 00:00 - 22:00 WIB</p>
               </div>
               <div>
                 <p className="font-semibold text-slate-100 mb-2">Help</p>
@@ -380,7 +380,7 @@ function HotelCard({ name, slug, image, logo, badge, accent = "indigo" }: any) {
 
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <Clock className="h-4 w-4 text-primary" />
-          06:00 - 22:00 WIB
+          00:00 - 22:00 WIB
         </div>
 
         <div className="flex items-center gap-2 text-sm text-slate-600">

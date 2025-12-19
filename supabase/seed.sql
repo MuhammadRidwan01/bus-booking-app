@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   status VARCHAR(20) DEFAULT 'confirmed', -- confirmed, cancelled
   whatsapp_sent BOOLEAN DEFAULT false,
   flight_number TEXT,
+  terminal TEXT NULL,
+  is_surfboard BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -81,6 +83,8 @@ SELECT
   b.customer_name,
   b.phone,
   b.passenger_count,
+  b.terminal,
+  b.is_surfboard,
   b.status,
   b.whatsapp_sent,
   b.created_at AT TIME ZONE 'Asia/Jakarta' as created_at_jakarta,
@@ -124,8 +128,8 @@ ORDER BY ds.schedule_date, bs.departure_time;
 
 -- Insert initial hotels
 INSERT INTO hotels (name, slug) VALUES 
-('Ibis styles Jakarta', 'ibis-styles'),
-('Ibis Budget Jakarta', 'ibis-budget')
+('ibis styles Jakarta', 'ibis-styles'),
+('ibis Budget Jakarta', 'ibis-budget')
 ON CONFLICT (slug) DO NOTHING;
 
 -- Insert bus schedules

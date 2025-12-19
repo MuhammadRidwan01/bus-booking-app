@@ -58,6 +58,10 @@ export function NextDeparture() {
                     <MapPin className="h-3 w-3" />
                     To {nextBus?.destination || "checking..."}
                 </div>
+                <div className="flex items-center gap-1 text-[10px] text-slate-500 max-w-[140px] truncate">
+                    <MapPin className="h-3 w-3" />
+                    From {nextBus?.hotel || "checking..."}
+                </div>
             </div>
         </div>
     )

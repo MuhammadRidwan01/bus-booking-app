@@ -363,7 +363,7 @@ export default function BookingPage() {
                             <SelectValue placeholder="Select Terminal" />
                           </SelectTrigger>
                           <SelectContent>
-                            {[1, 2, 3].map((n) => (
+                            {[1, 2, 3,].map((n) => (
                               <SelectItem key={n} value={n.toString()}>Terminal {n}</SelectItem>
                             ))}
                           </SelectContent>
@@ -382,6 +382,9 @@ export default function BookingPage() {
                           <SelectItem value="no">No</SelectItem>
                         </SelectContent>
                       </Select>
+                      <Label className="text-xs font-semibold text-slate-700 mt-2">
+                        Note: Bringing a surfboard may incur additional charges at the hotel.
+                      </Label>
                     </div>
 
                     {/* ERRORS */}

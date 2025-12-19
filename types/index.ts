@@ -107,6 +107,8 @@ export interface BookingDetails extends Booking {
   destination: string
   schedule_date: string
   flight_number?: string
+  terminal?: string
+  surfboard: "yes" | "no"
 }
 
 export interface ScheduleWithCapacity {

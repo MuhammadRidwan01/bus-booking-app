@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase"
 export interface ScheduleItem {
     time: string
     destination: string
+    hotel?: string
 }
 
 interface ScheduleContextType {

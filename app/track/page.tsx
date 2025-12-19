@@ -150,6 +150,8 @@ export default function TrackPage() {
                     <InfoCard icon={<Clock className="h-4 w-4" />} title="Departure" value={`${formatTime(booking.departure_time)} WIB`} />
                     <InfoCard icon={<MapPin className="h-4 w-4" />} title="Destination" value={booking.destination} />
                     <InfoCard icon={<Users className="h-4 w-4" />} title="Passengers" value={`${booking.passenger_count} people`} />
+                    <InfoCard icon={<MapPin className="h-4 w-4" />} title="Terminal" value={booking.terminal ? booking.terminal : 'N/A'} />
+                    <InfoCard icon={<MapPin className="h-4 w-4" />} title="Surfboard" value={booking.surfboard === "yes" ? "Yes" : "No"} />
                   </div>
 
                   <div className="space-y-3">
