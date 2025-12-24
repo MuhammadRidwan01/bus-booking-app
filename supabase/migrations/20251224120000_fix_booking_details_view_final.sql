@@ -27,6 +27,8 @@ SELECT
   b.driver_notes,
   b.has_surfboard,
   b.surfboard_count,
+  b.surfboard_count,
+  b.has_excess_baggage,
   b.excess_baggage_count,
   b.surfboard_cost,
   b.baggage_cost,
