@@ -33,11 +33,10 @@ export function ServiceTypeSelector({
           {/* Drop-off Service */}
           <button
             type="button"
-            className={`w-full text-left rounded-2xl border transition-all duration-200 p-6 bg-white/70 hover:shadow-md hover:-translate-y-[1px] ${
-              selectedServiceType === "drop_off" 
-                ? "border-primary ring-2 ring-primary/10 bg-primary/5" 
+            className={`w-full text-left rounded-2xl border transition-all duration-200 p-6 bg-white/70 hover:shadow-md hover:-translate-y-[1px] ${selectedServiceType === "drop_off"
+                ? "border-primary ring-2 ring-primary/10 bg-primary/5"
                 : "border-slate-200"
-            }`}
+              }`}
             onClick={() => onServiceTypeSelect("drop_off")}
           >
             <div className="flex items-start gap-4">
@@ -48,7 +47,7 @@ export function ServiceTypeSelector({
                   <Plane className="h-4 w-4 text-blue-600" />
                 </div>
               </div>
-              
+
               <div className="flex-1 space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-slate-900">Drop-off Service</h3>
@@ -58,9 +57,9 @@ export function ServiceTypeSelector({
                     </div>
                   )}
                 </div>
-                
+
                 <p className="text-sm text-slate-600 font-medium">Hotel → Airport</p>
-                
+
                 <div className="space-y-1 text-xs text-slate-500">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-3 w-3" />
@@ -71,7 +70,7 @@ export function ServiceTypeSelector({
                     <span>Available: 03:00 - 00:00 WIB</span>
                   </div>
                 </div>
-                
+
                 <p className="text-xs text-slate-600 mt-2">
                   Perfect for guests heading to the airport for departure flights.
                 </p>
@@ -82,22 +81,21 @@ export function ServiceTypeSelector({
           {/* Pick-up Service */}
           <button
             type="button"
-            className={`w-full text-left rounded-2xl border transition-all duration-200 p-6 bg-white/70 hover:shadow-md hover:-translate-y-[1px] ${
-              selectedServiceType === "pick_up" 
-                ? "border-primary ring-2 ring-primary/10 bg-primary/5" 
+            className={`w-full text-left rounded-2xl border transition-all duration-200 p-6 bg-white/70 hover:shadow-md hover:-translate-y-[1px] ${selectedServiceType === "pick_up"
+                ? "border-primary ring-2 ring-primary/10 bg-primary/5"
                 : "border-slate-200"
-            }`}
+              }`}
             onClick={() => onServiceTypeSelect("pick_up")}
           >
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
                 <div className="flex items-center gap-1">
                   <Plane className="h-4 w-4 text-emerald-600" />
-                  <ArrowLeft className="h-3 w-3 text-emerald-600" />
+                  <ArrowRight className="h-3 w-3 text-emerald-600" />
                   <Building2 className="h-4 w-4 text-emerald-600" />
                 </div>
               </div>
-              
+
               <div className="flex-1 space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-slate-900">Pick-up Service</h3>
@@ -107,9 +105,9 @@ export function ServiceTypeSelector({
                     </div>
                   )}
                 </div>
-                
+
                 <p className="text-sm text-slate-600 font-medium">Airport → Hotel</p>
-                
+
                 <div className="space-y-1 text-xs text-slate-500">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-3 w-3" />
@@ -120,7 +118,7 @@ export function ServiceTypeSelector({
                     <span>Available: 13:00 - 00:00 WIB</span>
                   </div>
                 </div>
-                
+
                 <p className="text-xs text-slate-600 mt-2">
                   Perfect for guests arriving at the airport who need transport to the hotel.
                 </p>
@@ -135,7 +133,7 @@ export function ServiceTypeSelector({
               <div>
                 <p className="text-sm font-semibold text-slate-900">Next step</p>
                 <p className="text-xs text-slate-600">
-                  {selectedServiceType === "drop_off" 
+                  {selectedServiceType === "drop_off"
                     ? "Choose your departure time from the hotel"
                     : "Choose your pick-up time and terminal location"
                   }

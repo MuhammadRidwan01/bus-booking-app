@@ -16,6 +16,15 @@ interface TicketPayload {
   meetingPointLocation?: string
   arrivalTimeOffsetMin?: number
   arrivalTimeOffsetMax?: number
+  // New fields for completeness
+  phone: string
+  roomNumber?: string | null
+  hasSurfboard?: boolean
+  surfboardCount?: number
+  excessBaggageCount?: number
+  hotelWhatsApp?: string
+  hotelFax?: string
+  hotelEmail?: string
 }
 
 /**
@@ -134,17 +143,17 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   // Clean gradient base
   page.drawRectangle({
     x: 0,
-    y: 480,
+    y: 500,
     width: 420,
-    height: 160,
+    height: 140,
     color: blue600,
   })
   // Subtle gradient overlay for depth
   page.drawRectangle({
     x: 0,
-    y: 480,
+    y: 500,
     width: 420,
-    height: 160,
+    height: 140,
     color: indigo500,
     opacity: 0.25,
   })
@@ -204,12 +213,12 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   })
 
   // Header content with better hierarchy
-  const headerServiceText = payload.serviceType === 'drop_off' 
-    ? 'DROP-OFF SERVICE' 
-    : payload.serviceType === 'pick_up' 
-    ? 'PICK-UP SERVICE' 
-    : 'SHUTTLE SERVICE'
-  
+  const headerServiceText = payload.serviceType === 'drop_off'
+    ? 'DROP-OFF SERVICE'
+    : payload.serviceType === 'pick_up'
+      ? 'PICK-UP SERVICE'
+      : 'SHUTTLE SERVICE'
+
   drawText("SHUTTLE TICKET", 35, 600, 16, rgb(0.9, 0.93, 0.98))
   drawText(headerServiceText, 35, 580, 12, rgb(0.85, 0.88, 0.95), true)
   drawText(payload.bookingCode || "-", 35, 550, 28, white, true)
@@ -224,9 +233,9 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   // Refined accent bar - thinner, more elegant
   page.drawRectangle({
     x: 28,
-    y: 395,
+    y: 425,
     width: 4,
-    height: 75,
+    height: 65,
     color: blue600,
   })
 
@@ -236,9 +245,9 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   // Clean white card
   page.drawRectangle({
     x: 35,
-    y: 395,
+    y: 425,
     width: 360,
-    height: 75,
+    height: 65,
     color: white,
     borderColor: slate300,
     borderWidth: 0.5,
@@ -275,28 +284,28 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   })
 
   // FROM section
-  const serviceTypeText = payload.serviceType === 'drop_off' 
-    ? 'HOTEL TO AIRPORT' 
-    : payload.serviceType === 'pick_up' 
-    ? 'AIRPORT TO HOTEL' 
-    : 'SHUTTLE SERVICE'
-  
-  const serviceTypeColor = payload.serviceType === 'drop_off' 
-    ? blue600 
-    : payload.serviceType === 'pick_up' 
-    ? emerald500 
-    : blue600
-  
-  drawText("FROM", 50, 455, 9, slate500, true)
-  drawWrapped(payload.hotelName || "-", 50, 437, 135, 12, slate900, true, 3)
+  const serviceTypeText = payload.serviceType === 'drop_off'
+    ? 'HOTEL TO AIRPORT'
+    : payload.serviceType === 'pick_up'
+      ? 'AIRPORT TO HOTEL'
+      : 'SHUTTLE SERVICE'
+
+  const serviceTypeColor = payload.serviceType === 'drop_off'
+    ? blue600
+    : payload.serviceType === 'pick_up'
+      ? emerald500
+      : blue600
+
+  drawText("FROM", 50, 475, 9, slate500, true)
+  drawText(payload.hotelName || "-", 50, 460, 11, slate900, true)
 
   // Service type indicator - more prominent
-  drawText(serviceTypeText, 50, 420, 9, serviceTypeColor, true)
+  drawText(serviceTypeText, 50, 448, 8, serviceTypeColor, true)
 
   // Bold arrow divider
   page.drawRectangle({
     x: 195,
-    y: 432,
+    y: 457,
     width: 30,
     height: 2,
     color: blue600,
@@ -304,42 +313,43 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   // Arrow head
   page.drawRectangle({
     x: 222,
-    y: 430,
+    y: 455,
     width: 6,
     height: 6,
     color: blue600,
   })
 
   // TO section
-  drawText("TO", 238, 455, 9, slate500, true)
-  drawWrapped(payload.destination || "-", 238, 437, 145, 12, slate900, true, 3)
+  drawText("TO", 238, 475, 9, slate500, true)
+  drawWrapped(payload.destination || "-", 238, 460, 145, 11, slate900, true, 3)
 
   // Date and time in colored boxes
   page.drawRectangle({
     x: 50,
-    y: 405,
+    y: 432,
     width: 135,
-    height: 20,
+    height: 12,
     color: slate50,
   })
-  drawText(payload.scheduleDate || "-", 55, 410, 9, slate900)
+  drawText(payload.scheduleDate || "-", 55, 435, 8, slate900)
 
   page.drawRectangle({
     x: 238,
-    y: 405,
+    y: 432,
     width: 145,
-    height: 15,
+    height: 12,
     color: rgb(0.145, 0.408, 0.918),
     opacity: 0.1,
   })
-  drawText(payload.departureTime ? `${payload.departureTime} WIB` : "-", 243, 410, 9, slate900, true)
+  drawText(payload.departureTime ? `${payload.departureTime} WIB` : "-", 243, 435, 8, slate900, true)
 
   // TRIP DETAILS - Modern card grid with colored accents
-  const cardWidth = 170
-  const cardHeight = 60
-  const cardSpacing = 20
-  const gridStartX = 30
-  const gridStartY = 320
+  const cardWidth = 175
+  const cardHeight = 45
+  const cardSpacingX = 15
+  const cardSpacingY = 10
+  const gridStartX = 28
+  const gridStartY = 365
 
   const cardData = [
     { label: "DATE", value: payload.scheduleDate || "-", accent: blue600 },
@@ -350,18 +360,52 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
 
   // Add terminal information for pick-up bookings
   if (payload.serviceType === 'pick_up' && payload.terminalCode) {
-    cardData.push({ 
-      label: "TERMINAL", 
-      value: `Terminal ${payload.terminalCode}`, 
+    cardData.push({
+      label: "TERMINAL",
+      value: `Terminal ${payload.terminalCode}`,
       accent: rgb(0.957, 0.376, 0.133) // Orange accent for terminal
     })
   }
 
-  // Add meeting point information for pick-up bookings
+  // Add guest phone number
+  cardData.push({
+    label: "WHATSAPP",
+    value: `+${payload.phone}`,
+    accent: blue600
+  })
+
+  // Add room number for drop-off
+  if (payload.serviceType === 'drop_off' && payload.roomNumber) {
+    cardData.push({
+      label: "ROOM NO",
+      value: payload.roomNumber,
+      accent: indigo500
+    })
+  }
+
+  // Add surfboard info if any
+  if (payload.hasSurfboard && payload.surfboardCount && payload.surfboardCount > 0) {
+    cardData.push({
+      label: "SURFBOARDS",
+      value: `${payload.surfboardCount} Board(s)`,
+      accent: blue600
+    })
+  }
+
+  // Add excess baggage if any
+  if (payload.excessBaggageCount && payload.excessBaggageCount > 0) {
+    cardData.push({
+      label: "EXCESS BAGGAGE",
+      value: `${payload.excessBaggageCount} Item(s)`,
+      accent: blue600
+    })
+  }
+
+  // Add meeting point information for pick-up bookings (last in grid if exists)
   if (payload.serviceType === 'pick_up' && payload.meetingPointLocation) {
-    cardData.push({ 
-      label: "MEETING POINT", 
-      value: payload.meetingPointLocation, 
+    cardData.push({
+      label: "PICKUP POINT",
+      value: payload.meetingPointLocation,
       accent: rgb(0.133, 0.545, 0.133) // Green accent for meeting point
     })
   }
@@ -407,10 +451,10 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   cardData.forEach((card, idx) => {
     const row = Math.floor(idx / 2)
     const col = idx % 2
-    const x = gridStartX + col * (cardWidth + cardSpacing)
-    const y = gridStartY - row * (cardHeight + cardSpacing)
+    const x = gridStartX + col * (cardWidth + cardSpacingX)
+    const y = gridStartY - row * (cardHeight + cardSpacingY)
 
-    // Refined accent bar - thin and elegant
+    // Refined accent bar
     page.drawRectangle({
       x,
       y: y + cardHeight,
@@ -418,9 +462,6 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
       height: 2,
       color: card.accent,
     })
-
-    // Subtle shadow
-    drawSubtleShadow(x, y, cardWidth, cardHeight)
 
     // Clean card background
     page.drawRectangle({
@@ -434,31 +475,28 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     })
 
     // Label
-    drawText(card.label, x + 12, y + cardHeight - 18, 8, slate500, true)
+    drawText(card.label, x + 10, y + cardHeight - 14, 7.5, slate500, true)
 
     // Value
-    drawWrapped(card.value, x + 12, y + cardHeight - 36, cardWidth - 24, 14, slate900, true)
+    drawText(card.value, x + 10, y + 10, 10, slate900, true)
   })
 
   // PASSENGER & QR SECTION - Refined with subtle accent
   // Refined accent bar - thin and elegant
   page.drawRectangle({
     x: 28,
-    y: 115,
+    y: 95,
     width: 4,
-    height: 95,
+    height: 65,
     color: blue600,
   })
-
-  // Subtle shadow
-  drawSubtleShadow(35, 115, 360, 95)
 
   // Clean white card
   page.drawRectangle({
     x: 35,
-    y: 115,
+    y: 95,
     width: 360,
-    height: 95,
+    height: 65,
     color: white,
     borderColor: slate300,
     borderWidth: 0.5,
@@ -501,8 +539,8 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   })
 
   // Passenger section
-  drawText("PASSENGER", 50, 195, 9, slate500, true)
-  drawWrapped(payload.customerName || "-", 50, 173, 200, 16, slate900, true, 4)
+  drawText("PASSENGER", 50, 145, 8, slate500, true)
+  drawWrapped(payload.customerName || "-", 50, 132, 200, 12, slate900, true, 3)
 
   // QR code with refined frame
   const qrDataUrl = await QRCode.toDataURL(payload.trackUrl || "", {
@@ -520,7 +558,7 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   const qrDims = qrImage.scale(qrSize / qrImage.width)
 
   const qrX = 300
-  const qrY = 130
+  const qrY = 100
 
   // Subtle shadow
   page.drawRectangle({
@@ -556,18 +594,15 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   })
 
   // Clean label
-  drawText("SCAN TO TRACK", 295, 122, 7, slate600, true)
+  drawText("SCAN TO TRACK", 295, 97, 7, slate600, true)
 
   // IMPORTANT INFO - Refined warning section
-  // Subtle shadow
-  drawSubtleShadow(30, 30, 360, 70)
-
   // Clean warning box
   page.drawRectangle({
     x: 30,
-    y: 30,
+    y: 25,
     width: 360,
-    height: 70,
+    height: 65,
     color: warningAmber,
     borderColor: warningAmberBorder,
     borderWidth: 1,
@@ -608,29 +643,30 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   })
 
   // Clean title
-  drawText("IMPORTANT INFORMATION", 45, 87, 10, warningAmberText, true)
+  drawText("IMPORTANT INFORMATION", 45, 78, 9, warningAmberText, true)
 
   // Bullet points with better spacing - different for service types
   if (payload.serviceType === 'pick_up') {
     // Pick-up specific instructions
-    drawText("• Wait at designated meeting point", 45, 70, 8, warningAmberText)
+    drawText("• Wait at designated meeting point", 45, 68, 7.5, warningAmberText)
     if (payload.terminalCode) {
-      drawText(`• Terminal: ${payload.terminalCode}`, 45, 58, 8, warningAmberText)
+      drawText(`• Terminal: ${payload.terminalCode}`, 45, 58, 7.5, warningAmberText)
     }
     if (payload.meetingPointLocation) {
-      drawWrapped(`• Location: ${payload.meetingPointLocation}`, 45, 46, 340, 7, warningAmberText, false, 2)
+      drawWrapped(`• Location: ${payload.meetingPointLocation}`, 45, 48, 340, 7, warningAmberText, false, 2)
     }
     if (payload.arrivalTimeOffsetMin && payload.arrivalTimeOffsetMax) {
-      drawText(`• Arrival: ${payload.arrivalTimeOffsetMin}-${payload.arrivalTimeOffsetMax} min after departure`, 45, 34, 7, warningAmberText)
-    } else {
-      drawText("• Show this ticket to driver", 45, 34, 8, warningAmberText)
+      drawText(`• Arrival: ${payload.arrivalTimeOffsetMin}-${payload.arrivalTimeOffsetMax} min after departure`, 45, 36, 7, warningAmberText)
     }
+    drawText("• Contact: " + (payload.hotelWhatsApp || "Hotel Reception"), 45, 28, 7, warningAmberText)
   } else {
     // Drop-off specific instructions (default)
-    drawText("• Arrive 10 minutes before departure", 45, 70, 8, warningAmberText)
-    drawText("• Bring valid identification", 45, 58, 8, warningAmberText)
-    drawText("• Keep this ticket safe", 45, 46, 8, warningAmberText)
-    drawText("• Show to driver upon boarding", 45, 34, 8, warningAmberText)
+    drawText("• Arrive 10 minutes before departure at Lobby", 45, 68, 7.5, warningAmberText)
+    drawText("• Bring valid identification & Room Key", 45, 58, 7.5, warningAmberText)
+    drawText("• Show this ticket to driver upon boarding", 45, 48, 7.5, warningAmberText)
+    const contactInfo = `• Contact: ${payload.hotelWhatsApp || "-"} | Fax: ${payload.hotelFax || "-"}`
+    drawText(contactInfo, 45, 38, 7, warningAmberText)
+    drawText(`• Email: ${payload.hotelEmail || "-"}`, 45, 30, 7, warningAmberText)
   }
 
   // FOOTER - Minimalist with booking code emphasis

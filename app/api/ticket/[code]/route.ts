@@ -73,6 +73,22 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
       meetingPointLocation: (booking as any).meeting_point_location,
       arrivalTimeOffsetMin: (booking as any).arrival_time_offset_min,
       arrivalTimeOffsetMax: (booking as any).arrival_time_offset_max,
+      // Pass the new fields
+      phone: booking.phone,
+      roomNumber: (booking as any).room_number,
+      hasSurfboard: (booking as any).has_surfboard,
+      surfboardCount: (booking as any).surfboard_count,
+      excessBaggageCount: (booking as any).excess_baggage_count,
+      // Hotel contact mapping
+      ...((booking.hotel_name?.toLowerCase().includes('budget') || (booking as any).hotel_slug === 'ibis-budget') ? {
+        hotelWhatsApp: "+62 21 2933 7888",
+        hotelFax: "+62 21 2923 7637",
+        hotelEmail: "H8593-RE@ACCOR.COM"
+      } : {
+        hotelWhatsApp: "+62 21 2932 7777",
+        hotelFax: "+62 21 2923 7637",
+        hotelEmail: "H8593-RE@ACCOR.COM"
+      })
     })
 
     const buffer = Buffer.from(pdfBytes)

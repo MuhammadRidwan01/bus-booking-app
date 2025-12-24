@@ -44,7 +44,7 @@ export default function HomePage() {
 
               <div className=" xs:flex flex-col truncate">
                 <p className="text-[10px] sm:text-xs  tracking-[0.25em] text-slate-500 truncate">
-                iBIS JAKARTA AIRPORT
+                  iBIS JAKARTA AIRPORT
                 </p>
                 <h1 className="text-sm sm:text-base md:text-lg font-semibold text-slate-900 truncate">
                   Shuttle Service
@@ -292,9 +292,16 @@ export default function HomePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm text-slate-300">
               <div>
-                <p className="font-semibold text-slate-100 mb-2">Contact</p>
-                <p>Ibis styles: +62 21 xxxx xxxx</p>
-                <p>Ibis Budget: +62 21 xxxx xxxx</p>
+                <p className="font-semibold text-slate-100 mb-2">ibis Budget Jakarta Airport</p>
+                <p className="text-xs">WhatsApp / Telp: +62 21 2933 7888</p>
+                <p className="text-xs">Fax: +62 21 2923 7637</p>
+                <p className="text-xs">Email: H8593-RE@ACCOR.COM</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-100 mb-2">ibis Styles Jakarta Airport</p>
+                <p className="text-xs">WhatsApp / Telp: +62 21 2932 7777</p>
+                <p className="text-xs">Fax: +62 21 2923 7637</p>
+                <p className="text-xs">Email: H8593-RE@ACCOR.COM</p>
               </div>
               <div>
                 <p className="font-semibold text-slate-100 mb-2">Operating hours</p>

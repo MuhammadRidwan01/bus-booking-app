@@ -18,7 +18,8 @@ import {
     MapPin,
     Clock,
     Waves,
-    Briefcase
+    Briefcase,
+    Phone
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -196,7 +197,7 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                                 {serviceDirection}
                             </span>
                             <span className="text-slate-300">•</span>
-                            <span>ID: <span className="font-mono text-slate-700 dark:text-slate-300 select-all">{booking.booking_code}</span></span>
+                            <span>Booking ID: <span className="font-mono text-slate-700 dark:text-slate-300 select-all">{booking.booking_code}</span></span>
                         </p>
                     </div>
                     <div className="text-right hidden sm:block">
@@ -430,6 +431,31 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                                 <RefreshCw className={`w-3 h-3 ${resending ? 'animate-spin' : ''}`} />
                             </button>
                         )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Hotel Relationship Card */}
+            <div className="w-full max-w-xl mt-4 animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-lg">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Need help? Contact {booking.hotel_name}</h4>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">Phone / WhatsApp</p>
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                {booking.hotel_name.toLowerCase().includes('budget') ? '+62 21 2933 7888' : '+62 21 2932 7777'}
+                            </p>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">Email & Fax</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">Fax: +62 21 2923 7637</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">H8593-RE@ACCOR.COM</p>
+                        </div>
                     </div>
                 </div>
             </div>

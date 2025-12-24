@@ -281,6 +281,32 @@ export default function TrackPage() {
                     )}
                   </div>
 
+                  {/* Hotel Contact Information */}
+                  <div className="pt-4 border-t border-slate-100">
+                    <h4 className="text-sm font-semibold text-slate-800 mb-3">Hotel Contact</h4>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">{booking.hotel_name}</p>
+                        <div className="space-y-1">
+                          <p className="text-xs flex items-center gap-2">
+                            <Phone className="h-3 w-3 text-slate-400" />
+                            <span className="font-medium text-slate-700">
+                              {booking.hotel_name.toLowerCase().includes('budget') ? '+62 21 2933 7888' : '+62 21 2932 7777'}
+                            </span>
+                          </p>
+                          <p className="text-xs flex items-center gap-2">
+                            <span className="w-3 h-3 text-[10px] flex items-center justify-center font-bold text-slate-400 italic">F</span>
+                            <span className="text-slate-600">+62 21 2923 7637</span>
+                          </p>
+                          <p className="text-xs flex items-center gap-2">
+                            <span className="w-3 h-3 text-[10px] flex items-center justify-center font-bold text-slate-400 italic">E</span>
+                            <span className="text-slate-600 truncate">H8593-RE@ACCOR.COM</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {booking.status === "confirmed" && (
                     <div className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                       <p className="font-semibold text-amber-900">
