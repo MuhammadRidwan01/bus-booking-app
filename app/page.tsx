@@ -35,7 +35,7 @@ export default function HomePage() {
             <div className="flex items-center gap-3 min-w-0">
               <Image
                 src="/ISJA-IBJA-Logo-updated.png"
-                alt="Ibis Hotels Logo"
+                alt="ibis Hotels Logo"
                 width={180}
                 height={50}
                 className="h-9 sm:h-10 w-auto shrink-0"
@@ -43,8 +43,8 @@ export default function HomePage() {
               />
 
               <div className=" xs:flex flex-col truncate">
-                <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-slate-500 truncate">
-                  Ibis Jakarta Airport
+                <p className="text-[10px] sm:text-xs  tracking-[0.25em] text-slate-500 truncate">
+                iBIS JAKARTA AIRPORT
                 </p>
                 <h1 className="text-sm sm:text-base md:text-lg font-semibold text-slate-900 truncate">
                   Shuttle Service
@@ -159,7 +159,7 @@ export default function HomePage() {
                         Start from your hotel
                       </CardDescription>
                       <CardTitle className="text-xl font-semibold text-slate-900">
-                        Choose your pickup
+                        Choose your hotel
                       </CardTitle>
                       <p className="text-sm text-slate-600">
                         Select the hotel where you are staying.
@@ -168,7 +168,7 @@ export default function HomePage() {
 
                     <CardContent className="grid grid-cols-1 gap-4" >
                       <HotelCard
-                        name="Ibis styles Jakarta Airport"
+                        name="ibis Styles Jakarta Airport"
                         slug="/booking/ibis-styles"
                         image="/ISJA-depan.jpeg"
                         logo="/ibis-styles-logo.png"
@@ -176,7 +176,7 @@ export default function HomePage() {
                         accent="emerald"
                       />
                       <HotelCard
-                        name="Ibis Budget Jakarta Airport"
+                        name="ibis Budget Jakarta Airport"
                         slug="/booking/ibis-budget"
                         image="/IBJA-Depan.jpg"
                         logo="/ibis-budget-logo.png"
@@ -278,7 +278,7 @@ export default function HomePage() {
                 />
                 <div>
                   <p className="text-[10px] md:text-xs uppercase tracking-[0.25em] text-slate-400">
-                    Ibis Jakarta Airport
+                    ibis Jakarta Airport
                   </p>
                   <p className="font-semibold text-slate-50">Shuttle Service</p>
                 </div>
@@ -286,7 +286,7 @@ export default function HomePage() {
 
               <div className="flex items-center gap-2 text-sm text-slate-300">
                 <MapPin className="h-4 w-4" />
-                Ibis styles & Budget Jakarta Airport lobbies
+                ibis styles & Budget Jakarta Airport lobbies
               </div>
             </div>
 
@@ -298,7 +298,7 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-slate-100 mb-2">Operating hours</p>
-                <p>Every day 06:00 - 22:00 WIB</p>
+                <p>Every day 00:00 - 22:00 WIB</p>
               </div>
               <div>
                 <p className="font-semibold text-slate-100 mb-2">Help</p>
@@ -380,7 +380,7 @@ function HotelCard({ name, slug, image, logo, badge, accent = "indigo" }: any) {
 
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <Clock className="h-4 w-4 text-primary" />
-          06:00 - 22:00 WIB
+          00:00 - 22:00 WIB
         </div>
 
         <div className="flex items-center gap-2 text-sm text-slate-600">

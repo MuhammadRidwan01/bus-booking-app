@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   status VARCHAR(20) DEFAULT 'confirmed', -- confirmed, cancelled
   whatsapp_sent BOOLEAN DEFAULT false,
   flight_number TEXT,
+  terminal TEXT NULL,
+  is_surfboard BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

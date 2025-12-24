@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
           hotel_id,
           max_capacity,
           departure_time,
-          destination
+          destination,
         )
       `)
       .eq('id', validatedData.scheduleId)

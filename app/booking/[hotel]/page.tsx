@@ -56,6 +56,8 @@ export default function BookingPage() {
   const [flightNumber, setFlightNumber] = useState<string>("")
   const [phoneNumber, setPhoneNumber] = useState<string>("")
   const [hasWhatsapp, setHasWhatsapp] = useState<string>("yes")
+  const [terminal, setTerminal] = useState<number>(1)
+  const [surfboard, setSurfboard] = useState<string>("no")
   const [countryCode, setCountryCode] = useState<string>("62")
   const [customerName, setCustomerName] = useState<string>("")
   const [idempotencyKey] = useState(() => generateUUID())
@@ -90,8 +92,8 @@ export default function BookingPage() {
   const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug, selectedServiceType || undefined)
   const { terminalMeetingPoints, loading: terminalLoading } = useTerminalMeetingPoints()
 
-  const hotelName = hotelSlug === "ibis-styles" ? "Ibis styles Jakarta Airport" : "Ibis Budget Jakarta Airport"
-  const hotelShortName = hotelSlug === "ibis-styles" ? "Ibis styles" : "Ibis Budget"
+  const hotelName = hotelSlug === "ibis-styles" ? "Ibis styles Jakarta Airport" : "ibis Budget Jakarta Airport"
+  const hotelShortName = hotelSlug === "ibis-styles" ? "ibis styles" : "ibis Budget"
 
   const hotelImages = {
     "ibis-styles": {
