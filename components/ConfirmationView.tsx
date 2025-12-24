@@ -14,7 +14,9 @@ import {
     MessageCircle,
     QrCode,
     Bus,
-    RefreshCw
+    RefreshCw,
+    MapPin,
+    Clock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -33,7 +35,11 @@ type BookingDetail = {
     whatsapp_attempts: number
     whatsapp_last_error: string | null
     phone: string
-    has_whatsapp?: boolean
+    service_type?: "drop_off" | "pick_up"
+    terminal_code?: string
+    meeting_point_location?: string
+    arrival_time_offset_min?: number
+    arrival_time_offset_max?: number
 }
 
 interface ConfirmationViewProps {
@@ -117,10 +123,21 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
         ? format(new Date(booking.schedule_date), "EEE, d MMM yyyy")
         : "Date not set"
 
-    const pickupLocation = booking.hotel_name || "Ibis Hotel"
-    const dropoffLocation = booking.destination || "Destination"
+    const pickupLocation = booking.service_type === "pick_up" 
+        ? (booking.terminal_code ? `Terminal ${booking.terminal_code}` : "Airport Terminal")
+        : (booking.hotel_name || "Ibis Hotel")
+    
+    const dropoffLocation = booking.service_type === "pick_up"
+        ? (booking.hotel_name || "Ibis Hotel")
+        : (booking.destination || "Airport")
+
+    const serviceDirection = booking.service_type === "pick_up" ? "Airport → Hotel" : "Hotel → Airport"
+    const serviceTypeLabel = booking.service_type === "pick_up" ? "Pick-up Service" : "Drop-off Service"
 
     const showResend = !booking.whatsapp_sent && (booking.whatsapp_attempts > 0 || !!booking.whatsapp_last_error)
+    
+    // Check if user indicated no WhatsApp based on error message
+    const userIndicatedNoWhatsApp = booking.whatsapp_last_error?.toLowerCase().includes("user indicated number is not on whatsapp") ?? false
 
     return (
         <div className="flex-grow flex flex-col items-center justify-center py-3 px-4 sm:px-6 relative w-full overflow-hidden">
@@ -154,13 +171,26 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                 {/* Ticket Header - Added backdrop and refined layout */}
                 <div className="bg-slate-50/80 dark:bg-slate-800/50 p-4 sm:p-5 border-b border-dashed border-slate-200 dark:border-slate-700 flex justify-between items-start backdrop-blur-md">
                     <div>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 mb-2">
-                            <span className="w-1.5 h-1.5 bg-green-600 rounded-full mr-1.5 animate-pulse"></span>
-                            Confirmed
-                        </span>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{pickupLocation}</h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-                            Booking ID: <span className="font-mono text-slate-700 dark:text-slate-300 select-all">{booking.booking_code}</span>
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                                <span className="w-1.5 h-1.5 bg-green-600 rounded-full mr-1.5 animate-pulse"></span>
+                                Confirmed
+                            </span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                                booking.service_type === "pick_up" 
+                                    ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300"
+                                    : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
+                            }`}>
+                                {serviceTypeLabel}
+                            </span>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{booking.hotel_name}</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium flex items-center gap-1.5">
+                            <span className={booking.service_type === "pick_up" ? "text-emerald-600" : "text-blue-600"}>
+                                {serviceDirection}
+                            </span>
+                            <span className="text-slate-300">•</span>
+                            <span>ID: <span className="font-mono text-slate-700 dark:text-slate-300 select-all">{booking.booking_code}</span></span>
                         </p>
                     </div>
                     <div className="text-right hidden sm:block">
@@ -183,10 +213,15 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                             </div>
                             <div className="min-w-0">
                                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-0.5">
-                                    Pickup • {booking.departure_time?.slice(0, 5)} WIB
+                                    {booking.service_type === "pick_up" ? "Pick-up" : "Departure"} • {booking.departure_time?.slice(0, 5)} WIB
                                 </p>
                                 <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{pickupLocation}</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[150px]">Lobby</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
+                                    {booking.service_type === "pick_up" 
+                                        ? (booking.meeting_point_location || "Meeting point")
+                                        : "Hotel Lobby"
+                                    }
+                                </p>
                             </div>
                         </div>
 
@@ -207,10 +242,15 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                             </div>
                             <div className="min-w-0">
                                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-0.5">
-                                    Drop off
+                                    {booking.service_type === "pick_up" ? "Destination" : "Drop off"}
+                                    {booking.service_type === "pick_up" && booking.arrival_time_offset_min && (
+                                        <span className="ml-1">• +{booking.arrival_time_offset_min}-{booking.arrival_time_offset_max}min</span>
+                                    )}
                                 </p>
                                 <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{dropoffLocation}</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{dropoffLocation}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
+                                    {booking.service_type === "pick_up" ? "Hotel Lobby" : dropoffLocation}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -247,43 +287,89 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                                 {formattedDate}
                             </div>
                         </div>
+                        {booking.service_type === "pick_up" && booking.terminal_code && (
+                            <>
+                                <div>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Terminal</label>
+                                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold text-sm">
+                                        <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                        Terminal {booking.terminal_code}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Pickup Time</label>
+                                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold text-sm">
+                                        <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                        {booking.arrival_time_offset_min && booking.arrival_time_offset_max
+                                            ? `+${booking.arrival_time_offset_min}-${booking.arrival_time_offset_max}min`
+                                            : "As scheduled"
+                                        }
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
+                {/* Pick-up Instructions (only for pick-up services) */}
+                {booking.service_type === "pick_up" && booking.meeting_point_location && (
+                    <div className="px-4 sm:px-5 py-3 bg-emerald-50/60 dark:bg-emerald-900/10 border-t border-emerald-100 dark:border-emerald-800/30">
+                        <div className="flex items-start gap-3">
+                            <MapPin className="w-5 h-5 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-emerald-900 dark:text-emerald-100 mb-1">
+                                    Meeting Point Instructions
+                                </p>
+                                <p className="text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed">
+                                    <span className="font-semibold">Location:</span> {booking.meeting_point_location}
+                                </p>
+                                {booking.arrival_time_offset_min && booking.arrival_time_offset_max && (
+                                    <p className="text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed mt-1">
+                                        <span className="font-semibold">Pickup Window:</span> {booking.arrival_time_offset_min}-{booking.arrival_time_offset_max} minutes after departure time
+                                    </p>
+                                )}
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 italic">
+                                    Look for the hotel shuttle sign and show this ticket to the driver.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* WhatsApp Status Footer - Colored background for better visibility */}
-                <div className={`px-4 sm:px-5 py-3 flex items-start gap-3 border-t transition-colors ${booking.has_whatsapp === false
+                <div className={`px-4 sm:px-5 py-3 flex items-start gap-3 border-t transition-colors ${userIndicatedNoWhatsApp
                     ? "bg-slate-50/60 dark:bg-slate-800/10 border-slate-100 dark:border-slate-700/30"
                     : booking.whatsapp_sent
                         ? "bg-blue-50/60 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30"
                         : "bg-amber-50/60 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30"
                     }`}>
-                    <MessageCircle className={`w-5 h-5 mt-0.5 shrink-0 ${booking.has_whatsapp === false
+                    <MessageCircle className={`w-5 h-5 mt-0.5 shrink-0 ${userIndicatedNoWhatsApp
                         ? "text-slate-400 dark:text-slate-500"
                         : booking.whatsapp_sent
                             ? "text-blue-600 dark:text-blue-400"
                             : "text-amber-600 dark:text-amber-400"
                         }`} />
                     <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-bold ${booking.has_whatsapp === false
+                        <p className={`text-sm font-bold ${userIndicatedNoWhatsApp
                             ? "text-slate-700 dark:text-slate-300"
                             : booking.whatsapp_sent
                                 ? "text-blue-900 dark:text-blue-100"
                                 : "text-amber-900 dark:text-amber-100"
                             }`}>
-                            {booking.has_whatsapp === false
+                            {userIndicatedNoWhatsApp
                                 ? "No WhatsApp delivery"
                                 : booking.whatsapp_sent
                                     ? "Ticket sent via WhatsApp"
                                     : "Sending ticket..."
                             }
                         </p>
-                        <p className={`text-xs mt-0.5 leading-relaxed ${booking.has_whatsapp === false
+                        <p className={`text-xs mt-0.5 leading-relaxed ${userIndicatedNoWhatsApp
                             ? "text-slate-600 dark:text-slate-400"
                             : booking.whatsapp_sent
                                 ? "text-blue-700 dark:text-blue-300"
                                 : "text-amber-700 dark:text-amber-300"
                             }`}>
-                            {booking.has_whatsapp === false
+                            {userIndicatedNoWhatsApp
                                 ? "Download your ticket using the button below."
                                 : booking.whatsapp_sent
                                     ? `Sent to +${booking.phone}. Show to driver.`
@@ -291,7 +377,7 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                             }
                         </p>
 
-                        {showResend && booking.has_whatsapp !== false && (
+                        {showResend && !userIndicatedNoWhatsApp && (
                             <button
                                 onClick={handleResend}
                                 disabled={resending}

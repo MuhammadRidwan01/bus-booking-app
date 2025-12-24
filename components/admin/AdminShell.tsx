@@ -9,16 +9,20 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Gauge, Bus, Calendar, Building2, Wrench, NotebookText, Shield, ActivitySquare } from "lucide-react"
+import { Menu, Gauge, Bus, Calendar, Building2, Wrench, NotebookText, Shield, ActivitySquare, MapPin, DollarSign, Car } from "lucide-react"
 import { Toaster } from "@/components/ui/sonner"
 import CommandPalette from "./CommandPalette"
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: Gauge },
   { href: "/admin/bookings", label: "Bookings", icon: NotebookText },
+  { href: "/admin/driver", label: "Driver Interface", icon: Car },
   { href: "/admin/schedules", label: "Schedules", icon: Calendar },
+  { href: "/admin/schedule-templates", label: "Schedule Templates", icon: Bus },
+  { href: "/admin/terminal-meeting-points", label: "Terminal Points", icon: MapPin },
   { href: "/admin/bus-schedules", label: "Bus Schedules", icon: Bus },
   { href: "/admin/hotels", label: "Hotels", icon: Building2 },
+  { href: "/admin/pricing", label: "Pricing Config", icon: DollarSign },
   { href: "/admin/send-queue", label: "Send Queue", icon: Shield },
   { href: "/admin/health", label: "System Health", icon: ActivitySquare },
   { href: "/admin/tools", label: "Tools", icon: Wrench },

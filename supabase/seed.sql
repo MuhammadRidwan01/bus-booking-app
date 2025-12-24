@@ -62,75 +62,31 @@ CREATE TABLE IF NOT EXISTS admin_users (
   last_login_at TIMESTAMP WITH TIME ZONE
 );
 
+-- Insert admin user (only if doesn't exist)
 INSERT INTO admin_users (email, password_hash, salt, role, is_active)
-VALUES (
+SELECT 
   'admin@shuttle.test',
   '0f1b5c0be769a9497e2116d618aff5ee965e122b1b7c9dbf679857fe7ab4bdf6e84cd8b8a7cefe51a8decb089ae5aa950c2fcfba92353a560cc3b310f0a604f0',
   '1e6d26a40da84e12c7edadf557b90fd3',
   'admin',
   true
-)
-ON CONFLICT (email) DO NOTHING;
+WHERE NOT EXISTS (SELECT 1 FROM admin_users WHERE email = 'admin@shuttle.test');
 
+-- Note: Views will be created by migrations, not in seed file
+-- This avoids conflicts with the new schedule management schema
 
-DROP VIEW IF EXISTS booking_details;
-CREATE OR REPLACE VIEW booking_details AS
-SELECT 
-  b.id,
-  b.booking_code,
-  b.customer_name,
-  b.phone,
-  b.passenger_count,
-  b.status,
-  b.whatsapp_sent,
-  b.created_at AT TIME ZONE 'Asia/Jakarta' as created_at_jakarta,
-  b.created_at,
-  h.name as hotel_name,
-  h.slug as hotel_slug,
-  bs.departure_time,
-  bs.destination,
-  ds.schedule_date,
-  ds.current_booked,
-  bs.max_capacity,
-  ds.status as schedule_status,
-  (bs.max_capacity - ds.current_booked) as available_seats,
-  b.flight_number as flight_number
-FROM bookings b
-JOIN hotels h ON b.hotel_id = h.id
-JOIN daily_schedules ds ON b.daily_schedule_id = ds.id
-JOIN bus_schedules bs ON ds.bus_schedule_id = bs.id;
+-- Insert initial hotels (only if they don't exist)
+INSERT INTO hotels (name, slug)
+SELECT 'Ibis styles Jakarta', 'ibis-styles'
+WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE slug = 'ibis-styles');
 
--- View available schedules
-CREATE OR REPLACE VIEW available_schedules AS
-SELECT 
-  ds.id as daily_schedule_id,
-  h.id as hotel_id,
-  h.name as hotel_name,
-  h.slug as hotel_slug,
-  bs.departure_time,
-  bs.destination,
-  ds.schedule_date,
-  ds.current_booked,
-  bs.max_capacity,
-  (bs.max_capacity - ds.current_booked) as available_seats,
-  ds.status
-FROM daily_schedules ds
-JOIN bus_schedules bs ON ds.bus_schedule_id = bs.id
-JOIN hotels h ON bs.hotel_id = h.id
-WHERE ds.status = 'active'
-AND h.is_active = true
-AND bs.is_active = true
-ORDER BY ds.schedule_date, bs.departure_time;
+INSERT INTO hotels (name, slug)
+SELECT 'Ibis Budget Jakarta', 'ibis-budget'
+WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE slug = 'ibis-budget');
 
--- Insert initial hotels
-INSERT INTO hotels (name, slug) VALUES 
-('Ibis styles Jakarta', 'ibis-styles'),
-('Ibis Budget Jakarta', 'ibis-budget')
-ON CONFLICT (slug) DO NOTHING;
-
--- Insert bus schedules
-INSERT INTO bus_schedules (hotel_id, departure_time, destination, max_capacity) 
-SELECT h.id, departure_time, destination, 15
+-- Insert bus schedules (only if they don't exist)
+INSERT INTO bus_schedules (hotel_id, departure_time, destination, max_capacity)
+SELECT h.id, t.departure_time, t.destination, 15
 FROM hotels h
 CROSS JOIN (
   VALUES 
@@ -140,8 +96,10 @@ CROSS JOIN (
     ('14:00'::TIME, 'Bandara Soekarno-Hatta'),
     ('16:00'::TIME, 'Mall Kelapa Gading'),
     ('18:00'::TIME, 'Ancol Beach City')
-) AS schedules(departure_time, destination)
-ON CONFLICT DO NOTHING;
-
--- Generate initial daily schedules
-SELECT daily_maintenance();
+) AS t(departure_time, destination)
+WHERE NOT EXISTS (
+  SELECT 1 FROM bus_schedules bs 
+  WHERE bs.hotel_id = h.id 
+    AND bs.departure_time = t.departure_time 
+    AND bs.destination = t.destination
+);

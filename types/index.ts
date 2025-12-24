@@ -14,8 +14,17 @@ export interface BookingFormData {
   scheduleId: string
   passengerCount: number
   flightNumber: string
+  roomNumber?: string
   hasWhatsapp: "yes" | "no"
   idempotencyKey: string
+  serviceType: "drop_off" | "pick_up"
+  terminalCode?: string
+  meetingPointId?: string
+  // Enhanced booking fields
+  hasSurfboard: boolean
+  surfboardCount: number
+  hasExcessBaggage: boolean
+  excessBaggageCount: number // Keep for backward compatibility
 }
 
 /**
@@ -30,8 +39,20 @@ export interface BookingConfirmation {
   scheduleDate: string
   passengerCount: number
   flightNumber?: string
+  roomNumber?: string
   status: "confirmed" | "cancelled"
   whatsappSent: boolean
+  serviceType: "drop_off" | "pick_up"
+  terminalCode?: string
+  meetingPointInfo?: TerminalMeetingPoint
+  // Enhanced booking fields
+  hasSurfboard: boolean
+  surfboardCount: number
+  hasExcessBaggage: boolean
+  excessBaggageCount: number // Keep for backward compatibility
+  surfboardCost: number
+  baggageCost: number
+  totalCost: number
 }
 
 /**
@@ -45,7 +66,54 @@ export interface ScheduleDisplay {
   totalCapacity: number
   status: "available" | "almost-full" | "full"
   scheduleDate: string
+  serviceType: "drop_off" | "pick_up"
   isPast?: boolean
+}
+
+/**
+ * Terminal meeting point information
+ */
+export interface TerminalMeetingPoint {
+  id: string
+  terminalCode: string
+  locationDescription: string
+  arrivalTimeOffsetMin: number
+  arrivalTimeOffsetMax: number
+}
+
+/**
+ * Pricing configuration for additional services
+ */
+export interface PricingConfig {
+  id: string
+  surfboardCostPerBoard: number
+  baggageFreeItemsPerPassenger: number
+  baggageTerminal3CurbsideCost: number
+  baggageOtherTerminalsCost: number
+  currency: string
+  effectiveDate: string
+  createdBy: string
+  createdAt: string
+  isActive: boolean
+}
+
+/**
+ * Cost calculation result
+ */
+export interface CostCalculation {
+  surfboardCost: number
+  baggageCost: number
+  totalCost: number
+}
+
+/**
+ * Pricing breakdown item for display
+ */
+export interface PricingItem {
+  description: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
 }
 
 /**
@@ -99,6 +167,16 @@ export interface Booking {
   whatsapp_attempts?: number
   whatsapp_last_error?: string | null
   created_at: string
+  // Enhanced booking fields
+  room_number?: string
+  flight_number?: string
+  has_surfboard: boolean
+  surfboard_count: number
+  has_excess_baggage: boolean
+  excess_baggage_count: number // Keep for backward compatibility
+  surfboard_cost: number
+  baggage_cost: number
+  total_cost: number
 }
 
 export interface BookingDetails extends Booking {
@@ -107,6 +185,14 @@ export interface BookingDetails extends Booking {
   destination: string
   schedule_date: string
   flight_number?: string
+  room_number?: string
+  service_type?: "drop_off" | "pick_up"
+  terminal_code?: string
+  meeting_point_id?: string
+  meeting_point_location?: string
+  arrival_time_offset_min?: number
+  arrival_time_offset_max?: number
+  // Enhanced booking fields are inherited from Booking
 }
 
 export interface ScheduleWithCapacity {
@@ -117,6 +203,7 @@ export interface ScheduleWithCapacity {
   max_capacity: number
   status: "available" | "almost-full" | "full"
   schedule_date: string
+  service_type?: "drop_off" | "pick_up"
   isPast?: boolean
 }
 

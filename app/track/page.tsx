@@ -138,18 +138,106 @@ export default function TrackPage() {
                     </Button>
                   )}
 
+                  {/* Service Type and Direction */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
+                      booking.service_type === "pick_up" 
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-blue-100 text-blue-700"
+                    }`}>
+                      {booking.service_type === "pick_up" ? "Pick-up Service" : "Drop-off Service"}
+                    </span>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-slate-100 text-slate-700">
+                      {booking.service_type === "pick_up" ? "Airport → Hotel" : "Hotel → Airport"}
+                    </span>
+                  </div>
+
+                  {/* Route Timeline */}
+                  <div className="mb-6 p-4 bg-slate-50 rounded-xl">
+                    <h4 className="text-sm font-semibold text-slate-800 mb-3">Route Details</h4>
+                    <div className="flex flex-col gap-4">
+                      {/* Pickup/Departure */}
+                      <div className="flex gap-3 items-start">
+                        <div className="flex flex-col items-center gap-1 mt-1">
+                          <div className="w-3 h-3 rounded-full border-2 border-slate-400"></div>
+                          <div className="w-0.5 h-8 bg-slate-300"></div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">
+                            {booking.service_type === "pick_up" ? "Pick-up" : "Departure"} • {formatTime(booking.departure_time)} WIB
+                          </p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {booking.service_type === "pick_up" 
+                              ? (booking.terminal_code ? `Terminal ${booking.terminal_code}` : "Airport Terminal")
+                              : booking.hotel_name
+                            }
+                          </p>
+                          <p className="text-xs text-slate-600">
+                            {booking.service_type === "pick_up" 
+                              ? (booking.meeting_point_location || "Meeting point")
+                              : "Hotel Lobby"
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Dropoff/Destination */}
+                      <div className="flex gap-3 items-start">
+                        <div className="flex flex-col items-center gap-1 mt-1">
+                          <div className="w-3 h-3 rounded-full bg-green-600"></div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">
+                            {booking.service_type === "pick_up" ? "Destination" : "Drop-off"}
+                            {booking.service_type === "pick_up" && booking.arrival_time_offset_min && (
+                              <span className="ml-1">• +{booking.arrival_time_offset_min}-{booking.arrival_time_offset_max}min</span>
+                            )}
+                          </p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {booking.service_type === "pick_up" 
+                              ? booking.hotel_name
+                              : booking.destination
+                            }
+                          </p>
+                          <p className="text-xs text-slate-600">
+                            {booking.service_type === "pick_up" ? "Hotel Lobby" : booking.destination}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pick-up Instructions (only for pick-up services) */}
+                  {booking.service_type === "pick_up" && booking.meeting_point_location && (
+                    <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <MapPin className="w-5 h-5 mt-0.5 shrink-0 text-emerald-600" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-emerald-900 mb-1">
+                            Meeting Point Instructions
+                          </p>
+                          <p className="text-xs text-emerald-700 leading-relaxed">
+                            <span className="font-semibold">Location:</span> {booking.meeting_point_location}
+                          </p>
+                          {booking.arrival_time_offset_min && booking.arrival_time_offset_max && (
+                            <p className="text-xs text-emerald-700 leading-relaxed mt-1">
+                              <span className="font-semibold">Pickup Window:</span> {booking.arrival_time_offset_min}-{booking.arrival_time_offset_max} minutes after departure time
+                            </p>
+                          )}
+                          <p className="text-xs text-emerald-600 mt-2 italic">
+                            Look for the hotel shuttle sign and show this ticket to the driver.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <InfoCard icon={<Users className="h-4 w-4" />} title="Passenger name" value={booking.customer_name} />
                     <InfoCard icon={<Phone className="h-4 w-4" />} title="WhatsApp number" value={`+${booking.phone}`} />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <InfoCard icon={<Bus className="h-4 w-4" />} title="Hotel" value={booking.hotel_name} />
-                    {booking.flight_number && <InfoCard icon={<MapPin className="h-4 w-4" />} title="Flight" value={booking.flight_number} />}
                     <InfoCard icon={<Calendar className="h-4 w-4" />} title="Date" value={formatDate(booking.schedule_date)} />
-                    <InfoCard icon={<Clock className="h-4 w-4" />} title="Departure" value={`${formatTime(booking.departure_time)} WIB`} />
-                    <InfoCard icon={<MapPin className="h-4 w-4" />} title="Destination" value={booking.destination} />
                     <InfoCard icon={<Users className="h-4 w-4" />} title="Passengers" value={`${booking.passenger_count} people`} />
+                    {booking.flight_number && <InfoCard icon={<MapPin className="h-4 w-4" />} title="Flight" value={booking.flight_number} />}
                   </div>
 
                   <div className="space-y-3">
@@ -170,7 +258,6 @@ export default function TrackPage() {
                           whatsapp_sent: booking.whatsapp_sent,
                           whatsapp_attempts: booking.whatsapp_attempts ?? 0,
                           whatsapp_last_error: booking.whatsapp_last_error ?? null,
-                          has_whatsapp: (booking as any).has_whatsapp,
                         }}
                       />
                     ) : (
@@ -183,10 +270,27 @@ export default function TrackPage() {
 
                   {booking.status === "confirmed" && (
                     <div className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                      <p className="font-semibold text-amber-900">Departure instructions</p>
-                      <p>Arrive at the lobby 10 minutes before departure.</p>
-                      <p>Show your WhatsApp ticket to the driver.</p>
-                      <p>Bring a valid ID.</p>
+                      <p className="font-semibold text-amber-900">
+                        {booking.service_type === "pick_up" ? "Pick-up instructions" : "Departure instructions"}
+                      </p>
+                      {booking.service_type === "pick_up" ? (
+                        <>
+                          {booking.meeting_point_location && (
+                            <p><span className="font-semibold">Meeting point:</span> {booking.meeting_point_location}</p>
+                          )}
+                          {booking.arrival_time_offset_min && booking.arrival_time_offset_max && (
+                            <p><span className="font-semibold">Pickup window:</span> {booking.arrival_time_offset_min}-{booking.arrival_time_offset_max} minutes after departure time</p>
+                          )}
+                          <p>Look for the hotel shuttle sign and show your ticket to the driver.</p>
+                          <p>Bring a valid ID for verification.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p>Arrive at the hotel lobby 10 minutes before departure.</p>
+                          <p>Show your WhatsApp ticket to the driver.</p>
+                          <p>Bring a valid ID.</p>
+                        </>
+                      )}
                     </div>
                   )}
                 </CardContent>

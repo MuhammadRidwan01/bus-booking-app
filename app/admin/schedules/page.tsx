@@ -13,6 +13,7 @@ export default async function AdminSchedulesPage({ searchParams }: { searchParam
     endDate: params.endDate ?? defaultEnd,
     hotelId: params.hotelId,
     status: params.status,
+    serviceType: params.serviceType,
   }
   const [schedules, hotels] = await Promise.all([
     getSchedules(initialFilters),

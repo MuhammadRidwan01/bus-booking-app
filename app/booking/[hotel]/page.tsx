@@ -7,10 +7,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Bus, User, Users, MapPin, Shield, KeyRound, Clock } from "lucide-react"
-import Link from "next/link"
+import { User, Shield, Clock, Loader2 } from "lucide-react"
 import { ScheduleSelector } from "@/components/ScheduleSelector"
 import { useRealTimeCapacity } from "@/hooks/useRealTimeCapacity"
+import { ServiceTypeSelector } from "@/components/ServiceTypeSelector"
+import { TerminalSelector } from "@/components/TerminalSelector"
+import { useTerminalMeetingPoints } from "@/hooks/useTerminalMeetingPoints"
+import { ServiceSpecificFields } from "@/components/ServiceSpecificFields"
+import { SurfboardSelector } from "@/components/SurfboardSelector"
+import { BaggageSelector } from "@/components/BaggageSelector"
+import { PricingBreakdown } from "@/components/PricingBreakdown"
+import { usePricingState } from "@/hooks/usePricing"
 import Image from "next/image"
 import { PublicShell } from "@/components/PublicShell"
 import { BookingRecovery } from "@/components/BookingRecovery"
@@ -27,9 +34,6 @@ function generateUUID() {
   })
 }
 
-/* ------------------------------------------------------------
-   PAGE
------------------------------------------------------------- */
 export default function BookingPage() {
   const router = useRouter()
   const params = useParams()
@@ -44,17 +48,47 @@ export default function BookingPage() {
 
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>("")
+  const [selectedServiceType, setSelectedServiceType] = useState<"drop_off" | "pick_up" | null>(null)
+  const [selectedTerminalCode, setSelectedTerminalCode] = useState<string | null>(null)
+  const [selectedMeetingPointId, setSelectedMeetingPointId] = useState<string | null>(null)
   const [passengerCount, setPassengerCount] = useState<number>(1)
+  const [roomNumber, setRoomNumber] = useState<string>("")
   const [flightNumber, setFlightNumber] = useState<string>("")
   const [phoneNumber, setPhoneNumber] = useState<string>("")
   const [hasWhatsapp, setHasWhatsapp] = useState<string>("yes")
   const [countryCode, setCountryCode] = useState<string>("62")
+  const [customerName, setCustomerName] = useState<string>("")
   const [idempotencyKey] = useState(() => generateUUID())
   const formRef = useRef<HTMLDivElement | null>(null)
 
   const [isPending, startTransition] = useTransition()
 
-  const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug)
+  // Enhanced booking state with pricing
+  const {
+    surfboardCount,
+    hasExcessBaggage,
+    excessBaggageCount, // Keep for backward compatibility
+    setSurfboardCount,
+    setHasExcessBaggage,
+    setExcessBaggageCount, // Keep for backward compatibility
+    setTerminalCode: setPricingTerminalCode,
+    setPassengerCount: setPricingPassengerCount,
+    pricing,
+    config,
+    loading: pricingLoading,
+    error: pricingError,
+    hasSurfboard,
+    totalCost,
+    clearError: clearPricingError
+  } = usePricingState({
+    passengerCount: 1,
+    surfboardCount: 0,
+    hasExcessBaggage: false,
+    terminalCode: undefined
+  })
+
+  const { todaySchedules, tomorrowSchedules, loading } = useRealTimeCapacity(hotelSlug, selectedServiceType || undefined)
+  const { terminalMeetingPoints, loading: terminalLoading } = useTerminalMeetingPoints()
 
   const hotelName = hotelSlug === "ibis-styles" ? "Ibis styles Jakarta Airport" : "Ibis Budget Jakarta Airport"
   const hotelShortName = hotelSlug === "ibis-styles" ? "Ibis styles" : "Ibis Budget"
@@ -77,11 +111,162 @@ export default function BookingPage() {
   const handleScheduleSelect = (scheduleId: string, date: string) => {
     setSelectedScheduleId(scheduleId)
     setSelectedDate(date)
+    
+    // For pick-up service, scroll to terminal selection; for drop-off, scroll to form
+    if (selectedServiceType === "pick_up") {
+      setTimeout(() => {
+        const terminalSection = document.querySelector('[data-section="terminal"]')
+        terminalSection?.scrollIntoView({ behavior: "smooth", block: "start" })
+      }, 150)
+    } else {
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150)
+    }
+  }
+
+  const handleServiceTypeSelect = (serviceType: "drop_off" | "pick_up") => {
+    setSelectedServiceType(serviceType)
+    // Reset schedule and terminal selection when service type changes
+    setSelectedScheduleId(null)
+    setSelectedDate("")
+    setSelectedTerminalCode(null)
+    setSelectedMeetingPointId(null)
+    // Reset service-specific fields
+    setRoomNumber("")
+    setFlightNumber("")
+    
+    // Scroll to schedule section
+    setTimeout(() => {
+      const scheduleSection = document.querySelector('[data-section="schedule"]')
+      scheduleSection?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 150)
+  }
+
+  const handleTerminalSelect = (terminalCode: string, meetingPointId: string) => {
+    // For drop-off service, allow empty values (skip terminal selection)
+    if (selectedServiceType === "drop_off" && terminalCode === "" && meetingPointId === "") {
+      setSelectedTerminalCode(null)
+      setSelectedMeetingPointId(null)
+      setPricingTerminalCode(undefined)
+    } else {
+      setSelectedTerminalCode(terminalCode)
+      setSelectedMeetingPointId(meetingPointId)
+      setPricingTerminalCode(terminalCode)
+    }
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150)
   }
 
-  const isFormValid =
-    Boolean(selectedScheduleId && selectedDate && passengerCount >= 1 && flightNumber.trim() && idempotencyKey && phoneNumber.trim())
+  // Sync passenger count with pricing state
+  const handlePassengerCountChange = (count: number) => {
+    setPassengerCount(count)
+    setPricingPassengerCount(count)
+  }
+
+  // Handle surfboard selection
+  const handleSurfboardChange = (has: boolean, count: number) => {
+    setSurfboardCount(count)
+  }
+
+  // Handle baggage selection
+  const handleExcessBaggageChange = (count: number) => {
+    setExcessBaggageCount(count) // This will internally set hasExcessBaggage to count > 0
+  }
+
+  // Handle service-specific field changes
+  const handleRoomNumberChange = (value: string) => {
+    setRoomNumber(value)
+  }
+
+  const handleFlightNumberChange = (value: string) => {
+    setFlightNumber(value)
+  }
+
+  const handleCustomerNameChange = (value: string) => {
+    setCustomerName(value)
+  }
+
+  // Calculate form completion percentage for progress indicator
+  const getFormCompletionPercentage = () => {
+    let completed = 0
+    let total = 0
+    
+    // Basic required fields
+    total += 3 // customerName, phoneNumber, passengerCount
+    if (customerName.trim()) completed++
+    if (phoneNumber.trim()) completed++
+    if (passengerCount > 0) completed++
+    
+    // Service-specific fields
+    if (selectedServiceType === "drop_off") {
+      total += 1 // roomNumber
+      if (roomNumber.trim()) completed++
+    } else if (selectedServiceType === "pick_up") {
+      total += 1 // flightNumber  
+      if (flightNumber.trim()) completed++
+    }
+    
+    // Optional fields (count as bonus)
+    if (hasSurfboard || hasExcessBaggage) {
+      total += 1
+      completed += 1 // Already configured
+    }
+    
+    return Math.min(100, (completed / total) * 100)
+  }
+
+  const isFormValid = Boolean(
+    selectedScheduleId && 
+    selectedDate && 
+    selectedServiceType &&
+    passengerCount >= 1 && 
+    idempotencyKey && 
+    phoneNumber.trim() &&
+    customerName.trim() &&
+    // Service-specific field validation
+    (selectedServiceType === "drop_off" ? roomNumber.trim() : flightNumber.trim()) &&
+    // For pick-up service, terminal selection is required
+    (selectedServiceType === "drop_off" || (selectedTerminalCode && selectedMeetingPointId))
+  )
+
+  // Auto-scroll to submit button when form becomes valid
+  useEffect(() => {
+    if (isFormValid && selectedScheduleId) {
+      // Small delay to ensure form is rendered
+      const timer = setTimeout(() => {
+        const submitButton = document.querySelector('[data-submit-button]')
+        if (submitButton) {
+          submitButton.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          })
+        }
+      }, 500)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [isFormValid, selectedScheduleId])
+
+  // Track if submit button is visible in viewport
+  const [isSubmitButtonVisible, setIsSubmitButtonVisible] = useState(true)
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsSubmitButtonVisible(entry.isIntersecting)
+      },
+      { threshold: 0.1 }
+    )
+
+    const submitButton = document.querySelector('[data-submit-button]')
+    if (submitButton) {
+      observer.observe(submitButton)
+    }
+
+    return () => {
+      if (submitButton) {
+        observer.unobserve(submitButton)
+      }
+    }
+  }, [selectedScheduleId])
 
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -190,7 +375,6 @@ export default function BookingPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2 mt-3 text-xs sm:text-sm text-white/90 font-medium">
-                <BadgeInfo icon={<MapPin className="h-3.5 w-3.5" />} label="Jakarta Airport" />
                 <BadgeInfo icon={<Clock className="h-3.5 w-3.5" />} label="06:00 - 22:00" />
                 <BadgeInfo icon={<Shield className="h-3.5 w-3.5" />} label="Free for guests" />
               </div>
@@ -209,58 +393,128 @@ export default function BookingPage() {
         {/* STEPS */}
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            <StepPill active>1. Choose schedule</StepPill>
-            <StepPill active={Boolean(selectedScheduleId)}>2. Passenger details</StepPill>
+            <StepPill active>1. Choose service</StepPill>
+            <StepPill active={Boolean(selectedServiceType)}>2. Choose schedule</StepPill>
+            {selectedServiceType === "pick_up" && (
+              <StepPill active={Boolean(selectedTerminalCode)}>3. Choose terminal</StepPill>
+            )}
+            <StepPill active={Boolean(selectedScheduleId && (selectedServiceType === "drop_off" || selectedTerminalCode))}>
+              {selectedServiceType === "pick_up" ? "4. Passenger details" : "3. Passenger details"}
+            </StepPill>
           </div>
 
-          {/* GRID — SCHEDULE + FORM */}
-          <div className="grid lg:grid-cols-[1.6fr,1fr] gap-8 items-start">
+          {/* GRID — SERVICE TYPE + SCHEDULE + TERMINAL + FORM */}
+          <div className="grid lg:grid-cols-[1.4fr,1fr] gap-6 items-start">
 
-            {/* SCHEDULE */}
-            <div className="space-y-4">
-              <ScheduleSelector
-                todaySchedules={todaySchedules}
-                tomorrowSchedules={tomorrowSchedules}
-                selectedScheduleId={selectedScheduleId}
-                onScheduleSelect={handleScheduleSelect}
-                loading={loading}
+            {/* LEFT SIDE - SERVICE TYPE, SCHEDULE, AND TERMINAL SELECTION */}
+            <div className="space-y-6 lg:order-1 order-1">
+              {/* SERVICE TYPE SELECTION */}
+              <ServiceTypeSelector
+                selectedServiceType={selectedServiceType}
+                onServiceTypeSelect={handleServiceTypeSelect}
               />
 
+              {/* SCHEDULE SELECTION */}
+              <div data-section="schedule">
+                <ScheduleSelector
+                  todaySchedules={todaySchedules}
+                  tomorrowSchedules={tomorrowSchedules}
+                  selectedScheduleId={selectedScheduleId}
+                  onScheduleSelect={handleScheduleSelect}
+                  loading={loading}
+                  serviceType={selectedServiceType}
+                />
+              </div>
+
+              {/* TERMINAL SELECTION (only for pick-up service) */}
+              {selectedServiceType === "pick_up" && selectedScheduleId && (
+                <div data-section="terminal">
+                  <TerminalSelector
+                    terminalMeetingPoints={terminalMeetingPoints}
+                    selectedTerminalCode={selectedTerminalCode}
+                    selectedMeetingPointId={selectedMeetingPointId}
+                    onTerminalSelect={handleTerminalSelect}
+                    loading={terminalLoading}
+                    serviceType={selectedServiceType}
+                    isOptional={false}
+                  />
+                </div>
+              )}
+
+              {/* NEXT STEP GUIDANCE */}
               <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Next step</p>
-                  <p className="text-xs text-slate-600">Fill passenger details after choosing a schedule.</p>
+                  <p className="text-xs text-slate-600">
+                    {!selectedServiceType 
+                      ? "Choose your travel direction first."
+                      : !selectedScheduleId 
+                      ? "Select a departure time."
+                      : selectedServiceType === "pick_up" && !selectedTerminalCode
+                      ? "Choose your arrival terminal."
+                      : "Fill passenger details to complete booking."
+                    }
+                  </p>
                 </div>
                 <Button
                   type="button"
                   variant="secondary"
-                  className="rounded-xl"
-                  disabled={!selectedScheduleId}
+                  className="rounded-xl lg:inline-flex hidden"
+                  disabled={!selectedServiceType || !selectedScheduleId || (selectedServiceType === "pick_up" && !selectedTerminalCode)}
                   onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 >
-                  Open passenger form
+                  {selectedServiceType === "pick_up" && !selectedTerminalCode ? "Select terminal first" : "Open passenger form"}
                 </Button>
               </div>
             </div>
 
             {/* FORM SIDEBAR */}
-            <div className="space-y-6 lg:sticky lg:top-24" ref={formRef}>
-              <Card className="shadow-lg border border-slate-100 rounded-2xl">
+            <div className="space-y-4 lg:order-2 order-2" ref={formRef} data-section="form">
+              <Card className="shadow-lg border border-slate-100 rounded-2xl transition-all duration-300 hover:shadow-xl">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-xl md:text-2xl text-slate-900">
                     <User className="h-6 w-6 text-primary" />
                     Passenger Details
                   </CardTitle>
                   <p className="text-sm text-slate-600">Ticket is sent to WhatsApp after confirmation.</p>
+                  
+                  {/* Progress indicator */}
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                      <span>Form Progress</span>
+                      <span className="font-medium">{Math.round(getFormCompletionPercentage())}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${getFormCompletionPercentage()}%` }}
+                      />
+                    </div>
+                    {getFormCompletionPercentage() === 100 && (
+                      <p className="text-xs text-green-600 mt-1 animate-pulse">✓ Ready to book!</p>
+                    )}
+                  </div>
                 </CardHeader>
 
                 <CardContent className="pt-4">
-                  <form onSubmit={handleSubmit} className="space-y-5">
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     <input type="hidden" name="scheduleId" value={selectedScheduleId || ""} />
                     <input type="hidden" name="bookingDate" value={selectedDate} />
                     <input type="hidden" name="passengerCount" value={passengerCount} />
-                    <input type="hidden" name="flightNumber" value={flightNumber} />
                     <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+                    <input type="hidden" name="serviceType" value={selectedServiceType || ""} />
+                    {selectedTerminalCode && <input type="hidden" name="terminalCode" value={selectedTerminalCode} />}
+                    {selectedMeetingPointId && <input type="hidden" name="meetingPointId" value={selectedMeetingPointId} />}
+                    
+                    {/* Enhanced booking fields */}
+                    <input type="hidden" name="roomNumber" value={roomNumber} />
+                    <input type="hidden" name="flightNumber" value={flightNumber} />
+                    <input type="hidden" name="hasSurfboard" value={hasSurfboard ? "true" : "false"} />
+                    <input type="hidden" name="surfboardCount" value={surfboardCount} />
+                    <input type="hidden" name="excessBaggageCount" value={excessBaggageCount} />
+                    <input type="hidden" name="surfboardCost" value={pricing?.surfboardCost || 0} />
+                    <input type="hidden" name="baggageCost" value={pricing?.baggageCost || 0} />
+                    <input type="hidden" name="totalCost" value={pricing?.totalCost || 0} />
 
                     {/* FORM — NAME */}
                     <FormField label="Full name">
@@ -269,20 +523,21 @@ export default function BookingPage() {
                         name="customerName"
                         required
                         placeholder="Full name as per ID"
-                        className="h-11 rounded-xl"
+                        className="h-10 rounded-xl"
+                        value={customerName}
+                        onChange={(e) => handleCustomerNameChange(e.target.value)}
                       />
                     </FormField>
 
                     {/* WHATSAPP */}
                     <FormField label="WhatsApp number">
-                      <div className="grid grid-cols-[120px_1fr] gap-2">
+                      <div className="grid grid-cols-[100px_1fr] gap-2">
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-slate-500">+</span>
                           <Input
                             name="countryCode"
                             type="tel"
-                            list="dial-codes"
-                            className="h-11 rounded-xl px-2"
+                            className="h-10 rounded-xl px-2 text-sm"
                             value={countryCode}
                             onChange={(e) => setCountryCode(e.target.value.replace(/\D/g, ""))}
                             placeholder="62"
@@ -294,21 +549,15 @@ export default function BookingPage() {
                           type="tel"
                           required
                           placeholder="812xxxxxx"
-                          className="h-11 rounded-xl flex-1"
+                          className="h-10 rounded-xl flex-1"
                           value={phoneNumber}
                           onChange={(e) => setPhoneNumber(e.target.value)}
                         />
                       </div>
-                      <datalist id="dial-codes">
-                        {dialCodeOptions.map((opt) => (
-                          <option key={opt.code} value={opt.dial}>{`${opt.label}`}</option>
-                        ))}
-                      </datalist>
 
-                      <Label className="text-xs font-semibold text-slate-700 mt-2">Is this number active on WhatsApp?</Label>
                       <Select name="hasWhatsapp" value={hasWhatsapp} onValueChange={setHasWhatsapp}>
                         <SelectTrigger className="h-10 rounded-xl">
-                          <SelectValue placeholder="WhatsApp status" />
+                          <SelectValue placeholder="WhatsApp active?" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="yes">Yes, active</SelectItem>
@@ -317,15 +566,15 @@ export default function BookingPage() {
                       </Select>
                     </FormField>
 
-                    {/* PASSENGERS + ROOM */}
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <FormField label="Number of passengers">
+                    {/* PASSENGERS */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField label="Passengers">
                         <Select
                           value={passengerCount.toString()}
-                          onValueChange={(v) => setPassengerCount(Number(v))}
+                          onValueChange={(v) => handlePassengerCountChange(Number(v))}
                         >
-                          <SelectTrigger className="h-11 rounded-xl">
-                            <SelectValue placeholder="Select total" />
+                          <SelectTrigger className="h-10 rounded-xl">
+                            <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
                             {[1, 2, 3, 4, 5].map((n) => (
@@ -334,28 +583,99 @@ export default function BookingPage() {
                           </SelectContent>
                         </Select>
                       </FormField>
-
-                      <FormField label="Flight number">
-                        <div className="relative">
-                          <Input
-                            id="flightNumber"
-                            required
-                            placeholder="e.g., GA123"
-                            className="h-11 rounded-xl pl-11"
-                            value={flightNumber}
-                            onChange={(e) => setFlightNumber(e.target.value)}
-                          />
-                          <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        </div>
-                      </FormField>
                     </div>
+
+                    {/* SERVICE-SPECIFIC FIELDS */}
+                    <ServiceSpecificFields
+                      serviceType={selectedServiceType}
+                      roomNumber={roomNumber}
+                      flightNumber={flightNumber}
+                      onRoomNumberChange={handleRoomNumberChange}
+                      onFlightNumberChange={handleFlightNumberChange}
+                    />
+
+                    {/* SURFBOARD SELECTOR */}
+                    {config && (
+                      <SurfboardSelector
+                        hasSurfboard={hasSurfboard}
+                        surfboardCount={surfboardCount}
+                        onSurfboardChange={handleSurfboardChange}
+                        pricing={{
+                          costPerBoard: config.surfboardCostPerBoard,
+                          currency: config.currency
+                        }}
+                      />
+                    )}
+
+                    {/* BAGGAGE SELECTOR */}
+                    {config && (
+                      <BaggageSelector
+                        passengerCount={passengerCount}
+                        excessBaggageCount={excessBaggageCount}
+                        terminalCode={selectedTerminalCode || undefined}
+                        onExcessBaggageChange={handleExcessBaggageChange}
+                        pricing={{
+                          freeItemsPerPassenger: config.baggageFreeItemsPerPassenger,
+                          terminal3CurbsideCost: config.baggageTerminal3CurbsideCost,
+                          otherTerminalsCost: config.baggageOtherTerminalsCost,
+                          currency: config.currency
+                        }}
+                      />
+                    )}
+
+                    {/* PRICING BREAKDOWN */}
+                    {pricing && config && (
+                      <PricingBreakdown
+                        basePrice={0}
+                        surfboardCost={pricing.surfboardCost}
+                        baggageCost={pricing.baggageCost}
+                        totalCost={pricing.totalCost}
+                        currency={config.currency}
+                        breakdown={pricing.breakdown}
+                      />
+                    )}
+
+                    {/* TERMINAL SELECTION FOR DROP-OFF */}
+                    {selectedServiceType === "drop_off" && (
+                      <FormField label="Terminal (Optional)">
+                        <Select 
+                          value={selectedTerminalCode || "none"} 
+                          onValueChange={(value) => {
+                            if (value === "none") {
+                              setSelectedTerminalCode(null)
+                              setSelectedMeetingPointId(null)
+                              setPricingTerminalCode(undefined)
+                            } else {
+                              const terminal = terminalMeetingPoints.find(t => t.terminalCode === value)
+                              if (terminal) {
+                                setSelectedTerminalCode(terminal.terminalCode)
+                                setSelectedMeetingPointId(terminal.id)
+                                setPricingTerminalCode(terminal.terminalCode)
+                              }
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-10 rounded-xl">
+                            <SelectValue placeholder="Select terminal (optional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No terminal specified</SelectItem>
+                            {terminalMeetingPoints.map((terminal) => (
+                              <SelectItem key={terminal.id} value={terminal.terminalCode}>
+                                Terminal {terminal.terminalCode} ({terminal.terminalCode.includes('3') ? 'Domestic' : 'International'})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormField>
+                    )}
 
                     {/* ERRORS */}
                     {error && (
-                      <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-4 shadow-md animate-in slide-in-from-top-2">
-                        <div className="flex items-start gap-3">
+                      <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-3 shadow-md animate-in slide-in-from-top-2">
+                        <div className="flex items-start gap-2">
                           <div className="flex-shrink-0 mt-0.5">
-                            <svg className="h-5 w-5 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="h-4 w-4 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                             </svg>
                           </div>
@@ -367,18 +687,54 @@ export default function BookingPage() {
                       </div>
                     )}
 
-                    {/* SUBMIT */}
-                    <div className="pt-2 space-y-3">
+                    {/* SUBMIT BUTTON - Normal positioning */}
+                    <div className="pt-4 space-y-3">
+                      {/* Quick summary */}
+                      {pricing && pricing.totalCost > 0 && (
+                        <div className="text-center p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                          <p className="text-sm font-medium text-blue-900">
+                            Total Cost: {new Intl.NumberFormat('id-ID', {
+                              style: 'currency',
+                              currency: config?.currency || 'IDR',
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0
+                            }).format(pricing.totalCost)}
+                          </p>
+                        </div>
+                      )}
+                      
                       <Button
                         type="submit"
-                        className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                        className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl"
                         disabled={!isFormValid || isSubmitting || isPending}
+                        data-submit-button
                       >
-                        {isSubmitting || isPending ? "Processing..." : isFormValid ? "✓ Confirm Booking" : "Complete booking details"}
+                        {isSubmitting || isPending 
+                          ? "Processing..." 
+                          : isFormValid 
+                          ? `✓ Confirm ${selectedServiceType === "drop_off" ? "Drop-off" : "Pick-up"} Booking`
+                          : "Complete booking details"
+                        }
                       </Button>
+                      
                       {!isFormValid && (
-                        <div className="text-center text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                          Choose a schedule and fill all fields to continue.
+                        <div className="text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                          {!selectedServiceType 
+                            ? "Choose service type and schedule to continue."
+                            : !selectedScheduleId
+                            ? "Select a departure time to continue."
+                            : selectedServiceType === "pick_up" && !selectedTerminalCode
+                            ? "Select your arrival terminal to continue."
+                            : selectedServiceType === "drop_off" && !roomNumber.trim()
+                            ? "Enter your room number to continue."
+                            : selectedServiceType === "pick_up" && !flightNumber.trim()
+                            ? "Enter your flight number to continue."
+                            : !customerName.trim()
+                            ? "Enter your full name to continue."
+                            : !phoneNumber.trim()
+                            ? "Enter your WhatsApp number to continue."
+                            : "Fill all required details to continue."
+                          }
                         </div>
                       )}
                     </div>
@@ -388,21 +744,65 @@ export default function BookingPage() {
 
               {/* INFO BOX */}
               <Card className="border border-slate-100 shadow-md rounded-2xl">
-                <CardContent className="p-5 space-y-2">
+                <CardContent className="p-4 space-y-2">
                   <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-primary" />
+                    <Shield className="h-4 w-4 text-primary" />
                     Important info
                   </h3>
-                  <ul className="space-y-1 text-sm text-slate-700">
-                    <li>Arrive at the lobby 10 minutes before departure.</li>
-                    <li>Show your WhatsApp ticket when boarding.</li>
-                    <li>Ensure flight number and passenger count are correct.</li>
+                  <ul className="space-y-1 text-xs text-slate-700">
+                    <li>• Arrive at the lobby 10 minutes before departure.</li>
+                    <li>• Show your WhatsApp ticket when boarding.</li>
+                    <li>• Ensure flight number and passenger count are correct.</li>
                   </ul>
                 </CardContent>
               </Card>
             </div>
           </div>
         </div>
+
+        {/* FLOATING ACTION BUTTON - Shows when form is ready */}
+        {selectedScheduleId && (selectedServiceType === "drop_off" || selectedTerminalCode) && (
+          <div className="fixed bottom-6 right-6 z-50 lg:hidden">
+            <Button
+              type="button"
+              size="lg"
+              className="h-14 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl hover:shadow-2xl transition-all duration-300 rounded-full"
+              onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
+            >
+              <User className="h-5 w-5 mr-2" />
+              Complete Booking
+            </Button>
+          </div>
+        )}
+
+        {/* Smart Floating Action Button - Only shows when submit button is not visible */}
+        {selectedScheduleId && isFormValid && !isSubmitButtonVisible && (
+          <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-2">
+            <Button
+              onClick={() => {
+                const form = document.querySelector('form')
+                if (form) {
+                  form.requestSubmit()
+                }
+              }}
+              className="h-14 w-14 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
+              disabled={!isFormValid || isSubmitting || isPending}
+            >
+              {isPending ? (
+                <Loader2 className="h-6 w-6 animate-spin text-white" />
+              ) : (
+                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              )}
+            </Button>
+            
+            {/* Tooltip */}
+            <div className="absolute bottom-16 right-0 bg-slate-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity">
+              Complete Booking
+            </div>
+          </div>
+        )}
 
       </div>
     </PublicShell>
@@ -457,11 +857,3 @@ const countryOptions = [
   { code: "AE", dial: "971", label: "UAE" },
   { code: "SA", dial: "966", label: "Saudi Arabia" },
 ]
-
-const dialCodeOptions = countryOptions
-
-function countryToDialCode(country?: string) {
-  if (!country) return null
-  const found = countryOptions.find((c) => c.code === country)
-  return found?.dial ?? null
-}

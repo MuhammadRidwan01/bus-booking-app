@@ -10,7 +10,11 @@ const bodySchema = z.object({
   customerName: z.string().min(1),
   phoneNumber: z.string().min(5),
   passengerCount: z.number().int().positive().max(5),
-  flightNumber: z.string().min(1),
+  flightNumber: z.string().optional(),
+  roomNumber: z.string().optional(),
+  hasSurfboard: z.boolean().default(false),
+  surfboardCount: z.number().int().min(0).default(0),
+  excessBaggageCount: z.number().int().min(0).default(0),
 })
 
 export async function POST(req: NextRequest) {

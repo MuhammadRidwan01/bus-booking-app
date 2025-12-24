@@ -20,6 +20,11 @@ type QueueRow = {
   whatsapp_last_error?: string | null
   hotel_name?: string | null
   has_whatsapp?: boolean | null
+  service_type?: string | null
+  terminal_code?: string | null
+  meeting_point_location?: string | null
+  arrival_time_offset_min?: number | null
+  arrival_time_offset_max?: number | null
 }
 
 function unauthorized() {
@@ -30,7 +35,7 @@ async function fetchQueue(supabase: any): Promise<QueueRow[]> {
   const attempt = await supabase
     .from("booking_details")
     .select(
-      "id, booking_code, customer_name, phone, schedule_date, departure_time, destination, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, hotel_name, has_whatsapp",
+      "id, booking_code, customer_name, phone, schedule_date, departure_time, destination, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, hotel_name, has_whatsapp, service_type, terminal_code, meeting_point_location, arrival_time_offset_min, arrival_time_offset_max",
     )
     .eq("whatsapp_sent", false)
     .lt("whatsapp_attempts", MAX_ATTEMPTS)
@@ -106,17 +111,34 @@ export async function POST(req: Request) {
       const trackLink = `${baseUrl}/track?code=${item.booking_code}`
       const pdfLink = `${baseUrl}/api/ticket/${item.booking_code}`
 
+      const serviceTypeText = item.service_type === 'drop_off' 
+        ? 'Hotel ke Bandara' 
+        : 'Bandara ke Hotel'
+
       const messageParts = [
         `Halo ${item.customer_name}, booking shuttle kamu sudah berhasil.`,
         item.hotel_name ? `Hotel: ${item.hotel_name}` : null,
+        `Layanan: ${serviceTypeText}`,
         item.schedule_date ? `Tanggal: ${formatDate(item.schedule_date)}` : null,
         item.departure_time ? `Jam: ${formatTime(item.departure_time)} WIB` : null,
         item.destination ? `Tujuan: ${item.destination}` : null,
+      ]
+
+      // Add terminal and meeting point info for pick-up bookings
+      if (item.service_type === 'pick_up' && item.meeting_point_location) {
+        messageParts.push(`Terminal: ${item.terminal_code}`)
+        messageParts.push(`Titik Jemput: ${item.meeting_point_location}`)
+        if (item.arrival_time_offset_min && item.arrival_time_offset_max) {
+          messageParts.push(`Estimasi Tiba: ${item.arrival_time_offset_min}-${item.arrival_time_offset_max} menit setelah keberangkatan`)
+        }
+      }
+
+      messageParts.push(
         `Kode Booking: ${item.booking_code}`,
         `Lacak tiket: ${trackLink}`,
-        "Terima kasih.",
-      ].filter(Boolean)
-      const message = messageParts.join("\n")
+        "Terima kasih."
+      )
+      const message = messageParts.filter(Boolean).join("\n")
 
       const waResult = await sendWhatsappMessage({
         phone: normalizedPhone,

@@ -6,7 +6,7 @@ import type { ScheduleWithCapacity } from "@/types"
 import { getCapacityStatus, isScheduleAvailable } from "@/lib/utils"
 import { format, addDays } from "date-fns"
 
-export function useRealTimeCapacity(hotelSlug: string) {
+export function useRealTimeCapacity(hotelSlug: string, serviceType?: 'drop_off' | 'pick_up') {
   const [todaySchedules, setTodaySchedules] = useState<ScheduleWithCapacity[]>([])
   const [tomorrowSchedules, setTomorrowSchedules] = useState<ScheduleWithCapacity[]>([])
   const [loading, setLoading] = useState(true)
@@ -14,124 +14,134 @@ export function useRealTimeCapacity(hotelSlug: string) {
   useEffect(() => {
     const today = format(new Date(), "yyyy-MM-dd")
     const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd")
-    console.log("Today:", today, "Tomorrow:", tomorrow)
+    console.log("Today:", today, "Tomorrow:", tomorrow, "Service Type:", serviceType)
     
     async function fetchSchedules() {
-  try {
-    setLoading(true)
+      try {
+        setLoading(true)
 
-    // Step 1: Get hotel ID dari slug
-    const { data: hotel, error: hotelError } = await supabase
-      .from("hotels")
-      .select("id")
-      .eq("slug", hotelSlug)
-      .single()
+        // Step 1: Convert URL slug to database format
+        // URL uses "ibis-styles" but database uses "ibis_style"
+        const dbHotelSlug = hotelSlug === "ibis-styles" ? "ibis_style" : 
+                           hotelSlug === "ibis-budget" ? "ibis_budget" : hotelSlug
 
-    if (hotelError) {
-      console.error("Error fetching hotel:", hotelError)
-      return
-    }
-    if (!hotel) {
-      console.warn("Hotel not found for slug:", hotelSlug)
-      return
-    }
+        // Get hotel ID from converted slug
+        const { data: hotel, error: hotelError } = await supabase
+          .from("hotels")
+          .select("id")
+          .eq("slug", dbHotelSlug)
+          .single()
 
-    // Step 2: Ambil semua bus_schedules untuk hotel tersebut
-    const { data: busSchedules, error: busError } = await supabase
-      .from("bus_schedules")
-      .select("id")
-      .eq("hotel_id", hotel.id)
+        if (hotelError) {
+          console.error("Error fetching hotel:", hotelError)
+          return
+        }
+        if (!hotel) {
+          console.warn("Hotel not found for slug:", hotelSlug, "converted to:", dbHotelSlug)
+          return
+        }
 
-    if (busError) {
-      console.error("Error fetching bus schedules:", busError)
-      return
-    }
-    if (!busSchedules || busSchedules.length === 0) {
-      console.warn("No bus schedules found for hotel id:", hotel.id)
-      return
-    }
+        // Step 2: Fetch daily_schedules directly with service type filtering
+        const fetchDailySchedules = async (date: string) => {
+          let query = supabase
+            .from("daily_schedules")
+            .select(`
+              id,
+              schedule_date,
+              current_booked,
+              status,
+              service_type,
+              departure_time,
+              capacity,
+              hotel,
+              bus_schedule_id,
+              bus_schedules (
+                departure_time,
+                destination,
+                max_capacity,
+                hotel_id
+              )
+            `)
+            .eq("schedule_date", date)
+            .eq("hotel", dbHotelSlug)
+            .eq("status", "active")
 
-    const busScheduleIds = busSchedules.map((b) => b.id)
+          // Filter by service type if provided
+          if (serviceType) {
+            query = query.eq("service_type", serviceType)
+          }
 
-    // Step 3: Ambil daily_schedules untuk today dan tomorrow dengan bus_schedule_id di busScheduleIds
-    const fetchDailySchedules = async (date: string) => {
-      const { data, error } = await supabase
-        .from("daily_schedules")
-        .select(`
-          id,
-          schedule_date,
-          current_booked,
-          status,
-          bus_schedules (
-            departure_time,
-            destination,
-            max_capacity
-          )
-        `)
-        .eq("schedule_date", date)
-        .in("bus_schedule_id", busScheduleIds)
-        .eq("status", "active")
+          const { data, error } = await query
 
-      if (error) {
-        console.error(`Error fetching daily schedules for ${date}:`, error)
-        return []
+          if (error) {
+            console.error(`Error fetching daily schedules for ${date}:`, error)
+            return []
+          }
+
+          return data || []
+        }
+
+        const todayData = await fetchDailySchedules(today)
+        const tomorrowData = await fetchDailySchedules(tomorrow)
+
+        // Step 3: Process data results
+        const processScheduleData = (scheduleData: any[], isToday: boolean) => {
+          return scheduleData.map((schedule) => {
+            const busSchedule = Array.isArray(schedule.bus_schedules)
+              ? schedule.bus_schedules[0]
+              : schedule.bus_schedules
+            
+            // Use departure_time from daily_schedules if available, otherwise from bus_schedules
+            const departureTime = schedule.departure_time || busSchedule?.departure_time
+            
+            // Use capacity from daily_schedules if available, otherwise from bus_schedules
+            const maxCapacity = schedule.capacity || busSchedule?.max_capacity
+            
+            // Determine destination based on service type
+            let destination = busSchedule?.destination
+            if (!destination) {
+              if (schedule.service_type === 'drop_off') {
+                destination = 'Soekarno-Hatta International Airport'
+              } else if (schedule.service_type === 'pick_up') {
+                destination = 'Soekarno-Hatta Airport Terminal'
+              } else {
+                destination = 'Soekarno-Hatta Airport' // fallback
+              }
+            }
+            
+            const isPast = isToday && !isScheduleAvailable(departureTime, schedule.schedule_date)
+            
+            return {
+              id: schedule.id,
+              departure_time: departureTime,
+              destination: destination,
+              current_booked: schedule.current_booked,
+              max_capacity: maxCapacity,
+              status: getCapacityStatus(schedule.current_booked, maxCapacity),
+              schedule_date: schedule.schedule_date,
+              service_type: schedule.service_type,
+              isPast,
+            }
+          })
+        }
+
+        const processedToday = processScheduleData(todayData, true)
+        const processedTomorrow = processScheduleData(tomorrowData, false)
+
+        setTodaySchedules(processedToday)
+        setTomorrowSchedules(processedTomorrow)
+      } catch (error) {
+        console.error("Error fetching schedules:", error)
+      } finally {
+        setLoading(false)
       }
-
-      return data || []
     }
-
-    const todayData = await fetchDailySchedules(today)
-    const tomorrowData = await fetchDailySchedules(tomorrow)
-
-    // Step 4: Proses data hasil query
-    const processedToday = todayData.map((schedule) => {
-      const busSchedule = Array.isArray(schedule.bus_schedules)
-        ? schedule.bus_schedules[0]
-        : schedule.bus_schedules
-      const isPast = !isScheduleAvailable(busSchedule?.departure_time, schedule.schedule_date)
-      return {
-        id: schedule.id,
-        departure_time: busSchedule?.departure_time,
-        destination: busSchedule?.destination,
-        current_booked: schedule.current_booked,
-        max_capacity: busSchedule?.max_capacity,
-        status: getCapacityStatus(schedule.current_booked, busSchedule?.max_capacity),
-        schedule_date: schedule.schedule_date,
-        isPast,
-      }
-    })
-
-    const processedTomorrow = tomorrowData.map((schedule) => {
-      const busSchedule = Array.isArray(schedule.bus_schedules)
-        ? schedule.bus_schedules[0]
-        : schedule.bus_schedules
-      return {
-        id: schedule.id,
-        departure_time: busSchedule?.departure_time,
-        destination: busSchedule?.destination,
-        current_booked: schedule.current_booked,
-        max_capacity: busSchedule?.max_capacity,
-        status: getCapacityStatus(schedule.current_booked, busSchedule?.max_capacity),
-        schedule_date: schedule.schedule_date,
-        isPast: false,
-      }
-    })
-
-    setTodaySchedules(processedToday)
-    setTomorrowSchedules(processedTomorrow)
-  } catch (error) {
-    console.error("Error fetching schedules:", error)
-  } finally {
-    setLoading(false)
-  }
-}
-
 
     fetchSchedules()
 
     // Subscribe to real-time updates
     const todayChannel = supabase
-      .channel(`capacity-${hotelSlug}-${today}`)
+      .channel(`capacity-${hotelSlug}-${today}${serviceType ? `-${serviceType}` : ''}`)
       .on(
         "postgres_changes",
         {
@@ -141,6 +151,11 @@ export function useRealTimeCapacity(hotelSlug: string) {
           filter: `schedule_date=eq.${today}`,
         },
         (payload) => {
+          // Only update if service type matches (if filtering is enabled)
+          if (serviceType && payload.new.service_type !== serviceType) {
+            return
+          }
+
           setTodaySchedules((prev) =>
             prev.map((schedule) =>
               schedule.id === payload.new.id
@@ -157,7 +172,7 @@ export function useRealTimeCapacity(hotelSlug: string) {
       .subscribe()
 
     const tomorrowChannel = supabase
-      .channel(`capacity-${hotelSlug}-${tomorrow}`)
+      .channel(`capacity-${hotelSlug}-${tomorrow}${serviceType ? `-${serviceType}` : ''}`)
       .on(
         "postgres_changes",
         {
@@ -167,6 +182,11 @@ export function useRealTimeCapacity(hotelSlug: string) {
           filter: `schedule_date=eq.${tomorrow}`,
         },
         (payload) => {
+          // Only update if service type matches (if filtering is enabled)
+          if (serviceType && payload.new.service_type !== serviceType) {
+            return
+          }
+
           setTomorrowSchedules((prev) =>
             prev.map((schedule) =>
               schedule.id === payload.new.id
@@ -186,7 +206,7 @@ export function useRealTimeCapacity(hotelSlug: string) {
       supabase.removeChannel(todayChannel)
       supabase.removeChannel(tomorrowChannel)
     }
-  }, [hotelSlug])
+  }, [hotelSlug, serviceType])
 
   return { todaySchedules, tomorrowSchedules, loading }
 }

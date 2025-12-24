@@ -11,6 +11,11 @@ interface TicketPayload {
   passengerCount?: number
   flightNumber?: string | null
   trackUrl: string
+  serviceType?: 'drop_off' | 'pick_up'
+  terminalCode?: string
+  meetingPointLocation?: string
+  arrivalTimeOffsetMin?: number
+  arrivalTimeOffsetMax?: number
 }
 
 /**
@@ -56,7 +61,6 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
 
   // Slate Scale (text & backgrounds)
   const slate900 = rgb(0.059, 0.078, 0.114)     // #0F172A - Darkest text
-  const slate700 = rgb(0.2, 0.247, 0.333)       // #334155 - Dark text
   const slate600 = rgb(0.282, 0.333, 0.42)      // #475569 - Medium text
   const slate500 = rgb(0.392, 0.455, 0.557)     // #64748B - Light text
   const slate400 = rgb(0.58, 0.639, 0.722)      // #94A3B8 - Lighter text
@@ -106,21 +110,6 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
         page.drawText(line, { x, y: y - dy, size, font: fnt, color })
       }
     })
-  }
-
-  // Helper function to draw rounded rectangle (simulated with multiple rectangles)
-  const drawRoundedRect = (
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    radius: number,
-    color: any,
-    borderColor?: any,
-    borderWidth = 0,
-  ) => {
-    // Main rectangle
-    page.drawRectangle({ x, y, width, height, color, borderColor, borderWidth })
   }
 
   // Subtle, refined shadow - professional restraint
@@ -215,11 +204,18 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   })
 
   // Header content with better hierarchy
+  const headerServiceText = payload.serviceType === 'drop_off' 
+    ? 'DROP-OFF SERVICE' 
+    : payload.serviceType === 'pick_up' 
+    ? 'PICK-UP SERVICE' 
+    : 'SHUTTLE SERVICE'
+  
   drawText("SHUTTLE TICKET", 35, 600, 16, rgb(0.9, 0.93, 0.98))
-  drawText(payload.bookingCode || "-", 35, 565, 28, white, true)
+  drawText(headerServiceText, 35, 580, 12, rgb(0.85, 0.88, 0.95), true)
+  drawText(payload.bookingCode || "-", 35, 550, 28, white, true)
 
   // Hotel name
-  drawText(payload.hotelName || "-", 35, 537, 13, white, true)
+  drawText(payload.hotelName || "-", 35, 522, 13, white, true)
 
   // Service tagline
   drawText("Ibis Airport Shuttle Service • Free for Hotel Guests", 35, 495, 9, rgb(0.85, 0.88, 0.95))
@@ -279,8 +275,23 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   })
 
   // FROM section
+  const serviceTypeText = payload.serviceType === 'drop_off' 
+    ? 'HOTEL TO AIRPORT' 
+    : payload.serviceType === 'pick_up' 
+    ? 'AIRPORT TO HOTEL' 
+    : 'SHUTTLE SERVICE'
+  
+  const serviceTypeColor = payload.serviceType === 'drop_off' 
+    ? blue600 
+    : payload.serviceType === 'pick_up' 
+    ? emerald500 
+    : blue600
+  
   drawText("FROM", 50, 455, 9, slate500, true)
   drawWrapped(payload.hotelName || "-", 50, 437, 135, 12, slate900, true, 3)
+
+  // Service type indicator - more prominent
+  drawText(serviceTypeText, 50, 420, 9, serviceTypeColor, true)
 
   // Bold arrow divider
   page.drawRectangle({
@@ -336,6 +347,24 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
     { label: "PASSENGERS", value: payload.passengerCount ? `${payload.passengerCount} Person(s)` : "-", accent: emerald500 },
     { label: "FLIGHT", value: payload.flightNumber || "-", accent: sky500 },
   ]
+
+  // Add terminal information for pick-up bookings
+  if (payload.serviceType === 'pick_up' && payload.terminalCode) {
+    cardData.push({ 
+      label: "TERMINAL", 
+      value: `Terminal ${payload.terminalCode}`, 
+      accent: rgb(0.957, 0.376, 0.133) // Orange accent for terminal
+    })
+  }
+
+  // Add meeting point information for pick-up bookings
+  if (payload.serviceType === 'pick_up' && payload.meetingPointLocation) {
+    cardData.push({ 
+      label: "MEETING POINT", 
+      value: payload.meetingPointLocation, 
+      accent: rgb(0.133, 0.545, 0.133) // Green accent for meeting point
+    })
+  }
 
   // EXTENSIVE dot pattern around cards - creates strong visual flow
   const cardAreaDots = [
@@ -581,11 +610,28 @@ export async function generateTicketPdf(payload: TicketPayload): Promise<Uint8Ar
   // Clean title
   drawText("IMPORTANT INFORMATION", 45, 87, 10, warningAmberText, true)
 
-  // Bullet points with better spacing
-  drawText("• Arrive 10 minutes before departure", 45, 70, 8, warningAmberText)
-  drawText("• Bring valid identification", 45, 58, 8, warningAmberText)
-  drawText("• Keep this ticket safe", 45, 46, 8, warningAmberText)
-  drawText("• Show to driver upon boarding", 45, 34, 8, warningAmberText)
+  // Bullet points with better spacing - different for service types
+  if (payload.serviceType === 'pick_up') {
+    // Pick-up specific instructions
+    drawText("• Wait at designated meeting point", 45, 70, 8, warningAmberText)
+    if (payload.terminalCode) {
+      drawText(`• Terminal: ${payload.terminalCode}`, 45, 58, 8, warningAmberText)
+    }
+    if (payload.meetingPointLocation) {
+      drawWrapped(`• Location: ${payload.meetingPointLocation}`, 45, 46, 340, 7, warningAmberText, false, 2)
+    }
+    if (payload.arrivalTimeOffsetMin && payload.arrivalTimeOffsetMax) {
+      drawText(`• Arrival: ${payload.arrivalTimeOffsetMin}-${payload.arrivalTimeOffsetMax} min after departure`, 45, 34, 7, warningAmberText)
+    } else {
+      drawText("• Show this ticket to driver", 45, 34, 8, warningAmberText)
+    }
+  } else {
+    // Drop-off specific instructions (default)
+    drawText("• Arrive 10 minutes before departure", 45, 70, 8, warningAmberText)
+    drawText("• Bring valid identification", 45, 58, 8, warningAmberText)
+    drawText("• Keep this ticket safe", 45, 46, 8, warningAmberText)
+    drawText("• Show to driver upon boarding", 45, 34, 8, warningAmberText)
+  }
 
   // FOOTER - Minimalist with booking code emphasis
   page.drawRectangle({

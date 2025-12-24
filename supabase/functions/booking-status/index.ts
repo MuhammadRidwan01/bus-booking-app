@@ -63,29 +63,8 @@ Deno.serve(async (req) => {
 
     // Query booking with all required fields for tracking page
     const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        booking_code,
-        customer_name,
-        phone,
-        passenger_count,
-        flight_number,
-        status,
-        whatsapp_sent,
-        whatsapp_attempts,
-        whatsapp_last_error,
-        hotels (
-          name
-        ),
-        daily_schedules (
-          schedule_date,
-          bus_schedules (
-            departure_time,
-            destination
-          )
-        )
-      `)
+      .from('booking_details')
+      .select('*')
       .eq('booking_code', bookingCode)
       .maybeSingle()
 
@@ -103,40 +82,12 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Extract nested data safely
-    const hotel = Array.isArray(booking.hotels) ? booking.hotels[0] : booking.hotels
-    const dailySchedule = Array.isArray(booking.daily_schedules)
-      ? booking.daily_schedules[0]
-      : booking.daily_schedules
-    const busSchedule = dailySchedule?.bus_schedules
-      ? Array.isArray(dailySchedule.bus_schedules)
-        ? dailySchedule.bus_schedules[0]
-        : dailySchedule.bus_schedules
-      : null
-
-    // Return booking data in format expected by frontend (snake_case to match BookingDetails type)
-    const bookingDetails = {
-      id: booking.id,
-      booking_code: booking.booking_code,
-      customer_name: booking.customer_name,
-      phone: booking.phone,
-      passenger_count: booking.passenger_count,
-      flight_number: booking.flight_number,
-      status: booking.status,
-      whatsapp_sent: booking.whatsapp_sent,
-      whatsapp_attempts: booking.whatsapp_attempts,
-      whatsapp_last_error: booking.whatsapp_last_error,
-      hotel_name: hotel?.name || 'Unknown Hotel',
-      schedule_date: dailySchedule?.schedule_date || '',
-      departure_time: busSchedule?.departure_time || '',
-      destination: busSchedule?.destination || '',
-    }
-
-    // Return booking data
+    // Return booking data directly from booking_details view
+    // The view already includes all necessary fields in the correct format
     return corsJsonResponse({
       ok: true,
       found: true,
-      booking: bookingDetails,
+      booking: booking,
     })
   } catch (error) {
     // Handle all errors securely (no internal details exposed)

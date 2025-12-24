@@ -1,22 +1,21 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { useSchedule, type ScheduleItem } from "./ScheduleContext"
 
 export function ScheduleSection() {
     const { schedules, loading } = useSchedule()
-    const [nextSchedule, setNextSchedule] = useState<ScheduleItem | null>(null)
-    const [currentTimeVal, setCurrentTimeVal] = useState<number>(-1)
 
-    useEffect(() => {
-        if (loading || schedules.length === 0) return
+    const { nextSchedule, currentTimeVal } = useMemo(() => {
+        if (loading || schedules.length === 0) {
+            return { nextSchedule: null, currentTimeVal: -1 }
+        }
 
         const now = new Date()
         const currentHour = now.getHours()
         const currentMinute = now.getMinutes()
         const val = currentHour + (currentMinute / 60)
-        setCurrentTimeVal(val)
 
         const next = schedules.find(item => {
             const [hour, minute] = item.time.split(':').map(Number)
@@ -24,7 +23,10 @@ export function ScheduleSection() {
             return scheduleTimeVal > val
         })
 
-        setNextSchedule(next || schedules[0])
+        return {
+            nextSchedule: next || schedules[0],
+            currentTimeVal: val
+        }
     }, [schedules, loading])
 
     return (

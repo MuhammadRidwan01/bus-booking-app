@@ -68,6 +68,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
       passengerCount: booking.passenger_count,
       flightNumber: (booking as any).flight_number,
       trackUrl,
+      serviceType: (booking as any).service_type,
+      terminalCode: (booking as any).terminal_code,
+      meetingPointLocation: (booking as any).meeting_point_location,
+      arrivalTimeOffsetMin: (booking as any).arrival_time_offset_min,
+      arrivalTimeOffsetMax: (booking as any).arrival_time_offset_max,
     })
 
     const buffer = Buffer.from(pdfBytes)

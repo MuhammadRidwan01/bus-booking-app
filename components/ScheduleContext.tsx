@@ -26,11 +26,11 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
             try {
                 setLoading(true)
 
-                // 1. Get Hotel "ibis-styles" (Reference Hotel)
+                // 1. Get Hotel "ibis_style" (Reference Hotel)
                 const { data: hotel, error: hotelError } = await supabase
                     .from("hotels")
                     .select("id")
-                    .eq("slug", "ibis-styles")
+                    .eq("slug", "ibis_style")
                     .single()
 
                 let query = supabase

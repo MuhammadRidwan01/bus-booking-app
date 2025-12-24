@@ -2,14 +2,13 @@
 
 import { Clock, MapPin } from "lucide-react"
 import { useSchedule, type ScheduleItem } from "./ScheduleContext"
-import { useEffect, useState } from "react"
+import { useMemo } from "react"
 
 export function NextDeparture() {
     const { schedules, loading } = useSchedule()
-    const [nextBus, setNextBus] = useState<ScheduleItem | null>(null)
 
-    useEffect(() => {
-        if (loading || schedules.length === 0) return
+    const nextBus = useMemo(() => {
+        if (loading || schedules.length === 0) return null
 
         const now = new Date()
         const currentHour = now.getHours()
@@ -22,7 +21,7 @@ export function NextDeparture() {
             return scheduleTimeVal > currentTimeVal
         })
 
-        setNextBus(next || schedules[0])
+        return next || schedules[0]
     }, [schedules, loading])
 
     if (loading) {

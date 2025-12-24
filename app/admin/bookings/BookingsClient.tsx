@@ -53,6 +53,12 @@ interface Filters {
   status?: string
   waStatus?: "all" | "sent" | "failed" | "not_tried"
   search?: string
+  roomNumber?: string
+  flightNumber?: string
+  hasSurfboard?: boolean
+  hasExcessBaggage?: boolean
+  minCost?: number
+  maxCost?: number
 }
 
 interface Props {
@@ -83,6 +89,10 @@ export default function BookingsClient({
     phoneNumber: "",
     passengerCount: 1,
     flightNumber: "",
+    roomNumber: "",
+    hasSurfboard: false,
+    surfboardCount: 0,
+    excessBaggageCount: 0,
   })
   const [schedules, setSchedules] = useState<any[]>([])
   const [schedulesLoading, setSchedulesLoading] = useState(false)
@@ -239,12 +249,23 @@ export default function BookingsClient({
       !form.hotelId ||
       form.scheduleId === "none" ||
       !form.customerName ||
-      !form.phoneNumber ||
-      !form.flightNumber
+      !form.phoneNumber
     ) {
       toast.error("Lengkapi semua field")
       return
     }
+
+    // Validate service-specific fields
+    const serviceType = selectedSchedule?.service_type
+    if (serviceType === 'drop_off' && !form.roomNumber) {
+      toast.error("Room number is required for drop-off service")
+      return
+    }
+    if (serviceType === 'pick_up' && !form.flightNumber) {
+      toast.error("Flight number is required for pick-up service")
+      return
+    }
+
     setCreating(true)
     try {
       const res = await fetch("/api/admin-create-booking", {
@@ -258,6 +279,10 @@ export default function BookingsClient({
           phoneNumber: form.phoneNumber,
           passengerCount: form.passengerCount,
           flightNumber: form.flightNumber,
+          roomNumber: form.roomNumber,
+          hasSurfboard: form.hasSurfboard,
+          surfboardCount: form.surfboardCount,
+          excessBaggageCount: form.excessBaggageCount,
         }),
       }).then((r) => r.json())
 
@@ -273,6 +298,10 @@ export default function BookingsClient({
           phoneNumber: "",
           passengerCount: 1,
           flightNumber: "",
+          roomNumber: "",
+          hasSurfboard: false,
+          surfboardCount: 0,
+          excessBaggageCount: 0,
         })
         startTransition(async () => {
           const data = await fetchBookingsAction(filters as any)
@@ -413,6 +442,105 @@ export default function BookingsClient({
               className="h-9 text-xs"
             />
           </div>
+          
+          {/* Enhanced search fields */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Room number</Label>
+            <Input
+              placeholder="1205, A12..."
+              value={filters.roomNumber ?? ""}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, roomNumber: e.target.value }))
+              }
+              onBlur={(e) =>
+                load({ ...filters, roomNumber: e.target.value || undefined })
+              }
+              className="h-9 text-xs"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Flight number</Label>
+            <Input
+              placeholder="305, 5A..."
+              value={filters.flightNumber ?? ""}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, flightNumber: e.target.value }))
+              }
+              onBlur={(e) =>
+                load({ ...filters, flightNumber: e.target.value || undefined })
+              }
+              className="h-9 text-xs"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Additional services</Label>
+            <Select
+              value={
+                filters.hasSurfboard === true ? "surfboard" :
+                filters.hasExcessBaggage === true ? "baggage" :
+                (filters.hasSurfboard === false && filters.hasExcessBaggage === false) ? "none" :
+                "all"
+              }
+              onValueChange={(val) => {
+                const updates: Partial<Filters> = {}
+                if (val === "surfboard") {
+                  updates.hasSurfboard = true
+                  updates.hasExcessBaggage = undefined
+                } else if (val === "baggage") {
+                  updates.hasSurfboard = undefined
+                  updates.hasExcessBaggage = true
+                } else if (val === "none") {
+                  updates.hasSurfboard = false
+                  updates.hasExcessBaggage = false
+                } else {
+                  updates.hasSurfboard = undefined
+                  updates.hasExcessBaggage = undefined
+                }
+                load({ ...filters, ...updates })
+              }}
+            >
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="surfboard">With surfboard</SelectItem>
+                <SelectItem value="baggage">With excess baggage</SelectItem>
+                <SelectItem value="none">No additional services</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Min cost (IDR)</Label>
+            <Input
+              type="number"
+              placeholder="0"
+              value={filters.minCost ?? ""}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, minCost: e.target.value ? Number(e.target.value) : undefined }))
+              }
+              onBlur={(e) =>
+                load({ ...filters, minCost: e.target.value ? Number(e.target.value) : undefined })
+              }
+              className="h-9 text-xs"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Max cost (IDR)</Label>
+            <Input
+              type="number"
+              placeholder="1000000"
+              value={filters.maxCost ?? ""}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, maxCost: e.target.value ? Number(e.target.value) : undefined }))
+              }
+              onBlur={(e) =>
+                load({ ...filters, maxCost: e.target.value ? Number(e.target.value) : undefined })
+              }
+              className="h-9 text-xs"
+            />
+          </div>
+          
           <div className="col-span-full flex flex-wrap items-center gap-2 pt-1">
             <Button
               variant="outline"
@@ -614,18 +742,98 @@ export default function BookingsClient({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">Flight number</Label>
-                      <Input
-                        placeholder="e.g. 305 / 5A"
-                        value={form.flightNumber}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            flightNumber: e.target.value,
-                          }))
-                        }
-                        className="h-9 text-xs"
-                      />
+                      <Label className="text-xs">
+                        {selectedSchedule?.service_type === 'drop_off' ? 'Room number' : 'Flight number'}
+                        {selectedSchedule?.service_type && <span className="text-red-500">*</span>}
+                      </Label>
+                      {selectedSchedule?.service_type === 'drop_off' ? (
+                        <Input
+                          placeholder="e.g. 1205, A12"
+                          value={form.roomNumber}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              roomNumber: e.target.value,
+                            }))
+                          }
+                          className="h-9 text-xs"
+                        />
+                      ) : (
+                        <Input
+                          placeholder="e.g. 305 / 5A"
+                          value={form.flightNumber}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              flightNumber: e.target.value,
+                            }))
+                          }
+                          className="h-9 text-xs"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Enhanced booking fields */}
+                  <div className="space-y-4 border-t pt-4">
+                    <p className="text-sm font-medium">Additional Services</p>
+                    
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Surfboard</Label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={form.hasSurfboard}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                hasSurfboard: e.target.checked,
+                                surfboardCount: e.target.checked ? 1 : 0,
+                              }))
+                            }
+                            className="h-4 w-4"
+                          />
+                          <span className="text-xs">Has surfboard</span>
+                        </div>
+                        {form.hasSurfboard && (
+                          <Input
+                            type="number"
+                            min={1}
+                            max={5}
+                            value={form.surfboardCount}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                surfboardCount: Number(e.target.value),
+                              }))
+                            }
+                            className="h-9 text-xs"
+                            placeholder="Number of surfboards"
+                          />
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label className="text-xs">Excess Baggage</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={10}
+                          value={form.excessBaggageCount}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              excessBaggageCount: Number(e.target.value),
+                            }))
+                          }
+                          className="h-9 text-xs"
+                          placeholder="Extra items beyond 2 per passenger"
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Free allowance: 2 items per passenger
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -657,14 +865,19 @@ export default function BookingsClient({
                   <TableHead className="whitespace-nowrap">Code</TableHead>
                   <TableHead className="whitespace-nowrap">Created</TableHead>
                   <TableHead className="whitespace-nowrap">Hotel</TableHead>
+                  <TableHead className="whitespace-nowrap">Service</TableHead>
+                  <TableHead className="whitespace-nowrap">Room/Flight</TableHead>
                   <TableHead className="whitespace-nowrap">Date</TableHead>
                   <TableHead className="whitespace-nowrap">Time</TableHead>
                   <TableHead className="whitespace-nowrap">Destination</TableHead>
+                  <TableHead className="whitespace-nowrap">Terminal</TableHead>
                   <TableHead className="whitespace-nowrap">Customer</TableHead>
                   <TableHead className="whitespace-nowrap">Phone</TableHead>
                   <TableHead className="whitespace-nowrap text-center">
                     Qty
                   </TableHead>
+                  <TableHead className="whitespace-nowrap">Add. Services</TableHead>
+                  <TableHead className="whitespace-nowrap">Total Cost</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
                   <TableHead className="whitespace-nowrap">
                     WA Status
@@ -678,7 +891,7 @@ export default function BookingsClient({
                 {bookings.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={12}
+                      colSpan={17}
                       className="py-8 text-center text-xs text-muted-foreground"
                     >
                       No bookings for this filter.
@@ -697,6 +910,28 @@ export default function BookingsClient({
                       {(b as any).hotel_name}
                     </TableCell>
                     <TableCell className="text-[11px]">
+                      {(b as any).service_type ? (
+                        <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                          {(b as any).service_type === 'drop_off' ? 'Drop-off' : 'Pick-up'}
+                        </Badge>
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell className="text-[11px]">
+                      {(b as any).service_type === 'drop_off' ? (
+                        b.room_number ? (
+                          <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono">
+                            Room {b.room_number}
+                          </Badge>
+                        ) : '-'
+                      ) : (
+                        b.flight_number ? (
+                          <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono">
+                            {b.flight_number}
+                          </Badge>
+                        ) : '-'
+                      )}
+                    </TableCell>
+                    <TableCell className="text-[11px]">
                       {b.schedule_date}
                     </TableCell>
                     <TableCell className="text-[11px]">
@@ -706,11 +941,44 @@ export default function BookingsClient({
                       {b.destination}
                     </TableCell>
                     <TableCell className="text-[11px]">
+                      {(b as any).terminal_code ? (
+                        <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono">
+                          {(b as any).terminal_code}
+                        </Badge>
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell className="text-[11px]">
                       {b.customer_name}
                     </TableCell>
                     <TableCell className="text-[11px]">{b.phone}</TableCell>
                     <TableCell className="text-center text-[11px]">
                       {b.passenger_count}
+                    </TableCell>
+                    <TableCell className="text-[11px]">
+                      <div className="flex flex-col gap-1">
+                        {b.has_surfboard && b.surfboard_count > 0 && (
+                          <Badge variant="outline" className="px-1 py-0 text-[9px] w-fit">
+                            🏄 {b.surfboard_count}x
+                          </Badge>
+                        )}
+                        {b.excess_baggage_count > 0 && (
+                          <Badge variant="outline" className="px-1 py-0 text-[9px] w-fit">
+                            🧳 +{b.excess_baggage_count}
+                          </Badge>
+                        )}
+                        {!b.has_surfboard && b.excess_baggage_count === 0 && (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-[11px]">
+                      {b.total_cost > 0 ? (
+                        <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono">
+                          IDR {b.total_cost.toLocaleString()}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">Free</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-[11px]">
                       <Badge variant="outline" className="px-2 py-0 text-[10px]">
@@ -780,6 +1048,24 @@ export default function BookingsClient({
                               {(b as any).hotel_name}
                             </p>
                             <p>
+                              <span className="font-semibold">Service Type:</span>{" "}
+                              {(b as any).service_type ? 
+                                ((b as any).service_type === 'drop_off' ? 'Drop-off (Hotel → Airport)' : 'Pick-up (Airport → Hotel)') 
+                                : '-'}
+                            </p>
+                            {(b as any).service_type === 'drop_off' && b.room_number && (
+                              <p>
+                                <span className="font-semibold">Room Number:</span>{" "}
+                                {b.room_number}
+                              </p>
+                            )}
+                            {(b as any).service_type === 'pick_up' && b.flight_number && (
+                              <p>
+                                <span className="font-semibold">Flight Number:</span>{" "}
+                                {b.flight_number}
+                              </p>
+                            )}
+                            <p>
                               <span className="font-semibold">Date/Time:</span>{" "}
                               {b.schedule_date} {b.departure_time}
                             </p>
@@ -787,6 +1073,24 @@ export default function BookingsClient({
                               <span className="font-semibold">Destination:</span>{" "}
                               {b.destination}
                             </p>
+                            {(b as any).terminal_code && (
+                              <p>
+                                <span className="font-semibold">Terminal:</span>{" "}
+                                {(b as any).terminal_code}
+                              </p>
+                            )}
+                            {(b as any).meeting_point_location && (
+                              <p>
+                                <span className="font-semibold">Meeting Point:</span>{" "}
+                                {(b as any).meeting_point_location}
+                              </p>
+                            )}
+                            {(b as any).arrival_time_offset_min && (b as any).arrival_time_offset_max && (
+                              <p>
+                                <span className="font-semibold">Arrival Window:</span>{" "}
+                                {(b as any).arrival_time_offset_min}-{(b as any).arrival_time_offset_max} minutes
+                              </p>
+                            )}
                             <p>
                               <span className="font-semibold">Customer:</span>{" "}
                               {b.customer_name}
@@ -799,10 +1103,36 @@ export default function BookingsClient({
                               <span className="font-semibold">Passengers:</span>{" "}
                               {b.passenger_count}
                             </p>
-                            <p>
-                              <span className="font-semibold">Flight:</span>{" "}
-                              {(b as any).flight_number ?? "-"}
-                            </p>
+                            
+                            {/* Enhanced booking fields */}
+                            <div className="mt-4 border-t pt-2">
+                              <p className="font-semibold text-sm mb-2">Additional Services</p>
+                              {b.has_surfboard && b.surfboard_count > 0 ? (
+                                <p>
+                                  <span className="font-semibold">Surfboards:</span>{" "}
+                                  {b.surfboard_count}x (IDR {b.surfboard_cost.toLocaleString()})
+                                </p>
+                              ) : (
+                                <p>
+                                  <span className="font-semibold">Surfboards:</span> None
+                                </p>
+                              )}
+                              {b.excess_baggage_count > 0 ? (
+                                <p>
+                                  <span className="font-semibold">Excess Baggage:</span>{" "}
+                                  +{b.excess_baggage_count} items (IDR {b.baggage_cost.toLocaleString()})
+                                </p>
+                              ) : (
+                                <p>
+                                  <span className="font-semibold">Excess Baggage:</span> None
+                                </p>
+                              )}
+                              <p>
+                                <span className="font-semibold">Total Cost:</span>{" "}
+                                {b.total_cost > 0 ? `IDR ${b.total_cost.toLocaleString()}` : 'Free'}
+                              </p>
+                            </div>
+
                             <p>
                               <span className="font-semibold">
                                 WA Attempts:

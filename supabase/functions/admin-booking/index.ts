@@ -24,7 +24,11 @@ const adminBookingRequestSchema = z.object({
   customerName: z.string().min(1, 'Nama lengkap harus diisi'),
   phoneNumber: z.string().min(5, 'Nomor telepon tidak valid'),
   passengerCount: z.number().int().positive().max(5, 'Jumlah penumpang maksimal 5 orang'),
-  flightNumber: z.string().min(1, 'Nomor penerbangan harus diisi'),
+  flightNumber: z.string().optional(),
+  roomNumber: z.string().optional(),
+  hasSurfboard: z.boolean().default(false),
+  surfboardCount: z.number().int().min(0).default(0),
+  excessBaggageCount: z.number().int().min(0).default(0),
 })
 
 type AdminBookingRequest = z.infer<typeof adminBookingRequestSchema>
@@ -152,6 +156,34 @@ Deno.serve(async (req) => {
     const trackLink = `${baseUrl}/track?code=${bookingCode}`
     const pdfLink = `${baseUrl}/api/ticket/${bookingCode}`
 
+    // Get pricing configuration for cost calculation
+    const { data: pricingConfig } = await supabaseAdmin
+      .from('pricing_config')
+      .select('*')
+      .eq('is_active', true)
+      .order('effective_date', { ascending: false })
+      .limit(1)
+      .single()
+
+    // Calculate costs for additional services
+    let surfboardCost = 0
+    let baggageCost = 0
+    let totalCost = 0
+
+    if (pricingConfig) {
+      // Calculate surfboard cost
+      if (validatedData.hasSurfboard && validatedData.surfboardCount > 0) {
+        surfboardCost = validatedData.surfboardCount * pricingConfig.surfboard_cost_per_board
+      }
+
+      // Calculate baggage cost (simplified - using other terminals cost for admin bookings)
+      if (validatedData.excessBaggageCount > 0) {
+        baggageCost = pricingConfig.baggage_other_terminals_cost
+      }
+
+      totalCost = surfboardCost + baggageCost
+    }
+
     // Insert booking into database
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
@@ -164,6 +196,13 @@ Deno.serve(async (req) => {
         passenger_count: validatedData.passengerCount,
         status: 'confirmed',
         room_number: validatedData.roomNumber,
+        flight_number: validatedData.flightNumber,
+        has_surfboard: validatedData.hasSurfboard,
+        surfboard_count: validatedData.surfboardCount,
+        excess_baggage_count: validatedData.excessBaggageCount,
+        surfboard_cost: surfboardCost,
+        baggage_cost: baggageCost,
+        total_cost: totalCost,
         has_whatsapp: true,
       })
       .select()
@@ -185,17 +224,48 @@ Deno.serve(async (req) => {
       // Don't fail the booking, just log the error
     }
 
+    // Get hotel details for WhatsApp message
+    const hotel = validatedData.hotelId ? await getHotelDetails(supabaseAdmin, validatedData.hotelId) : null
+
     // Prepare WhatsApp message
+    const serviceTypeText = schedule.service_type === 'drop_off' 
+      ? 'Hotel to Airport' 
+      : 'Airport to Hotel'
+
     const messageParts = [
       `Hi ${validatedData.customerName}, your shuttle booking is confirmed.`,
-      busSchedule.destination ? `Destination: ${busSchedule.destination}` : null,
+      `Hotel: ${hotel?.name ?? 'Ibis Hotel'}`,
+      `Service: ${serviceTypeText}`,
       `Date: ${formatDate(schedule.schedule_date)}`,
       busSchedule.departure_time ? `Time: ${formatTime(busSchedule.departure_time)} WIB` : null,
+      busSchedule.destination ? `Destination: ${busSchedule.destination}` : null,
+    ]
+
+    // Add service-specific information
+    if (schedule.service_type === 'drop_off' && validatedData.roomNumber) {
+      messageParts.push(`Room: ${validatedData.roomNumber}`)
+    } else if (schedule.service_type === 'pick_up' && validatedData.flightNumber) {
+      messageParts.push(`Flight: ${validatedData.flightNumber}`)
+    }
+
+    // Add additional services information
+    if (validatedData.hasSurfboard && validatedData.surfboardCount > 0) {
+      messageParts.push(`Surfboards: ${validatedData.surfboardCount}x (IDR ${surfboardCost.toLocaleString()})`)
+    }
+    if (validatedData.excessBaggageCount > 0) {
+      messageParts.push(`Excess Baggage: +${validatedData.excessBaggageCount} items (IDR ${baggageCost.toLocaleString()})`)
+    }
+    if (totalCost > 0) {
+      messageParts.push(`Total Cost: IDR ${totalCost.toLocaleString()}`)
+    }
+
+    messageParts.push(
       `Booking code: ${bookingCode}`,
       `Track your ticket: ${trackLink}`,
-      'Thank you.',
-    ].filter(Boolean)
-    const whatsappMessage = messageParts.join('\n')
+      'Thank you.'
+    )
+
+    const whatsappMessage = messageParts.filter(Boolean).join('\n')
 
     // Send WhatsApp in background (async, don't await)
     const attemptCount = (booking as any)?.whatsapp_attempts ? Number((booking as any).whatsapp_attempts) : 0
@@ -220,6 +290,13 @@ Deno.serve(async (req) => {
           phone: normalizedPhone,
           passenger_count: validatedData.passengerCount,
           room_number: validatedData.roomNumber,
+          flight_number: validatedData.flightNumber,
+          has_surfboard: validatedData.hasSurfboard,
+          surfboard_count: validatedData.surfboardCount,
+          excess_baggage_count: validatedData.excessBaggageCount,
+          surfboard_cost: surfboardCost,
+          baggage_cost: baggageCost,
+          total_cost: totalCost,
           status: 'confirmed',
           hotel_id: validatedData.hotelId,
           daily_schedule_id: validatedData.dailyScheduleId,
@@ -429,4 +506,23 @@ async function sendWhatsappMessage(params: {
   })
 
   return { ok: false, data: lastError }
+}
+
+/**
+ * Get hotel details from database
+ */
+async function getHotelDetails(supabaseAdmin: any, hotelId: string) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('hotels')
+      .select('*')
+      .eq('id', hotelId)
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('[Hotel Details Error]', error)
+    return null
+  }
 }

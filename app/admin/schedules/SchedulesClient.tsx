@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
-import { cancelSchedule, exportPassengersCsv, fetchBookingsAction, fetchSchedulesAction, getSchedulePreview, runGenerateSchedules } from "@/app/admin/actions"
+import { cancelSchedule, exportPassengersCsv, fetchBookingsAction, fetchSchedulesAction, getSchedulePreview, runGenerateSchedules, generateSchedulesFromTemplates } from "@/app/admin/actions"
 import type { Hotel } from "@/types"
 import { addDays } from "date-fns"
 
@@ -26,6 +26,7 @@ interface ScheduleItem {
   max_capacity: number
   current_booked: number
   status: string
+  service_type?: string
   hotel_name?: string
   hotel_id?: string
 }
@@ -33,7 +34,7 @@ interface ScheduleItem {
 interface Props {
   initialSchedules: ScheduleItem[]
   hotels: Hotel[]
-  initialFilters: { startDate?: string; endDate?: string; hotelId?: string; status?: string }
+  initialFilters: { startDate?: string; endDate?: string; hotelId?: string; status?: string; serviceType?: string }
 }
 
 export default function SchedulesClient({ initialSchedules, hotels, initialFilters }: Props) {
@@ -186,6 +187,23 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
               onClick={async () => {
                 const ok = confirm(`Generate schedules for ${previewDays} hari mulai ${previewStart}?`)
                 if (!ok) return
+                const res = await generateSchedulesFromTemplates(previewDays, previewStart)
+                if (res.ok) {
+                  toast.success(`Generated ${(res.data as any)?.generated || 0} schedules successfully`)
+                  const refreshed = await fetchSchedulesAction(filters as any)
+                  setSchedules(refreshed as any)
+                } else {
+                  toast.error(res.error ?? "Gagal generate")
+                }
+              }}
+            >
+              Generate from Templates
+            </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const ok = confirm(`Generate schedules using legacy method for ${previewDays} hari mulai ${previewStart}?`)
+                if (!ok) return
                 const res = await runGenerateSchedules(previewDays, previewStart)
                 if (res.ok) {
                   toast.success("Generate berhasil")
@@ -196,7 +214,7 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
                 }
               }}
             >
-              Generate
+              Legacy Generate
             </Button>
           </div>
         </CardContent>
@@ -221,7 +239,7 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
         <CardHeader>
           <CardTitle>Filters</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-4">
+        <CardContent className="grid gap-3 md:grid-cols-5">
           <div className="space-y-1">
             <Label>Start</Label>
             <Flatpickr
@@ -249,6 +267,17 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
                 {hotels.map((h) => (
                   <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Service Type</Label>
+            <Select value={filters.serviceType ?? "all"} onValueChange={(v) => reload({ ...filters, serviceType: v === "all" ? undefined : v })}>
+              <SelectTrigger><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="drop_off">Drop-off (Hotel → Airport)</SelectItem>
+                <SelectItem value="pick_up">Pick-up (Airport → Hotel)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -294,6 +323,11 @@ export default function SchedulesClient({ initialSchedules, hotels, initialFilte
                     <Badge className={occupancyClass(pct)}>{pct}% filled</Badge>
                     <Badge variant="outline">{s.status}</Badge>
                     <Badge variant="secondary">{available} available</Badge>
+                    {s.service_type && (
+                      <Badge variant="outline" className="text-xs">
+                        {s.service_type === 'drop_off' ? 'Drop-off' : 'Pick-up'}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="w-full md:w-64">

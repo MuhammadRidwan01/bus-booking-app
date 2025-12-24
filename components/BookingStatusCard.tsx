@@ -93,11 +93,11 @@ export function BookingStatusCard({ bookingCode, initialStatus }: Props) {
       if (!json?.ok) {
         setResendError(json?.error || "Failed to resend")
       } else {
-        // refresh status once after resend
+        // Optimistic update
         setStatus((prev) =>
           prev
-            ? { ...prev, whatsapp_sent: true, whatsapp_last_error: null, has_whatsapp: true }
-            : { whatsapp_sent: true, whatsapp_attempts: 1, whatsapp_last_error: null, has_whatsapp: true },
+            ? { ...prev, whatsapp_sent: true, whatsapp_last_error: null }
+            : { whatsapp_sent: true, whatsapp_attempts: 1, whatsapp_last_error: null },
         )
       }
     } catch (err) {
@@ -130,7 +130,7 @@ export function BookingStatusCard({ bookingCode, initialStatus }: Props) {
           <span>{waStatusLabel}{loading && !status?.whatsapp_sent && !skipByUser ? " (checking...)" : ""}</span>
         </div>
 
-        {(skipByUser || status?.has_whatsapp || status?.whatsapp_sent) && bookingCode && (
+        {(skipByUser || status?.whatsapp_sent) && bookingCode && (
           <div className="space-y-2">
             <Button
               onClick={() => {

@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const { data: booking } = await supabase
       .from("booking_details")
       .select(
-        "id, booking_code, customer_name, phone, hotel_name, schedule_date, departure_time, destination, whatsapp_attempts, has_whatsapp"
+        "id, booking_code, customer_name, phone, hotel_name, schedule_date, departure_time, destination, whatsapp_attempts, has_whatsapp, service_type, terminal_code, meeting_point_location, arrival_time_offset_min, arrival_time_offset_max"
       )
       .eq("booking_code", code)
       .maybeSingle()
@@ -37,18 +37,35 @@ export async function POST(req: Request) {
     const trackLink = `${baseUrl}/track?code=${booking.booking_code}`
     const pdfLink = `${baseUrl}/api/ticket/${booking.booking_code}`
 
+    const serviceTypeText = (booking as any).service_type === 'drop_off' 
+      ? 'Hotel ke Bandara' 
+      : 'Bandara ke Hotel'
+
     const messageParts = [
       `Halo ${booking.customer_name}, booking shuttle kamu sudah berhasil.`,
       `Hotel: ${booking.hotel_name ?? "Ibis Hotel"}`,
+      `Layanan: ${serviceTypeText}`,
       booking.schedule_date ? `Tanggal: ${formatDate(booking.schedule_date)}` : null,
       booking.departure_time ? `Jam: ${formatTime(booking.departure_time)} WIB` : null,
       booking.destination ? `Tujuan: ${booking.destination}` : null,
+    ]
+
+    // Add terminal and meeting point info for pick-up bookings
+    if ((booking as any).service_type === 'pick_up' && (booking as any).meeting_point_location) {
+      messageParts.push(`Terminal: ${(booking as any).terminal_code}`)
+      messageParts.push(`Titik Jemput: ${(booking as any).meeting_point_location}`)
+      if ((booking as any).arrival_time_offset_min && (booking as any).arrival_time_offset_max) {
+        messageParts.push(`Estimasi Tiba: ${(booking as any).arrival_time_offset_min}-${(booking as any).arrival_time_offset_max} menit setelah keberangkatan`)
+      }
+    }
+
+    messageParts.push(
       `Kode Booking: ${booking.booking_code}`,
       `Lacak tiket: ${trackLink}`,
-      "Terima kasih.",
-    ].filter(Boolean)
+      "Terima kasih."
+    )
 
-    const whatsappMessage = messageParts.join("\n")
+    const whatsappMessage = messageParts.filter(Boolean).join("\n")
 
     const waResult = await sendWhatsappMessage({
       phone: booking.phone,

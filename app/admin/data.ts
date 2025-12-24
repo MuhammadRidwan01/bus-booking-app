@@ -10,6 +10,12 @@ export interface BookingFilters {
   status?: string
   waStatus?: "all" | "sent" | "failed" | "not_tried"
   search?: string
+  roomNumber?: string
+  flightNumber?: string
+  hasSurfboard?: boolean
+  hasExcessBaggage?: boolean
+  minCost?: number
+  maxCost?: number
   limit?: number
 }
 
@@ -163,6 +169,30 @@ export async function getBookings(filters: BookingFilters): Promise<BookingDetai
         `booking_code.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`
       )
     }
+    
+    // Enhanced search filters
+    if (filters.roomNumber) {
+      query = query.ilike("room_number", `%${filters.roomNumber}%`)
+    }
+    if (filters.flightNumber) {
+      query = query.ilike("flight_number", `%${filters.flightNumber}%`)
+    }
+    if (filters.hasSurfboard === true) {
+      query = query.eq("has_surfboard", true).gt("surfboard_count", 0)
+    } else if (filters.hasSurfboard === false) {
+      query = query.or("has_surfboard.is.null,has_surfboard.eq.false,surfboard_count.eq.0")
+    }
+    if (filters.hasExcessBaggage === true) {
+      query = query.gt("excess_baggage_count", 0)
+    } else if (filters.hasExcessBaggage === false) {
+      query = query.or("excess_baggage_count.is.null,excess_baggage_count.eq.0")
+    }
+    if (filters.minCost !== undefined) {
+      query = query.gte("total_cost", filters.minCost)
+    }
+    if (filters.maxCost !== undefined) {
+      query = query.lte("total_cost", filters.maxCost)
+    }
 
     if (filters.limit) {
       query = query.limit(filters.limit)
@@ -183,7 +213,7 @@ export async function getBookings(filters: BookingFilters): Promise<BookingDetai
     let query = supabase
       .from("bookings")
       .select(
-        `id, booking_code, hotel_id, daily_schedule_id, customer_name, phone, passenger_count, status, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, room_number, has_whatsapp, created_at,
+        `id, booking_code, hotel_id, daily_schedule_id, customer_name, phone, passenger_count, status, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, room_number, flight_number, has_surfboard, surfboard_count, excess_baggage_count, surfboard_cost, baggage_cost, total_cost, has_whatsapp, created_at,
          daily_schedules ( schedule_date, bus_schedules ( departure_time, destination, max_capacity, hotels ( id, name ) ) )`
       )
       .order("created_at", { ascending: false })
@@ -200,6 +230,31 @@ export async function getBookings(filters: BookingFilters): Promise<BookingDetai
         `booking_code.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`
       )
     }
+    
+    // Enhanced search filters for fallback
+    if (filters.roomNumber) {
+      query = query.ilike("room_number", `%${filters.roomNumber}%`)
+    }
+    if (filters.flightNumber) {
+      query = query.ilike("flight_number", `%${filters.flightNumber}%`)
+    }
+    if (filters.hasSurfboard === true) {
+      query = query.eq("has_surfboard", true).gt("surfboard_count", 0)
+    } else if (filters.hasSurfboard === false) {
+      query = query.or("has_surfboard.is.null,has_surfboard.eq.false,surfboard_count.eq.0")
+    }
+    if (filters.hasExcessBaggage === true) {
+      query = query.gt("excess_baggage_count", 0)
+    } else if (filters.hasExcessBaggage === false) {
+      query = query.or("excess_baggage_count.is.null,excess_baggage_count.eq.0")
+    }
+    if (filters.minCost !== undefined) {
+      query = query.gte("total_cost", filters.minCost)
+    }
+    if (filters.maxCost !== undefined) {
+      query = query.lte("total_cost", filters.maxCost)
+    }
+    
     if (filters.limit) query = query.limit(filters.limit)
     else query = query.limit(200)
 
@@ -230,12 +285,13 @@ export async function getSchedules(filters: {
   endDate?: string
   hotelId?: string
   status?: string
+  serviceType?: string
 }): Promise<any[]> {
   const supabase = await getSupabaseAdmin()
   let query = supabase
     .from("daily_schedules")
     .select(
-      `id, schedule_date, current_booked, status,
+      `id, schedule_date, current_booked, status, service_type,
       bus_schedules ( id, departure_time, destination, max_capacity, hotel_id, hotels ( id, name ) )`
     )
     .order("schedule_date", { ascending: true })
@@ -245,6 +301,7 @@ export async function getSchedules(filters: {
   if (filters.endDate) query = query.lte("schedule_date", filters.endDate)
   if (filters.status) query = query.eq("status", filters.status)
   if (filters.hotelId) query = query.eq("bus_schedules.hotel_id", filters.hotelId)
+  if (filters.serviceType) query = query.eq("service_type", filters.serviceType)
 
   const { data } = await query
   return (data ?? []).map((row) => ({
@@ -252,6 +309,7 @@ export async function getSchedules(filters: {
     schedule_date: row.schedule_date,
     current_booked: row.current_booked,
     status: row.status,
+    service_type: row.service_type,
     departure_time: (row.bus_schedules as any)?.departure_time,
     destination: (row.bus_schedules as any)?.destination,
     max_capacity: (row.bus_schedules as any)?.max_capacity,
@@ -437,6 +495,39 @@ export async function getSendQueue() {
       created_at: row.created_at,
     }))
   }
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+export async function getScheduleTemplates() {
+  const supabase = await getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from("schedule_templates")
+    .select(`
+      id, name, service_type, hotel, is_active, created_at, updated_at,
+      schedule_times (
+        id, departure_time, capacity, is_active, created_at
+      )
+    `)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+export async function getTerminalMeetingPoints() {
+  const supabase = await getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from("terminal_meeting_points")
+    .select("*")
+    .order("terminal_code", { ascending: true })
 
   if (error) {
     throw new Error(error.message)

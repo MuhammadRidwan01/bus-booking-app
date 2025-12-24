@@ -15,6 +15,7 @@ interface ScheduleSelectorProps {
   selectedScheduleId: string | null
   onScheduleSelect: (scheduleId: string, date: string) => void
   loading: boolean
+  serviceType?: "drop_off" | "pick_up" | null
 }
 
 export function ScheduleSelector({
@@ -23,12 +24,19 @@ export function ScheduleSelector({
   selectedScheduleId,
   onScheduleSelect,
   loading,
+  serviceType,
 }: ScheduleSelectorProps) {
   const [selectedDate, setSelectedDate] = useState<"today" | "tomorrow">("today")
 
   const currentSchedules = useMemo(() => {
     const source = selectedDate === "today" ? todaySchedules : tomorrowSchedules
-    return source
+    
+    // Filter by service type if specified
+    const filtered = serviceType 
+      ? source.filter(schedule => schedule.service_type === serviceType)
+      : source
+    
+    return filtered
       .slice()
       .sort((a, b) => {
         if (!!a.isPast !== !!b.isPast) return a.isPast ? 1 : -1
@@ -36,7 +44,7 @@ export function ScheduleSelector({
         const bTime = b.departure_time.split(":").map(Number)
         return aTime[0] * 60 + aTime[1] - (bTime[0] * 60 + bTime[1])
       })
-  }, [selectedDate, todaySchedules, tomorrowSchedules])
+  }, [selectedDate, todaySchedules, tomorrowSchedules, serviceType])
 
   const currentDateString = useMemo(() => {
     const base = new Date()
@@ -75,11 +83,53 @@ export function ScheduleSelector({
     }
   }
 
+  const getServiceTypeIcon = (serviceType?: string) => {
+    if (serviceType === "drop_off") {
+      return <span className="text-xs text-blue-600 font-semibold">Hotel → Airport</span>
+    } else if (serviceType === "pick_up") {
+      return <span className="text-xs text-emerald-600 font-semibold">Airport → Hotel</span>
+    }
+    return null
+  }
+
+  const getServiceTypeColor = (serviceType?: string) => {
+    if (serviceType === "drop_off") {
+      return "text-blue-600"
+    } else if (serviceType === "pick_up") {
+      return "text-emerald-600"
+    }
+    return "text-primary"
+  }
+
   const getProgressColor = (current: number, max: number) => {
     const percentage = (current / max) * 100
     if (percentage >= 90) return "bg-rose-500"
     if (percentage >= 70) return "bg-amber-500"
     return "bg-emerald-500"
+  }
+
+  // Show service type specific message when no service type is selected
+  if (!serviceType) {
+    return (
+      <Card className="shadow-lg transition-all duration-300 hover:shadow-xl bg-white/90 border border-slate-100">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pick a schedule</p>
+              <CardTitle className="text-2xl font-semibold text-slate-900">Choose service type first</CardTitle>
+            </div>
+            <CalendarRange className="h-6 w-6 text-primary" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <Clock className="h-10 w-10 mx-auto mb-3 text-slate-400" />
+            <p className="font-semibold text-slate-800 mb-2">Select your travel direction</p>
+            <p className="text-sm text-slate-600">Choose drop-off or pick-up service to see available schedules.</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (loading) {
@@ -114,7 +164,10 @@ export function ScheduleSelector({
           <CalendarRange className="h-6 w-6 text-primary" />
         </div>
         <div className="mt-3 text-sm text-blue-900 bg-blue-50 rounded-xl px-4 py-3 border border-blue-100">
-          Tickets can be booked up to <span className="font-semibold">20 minutes</span> before departure.
+          {serviceType === "drop_off" 
+            ? "Hotel to Airport - Tickets can be booked up to 20 minutes before departure."
+            : "Airport to Hotel - Tickets can be booked up to 20 minutes before departure."
+          }
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-4">
@@ -182,14 +235,22 @@ export function ScheduleSelector({
                           <Clock className="h-5 w-5 mr-2 text-primary" />
                           {formatTime(schedule.departure_time)} WIB
                         </div>
-                        <Badge className={`${getCapacityColor(schedule.status)} px-3 py-1 text-xs font-semibold`}>
-                          {getCapacityText(schedule.status)}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          {getServiceTypeIcon(schedule.service_type)}
+                          <Badge className={`${getCapacityColor(schedule.status)} px-3 py-1 text-xs font-semibold`}>
+                            {getCapacityText(schedule.status)}
+                          </Badge>
+                        </div>
                       </div>
 
                       <div className="flex items-center text-sm text-slate-700">
                         <MapPin className="h-4 w-4 mr-2 text-primary" />
-                        <span className="font-medium">{schedule.destination}</span>
+                        <span className="font-medium">
+                          {schedule.service_type === "drop_off" 
+                            ? `To ${schedule.destination}` 
+                            : `From ${schedule.destination}`
+                          }
+                        </span>
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-slate-600">

@@ -1,14 +1,17 @@
-import { cookies } from "next/headers"
+﻿import { cookies } from "next/headers"
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto"
-import { adminConfig } from "./supabase-config"
 
 const SESSION_COOKIE = "admin_session"
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 export type AdminSession = { id: string; email: string; role: string; exp: number }
 
+function getSessionSecret() {
+  return process.env.ADMIN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "change-me"
+}
+
 function sign(payload: AdminSession) {
-  const secret = adminConfig.supabaseServiceRoleKey || process.env.ADMIN_SECRET || "change-me"
+  const secret = getSessionSecret()
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url")
   const sig = createHmac("sha256", secret).update(body).digest("base64url")
   return `${body}.${sig}`
@@ -18,7 +21,7 @@ function verify(token: string | undefined | null): AdminSession | null {
   if (!token) return null
   const [body, sig] = token.split(".")
   if (!body || !sig) return null
-  const secret = adminConfig.supabaseServiceRoleKey || process.env.ADMIN_SECRET || "change-me"
+  const secret = getSessionSecret()
   const expected = createHmac("sha256", secret).update(body).digest("base64url")
   try {
     if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null
