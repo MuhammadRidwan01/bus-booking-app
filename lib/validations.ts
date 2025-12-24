@@ -41,14 +41,8 @@ export const bookingSchema = baseBookingSchema.superRefine((data, ctx) => {
         message: "Nomor kamar harus diisi untuk layanan drop-off",
         path: ["roomNumber"]
       })
-    } else if (!/^[A-Za-z0-9\-\s]{1,20}$/.test(data.roomNumber.trim())) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Format nomor kamar tidak valid (hanya huruf, angka, spasi, dan tanda hubung)",
-        path: ["roomNumber"]
-      })
     }
-    
+
     // Flight number should not be provided for drop-off
     if (data.flightNumber && data.flightNumber.trim() !== "") {
       ctx.addIssue({
@@ -65,14 +59,8 @@ export const bookingSchema = baseBookingSchema.superRefine((data, ctx) => {
         message: "Nomor penerbangan harus diisi untuk layanan pick-up",
         path: ["flightNumber"]
       })
-    } else if (!/^[A-Z]{2,3}[0-9]{1,4}[A-Z]?$/i.test(data.flightNumber.trim())) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Format nomor penerbangan tidak valid (contoh: GA123, QZ8501)",
-        path: ["flightNumber"]
-      })
     }
-    
+
     // Room number should not be provided for pick-up
     if (data.roomNumber && data.roomNumber.trim() !== "") {
       ctx.addIssue({
@@ -140,7 +128,7 @@ export const bookingSchema = baseBookingSchema.superRefine((data, ctx) => {
   if (data.hasSurfboard && data.surfboardCount > 0) {
     const minExpectedSurfboardCost = data.surfboardCount * 50000; // Minimum IDR 50,000 per board
     const maxExpectedSurfboardCost = data.surfboardCount * 100000; // Maximum IDR 100,000 per board
-    
+
     if (data.surfboardCost < minExpectedSurfboardCost || data.surfboardCost > maxExpectedSurfboardCost) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -154,7 +142,7 @@ export const bookingSchema = baseBookingSchema.superRefine((data, ctx) => {
   if (data.hasExcessBaggage) {
     const minExpectedBaggageCost = 50000; // Minimum IDR 50,000
     const maxExpectedBaggageCost = 200000; // Maximum IDR 200,000
-    
+
     if (data.baggageCost < minExpectedBaggageCost || data.baggageCost > maxExpectedBaggageCost) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -176,8 +164,7 @@ export const pickupBookingSchema = baseBookingSchema.extend({
   terminalCode: z.string().min(1, "Terminal harus dipilih untuk layanan pick-up"),
   meetingPointId: z.string().uuid("Meeting point ID tidak valid"),
   serviceType: z.literal("pick_up"),
-  flightNumber: z.string().min(1, "Nomor penerbangan harus diisi untuk layanan pick-up")
-    .regex(/^[A-Z]{2,3}[0-9]{1,4}[A-Z]?$/i, "Format nomor penerbangan tidak valid (contoh: GA123, QZ8501)"),
+  flightNumber: z.string().min(1, "Nomor penerbangan harus diisi untuk layanan pick-up"),
 }).superRefine((data, ctx) => {
   // Apply the same validation logic as the main booking schema
   if (data.roomNumber && data.roomNumber.trim() !== "") {
@@ -217,8 +204,7 @@ export const pickupBookingSchema = baseBookingSchema.extend({
 // Schema for drop-off bookings
 export const dropoffBookingSchema = baseBookingSchema.extend({
   serviceType: z.literal("drop_off"),
-  roomNumber: z.string().min(1, "Nomor kamar harus diisi untuk layanan drop-off")
-    .regex(/^[A-Za-z0-9\-\s]{1,20}$/, "Format nomor kamar tidak valid (hanya huruf, angka, spasi, dan tanda hubung)"),
+  roomNumber: z.string().min(1, "Nomor kamar harus diisi untuk layanan drop-off"),
 }).superRefine((data, ctx) => {
   // Apply the same validation logic as the main booking schema
   if (data.flightNumber && data.flightNumber.trim() !== "") {
@@ -306,7 +292,7 @@ export const pricingSchema = z.object({
   if (data.surfboardCount > 0) {
     const minExpectedSurfboardCost = data.surfboardCount * 50000;
     const maxExpectedSurfboardCost = data.surfboardCount * 100000;
-    
+
     if (data.surfboardCost < minExpectedSurfboardCost || data.surfboardCost > maxExpectedSurfboardCost) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -326,7 +312,7 @@ export const pricingSchema = z.object({
   if (data.hasExcessBaggage) {
     const minExpectedBaggageCost = 50000;
     const maxExpectedBaggageCost = 200000;
-    
+
     if (data.baggageCost < minExpectedBaggageCost || data.baggageCost > maxExpectedBaggageCost) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -359,22 +345,20 @@ export const trackingSchema = z.object({
 // Helper function to validate advance booking (minimum 20 minutes prior)
 export function validateAdvanceBooking(departureDateTime: Date): boolean {
   const now = new Date()
-  const jakartaNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Jakarta"}))
+  const jakartaNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }))
   const twentyMinutesFromNow = new Date(jakartaNow.getTime() + 20 * 60 * 1000)
-  
+
   return departureDateTime >= twentyMinutesFromNow
 }
 
 // Helper function to validate room number format
 export function validateRoomNumber(roomNumber: string): boolean {
-  if (!roomNumber || roomNumber.trim() === "") return false
-  return /^[A-Za-z0-9\-\s]{1,20}$/.test(roomNumber.trim())
+  return !!roomNumber && roomNumber.trim() !== ""
 }
 
 // Helper function to validate flight number format
 export function validateFlightNumber(flightNumber: string): boolean {
-  if (!flightNumber || flightNumber.trim() === "") return false
-  return /^[A-Z]{2,3}[0-9]{1,4}[A-Z]?$/i.test(flightNumber.trim())
+  return !!flightNumber && flightNumber.trim() !== ""
 }
 
 // Helper function to calculate surfboard cost
@@ -385,13 +369,13 @@ export function calculateSurfboardCost(surfboardCount: number, costPerBoard: num
 
 // Helper function to calculate baggage cost - updated for boolean
 export function calculateBaggageCost(
-  hasExcessBaggage: boolean, 
+  hasExcessBaggage: boolean,
   terminalCode?: string,
   terminal3Cost: number = 150000,
   otherTerminalsCost: number = 75000
 ): number {
   if (!hasExcessBaggage) return 0
-  
+
   const isTerminal3 = terminalCode === 'Terminal 3' || terminalCode === 'terminal3' || terminalCode === 'T3'
   return isTerminal3 ? terminal3Cost : otherTerminalsCost
 }
@@ -408,14 +392,14 @@ export function validateServiceSpecificFields(
   flightNumber?: string
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = []
-  
+
   if (serviceType === 'drop_off') {
     if (!roomNumber || roomNumber.trim() === '') {
       errors.push('Nomor kamar harus diisi untuk layanan drop-off')
     } else if (!validateRoomNumber(roomNumber)) {
-      errors.push('Format nomor kamar tidak valid (hanya huruf, angka, spasi, dan tanda hubung)')
+      errors.push('Nomor kamar tidak valid')
     }
-    
+
     if (flightNumber && flightNumber.trim() !== '') {
       errors.push('Nomor penerbangan tidak diperlukan untuk layanan drop-off')
     }
@@ -423,14 +407,14 @@ export function validateServiceSpecificFields(
     if (!flightNumber || flightNumber.trim() === '') {
       errors.push('Nomor penerbangan harus diisi untuk layanan pick-up')
     } else if (!validateFlightNumber(flightNumber)) {
-      errors.push('Format nomor penerbangan tidak valid (contoh: GA123, QZ8501)')
+      errors.push('Nomor penerbangan tidak valid')
     }
-    
+
     if (roomNumber && roomNumber.trim() !== '') {
       errors.push('Nomor kamar tidak diperlukan untuk layanan pick-up')
     }
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors
@@ -447,27 +431,27 @@ export function validatePricingConsistency(
   terminalCode?: string
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = []
-  
+
   // Calculate expected costs
   const expectedSurfboardCost = calculateSurfboardCost(surfboardCount)
   const expectedBaggageCost = calculateBaggageCost(hasExcessBaggage, terminalCode)
   const expectedTotalCost = calculateTotalCost(expectedSurfboardCost, expectedBaggageCost)
-  
+
   // Allow for small floating point differences
   const tolerance = 0.01
-  
+
   if (Math.abs(surfboardCost - expectedSurfboardCost) > tolerance) {
     errors.push(`Biaya surfboard tidak sesuai. Diharapkan: ${expectedSurfboardCost}, Diterima: ${surfboardCost}`)
   }
-  
+
   if (Math.abs(baggageCost - expectedBaggageCost) > tolerance) {
     errors.push(`Biaya bagasi tidak sesuai. Diharapkan: ${expectedBaggageCost}, Diterima: ${baggageCost}`)
   }
-  
+
   if (Math.abs(totalCost - expectedTotalCost) > tolerance) {
     errors.push(`Total biaya tidak sesuai. Diharapkan: ${expectedTotalCost}, Diterima: ${totalCost}`)
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors

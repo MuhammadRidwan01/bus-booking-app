@@ -121,18 +121,12 @@ Deno.serve(async (req) => {
       if (!validatedData.roomNumber || validatedData.roomNumber.trim() === '') {
         return validationError('Nomor kamar harus diisi untuk layanan drop-off')
       }
-      if (!/^[A-Za-z0-9\-\s]{1,20}$/.test(validatedData.roomNumber.trim())) {
-        return validationError('Format nomor kamar tidak valid (hanya huruf, angka, spasi, dan tanda hubung)')
-      }
       if (validatedData.flightNumber && validatedData.flightNumber.trim() !== '') {
         return validationError('Nomor penerbangan tidak diperlukan untuk layanan drop-off')
       }
     } else if (validatedData.serviceType === 'pick_up') {
       if (!validatedData.flightNumber || validatedData.flightNumber.trim() === '') {
         return validationError('Nomor penerbangan harus diisi untuk layanan pick-up')
-      }
-      if (!/^[A-Z]{2,3}[0-9]{1,4}[A-Z]?$/i.test(validatedData.flightNumber.trim())) {
-        return validationError('Format nomor penerbangan tidak valid (contoh: GA123, QZ8501)')
       }
       if (validatedData.roomNumber && validatedData.roomNumber.trim() !== '') {
         return validationError('Nomor kamar tidak diperlukan untuk layanan pick-up')
