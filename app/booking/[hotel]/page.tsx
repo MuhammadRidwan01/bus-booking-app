@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, Shield, Clock, Loader2 } from "lucide-react"
+import { User, Shield, Clock, Loader2, Plane } from "lucide-react"
 import { ScheduleSelector } from "@/components/ScheduleSelector"
 import { useRealTimeCapacity } from "@/hooks/useRealTimeCapacity"
 import { ServiceTypeSelector } from "@/components/ServiceTypeSelector"
@@ -378,14 +378,14 @@ export default function BookingPage() {
 
         {/* STEPS */}
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <StepPill active>1. Choose service</StepPill>
-            <StepPill active={Boolean(selectedServiceType)}>2. Choose schedule</StepPill>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs md:text-sm">
+            <StepPill active>1. Service</StepPill>
+            <StepPill active={Boolean(selectedServiceType)}>2. Schedule</StepPill>
             {selectedServiceType === "pick_up" && (
-              <StepPill active={Boolean(selectedTerminalCode)}>3. Choose terminal</StepPill>
+              <StepPill active={Boolean(selectedTerminalCode)}>3. Terminal</StepPill>
             )}
             <StepPill active={Boolean(selectedScheduleId && (selectedServiceType === "drop_off" || selectedTerminalCode))}>
-              {selectedServiceType === "pick_up" ? "4. Passenger details" : "3. Passenger details"}
+              {selectedServiceType === "pick_up" ? "4. Details" : "3. Details"}
             </StepPill>
           </div>
 
@@ -456,6 +456,19 @@ export default function BookingPage() {
 
             {/* FORM SIDEBAR */}
             <div className="space-y-4 lg:order-2 order-2" ref={formRef} data-section="form">
+              {/* Selection Summary (Visible on mobile when something is selected) */}
+              {(selectedScheduleId || selectedTerminalCode) && (
+                <div className="lg:hidden">
+                  <SelectionSummary
+                    serviceType={selectedServiceType}
+                    scheduleId={selectedScheduleId}
+                    terminalCode={selectedTerminalCode}
+                    date={selectedDate}
+                    todaySchedules={todaySchedules}
+                    tomorrowSchedules={tomorrowSchedules}
+                  />
+                </div>
+              )}
               <Card className="shadow-lg border border-slate-100 rounded-2xl transition-all duration-300 hover:shadow-xl">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-xl md:text-2xl text-slate-900">
@@ -541,15 +554,17 @@ export default function BookingPage() {
                         />
                       </div>
 
-                      <Select name="hasWhatsapp" value={hasWhatsapp} onValueChange={setHasWhatsapp}>
-                        <SelectTrigger className="h-10 rounded-xl">
-                          <SelectValue placeholder="WhatsApp active?" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="yes">Yes, active</SelectItem>
-                          <SelectItem value="no">No / not active</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="mt-2">
+                        <Select name="hasWhatsapp" value={hasWhatsapp} onValueChange={setHasWhatsapp}>
+                          <SelectTrigger className="h-10 rounded-xl">
+                            <SelectValue placeholder="WhatsApp active?" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="yes">Yes, active</SelectItem>
+                            <SelectItem value="no">No / not active</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </FormField>
 
                     {/* PASSENGERS */}
@@ -770,13 +785,78 @@ export default function BookingPage() {
         )}
 
       </div>
-    </PublicShell>
+    </PublicShell >
   )
 }
 
 /* ------------------------------------------------------------
    COMPONENTS
 ------------------------------------------------------------ */
+
+function SelectionSummary({
+  serviceType,
+  scheduleId,
+  terminalCode,
+  date,
+  todaySchedules,
+  tomorrowSchedules
+}: {
+  serviceType: string | null
+  scheduleId: string | null
+  terminalCode: string | null
+  date: string
+  todaySchedules: any[]
+  tomorrowSchedules: any[]
+}) {
+  const allSchedules = [...todaySchedules, ...tomorrowSchedules]
+  const schedule = allSchedules.find(s => s.id === scheduleId)
+
+  if (!scheduleId && !terminalCode) return null
+
+  return (
+    <Card className="border-primary/20 bg-primary/5 shadow-md overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
+      <div className="bg-primary px-4 py-2 text-white text-[10px] font-bold uppercase tracking-wider">
+        Your Selection
+      </div>
+      <CardContent className="p-4 flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex gap-4">
+          {schedule && (
+            <div className="space-y-0.5">
+              <p className="text-[10px] text-slate-500 uppercase font-bold">Departure</p>
+              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
+                <Clock className="h-3.5 w-3.5 text-primary" />
+                {schedule.departure_time.split(':').slice(0, 2).join(':')} WIB
+              </div>
+            </div>
+          )}
+
+          {terminalCode && (
+            <div className="space-y-0.5">
+              <p className="text-[10px] text-slate-500 uppercase font-bold">Terminal</p>
+              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
+                <Plane className="h-3.5 w-3.5 text-primary" />
+                T{terminalCode}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-[10px] font-bold rounded-lg border-primary/30 text-primary hover:bg-primary/10"
+          onClick={() => {
+            const section = terminalCode ? 'terminal' : 'schedule'
+            document.querySelector(`[data-section="${section}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }}
+        >
+          Change Selection
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
 
 function FormField({ label, children }: { label: string; children: ReactNode }) {
   return (

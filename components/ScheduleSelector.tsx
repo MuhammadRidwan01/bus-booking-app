@@ -230,14 +230,14 @@ export function ScheduleSelector({
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex-1 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center text-lg font-semibold text-slate-900">
-                          <Clock className="h-5 w-5 mr-2 text-primary" />
-                          {formatTime(schedule.departure_time)} WIB
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center text-lg font-bold text-slate-900">
+                          <Clock className="h-5 w-5 mr-2 text-primary shrink-0" />
+                          <span>{formatTime(schedule.departure_time)} WIB</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                           {getServiceTypeIcon(schedule.service_type)}
-                          <Badge className={`${getCapacityColor(schedule.status)} px-3 py-1 text-xs font-semibold`}>
+                          <Badge className={`${getCapacityColor(schedule.status)} px-2.5 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider`}>
                             {getCapacityText(schedule.status)}
                           </Badge>
                         </div>
