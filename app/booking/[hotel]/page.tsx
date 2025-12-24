@@ -433,7 +433,7 @@ export default function BookingPage() {
                   <ul className="space-y-1 text-sm text-slate-700">
                     <li>Arrive at the lobby 10 minutes before departure.</li>
                     <li>Show your WhatsApp ticket when boarding.</li>
-                    <li>Ensure flight number and passenger count are correct.</li>
+                    <li>Ensure room number and passenger count are correct.</li>
                   </ul>
                 </CardContent>
               </Card>
