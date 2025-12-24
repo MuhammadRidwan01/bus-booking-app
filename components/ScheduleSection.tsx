@@ -77,23 +77,9 @@ export function ScheduleSection() {
     ]
 
     return (
-        <section className="container mx-auto px-4 py-12 md:py-24">
+        <section className="container mx-auto px-4 py-3">
             {/* Header - Cleaned up */}
             <div className="max-w-3xl mx-auto text-center mb-16 space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/80 text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] border border-slate-200/50">
-                    <Clock className="w-3.5 h-3.5" />
-                    Live Schedule
-                </div>
-
-                <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
-                    Shuttle <span className="text-primary italic">Narrative</span>
-                </h2>
-
-                <p className="text-slate-500 text-lg max-w-xl mx-auto leading-relaxed">
-                    View terminal transfers and departures in real-time.
-                    Filter by hotel for specific schedules.
-                </p>
-
                 {/* Filter - Standardized Pill Style */}
                 <div className="flex flex-wrap justify-center gap-2 mt-8">
                     <div className="inline-flex p-1 bg-slate-50 border border-slate-200/60 rounded-full shadow-sm">
