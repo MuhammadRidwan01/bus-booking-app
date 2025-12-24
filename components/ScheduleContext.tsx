@@ -4,11 +4,15 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { supabase } from "@/lib/supabase"
 
 export interface ScheduleItem {
+    id?: string
     time: string
     destination: string
     hotel?: string
     hotelSlug?: string
     type?: "drop_off" | "pick_up"
+    currentBooked?: number
+    maxCapacity?: number
+    status?: string
 }
 
 interface ScheduleContextType {
@@ -29,37 +33,49 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
             try {
                 setLoading(true)
 
-                // Fetch all active schedules with hotel info
+                // Fetch all active schedules with hotel info and REAL-TIME capacity
+                const today = new Date().toISOString().split('T')[0]
                 const { data, error } = await supabase
                     .from("bus_schedules")
                     .select(`
                         id,
                         departure_time,
                         destination,
+                        max_capacity,
                         hotel_id,
                         hotels (
                             id,
                             name,
                             slug
+                        ),
+                        daily_schedules (
+                            current_booked,
+                            status
                         )
                     `)
+                    .eq('daily_schedules.schedule_date', today)
                     .order("departure_time")
 
                 if (error) throw error
 
                 if (data) {
-                    const mappedSchedules = data.map((item: any) => ({
-                        time: item.departure_time.slice(0, 5),
-                        destination: item.destination,
-                        hotel: item.hotels?.name || "Unknown Hotel",
-                        hotelSlug: item.hotels?.slug,
-                        // Infer service type: If destination mentions Ibis/Hotel, it's a pick-up (Airport -> Hotel). 
-                        // Otherwise if it mentions Airport, it's a drop-off (Hotel -> Airport).
-                        type: (item.destination.toLowerCase().includes("ibis") || item.destination.toLowerCase().includes("hotel"))
-                            ? "pick_up"
-                            : "drop_off"
-                    } as ScheduleItem))
-                    setSchedules(mappedSchedules)
+                    const mappedSchedules = data.map((item: any) => {
+                        const daily = item.daily_schedules?.[0] || { current_booked: 0, status: 'available' }
+                        return {
+                            id: item.id,
+                            time: item.departure_time.slice(0, 5),
+                            destination: item.destination,
+                            hotel: item.hotels?.name || "Unknown Hotel",
+                            hotelSlug: item.hotels?.slug,
+                            type: (item.destination.toLowerCase().includes("ibis") || item.destination.toLowerCase().includes("hotel"))
+                                ? "pick_up"
+                                : "drop_off",
+                            currentBooked: daily.current_booked || 0,
+                            maxCapacity: item.max_capacity || 15,
+                            status: daily.status || 'available'
+                        }
+                    })
+                    setSchedules(mappedSchedules as ScheduleItem[])
                 }
             } catch (err: any) {
                 console.error("Error fetching schedules:", err)

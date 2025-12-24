@@ -3,103 +3,158 @@
 import { useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { useSchedule, type ScheduleItem } from "./ScheduleContext"
-import { motion } from "framer-motion"
-import { Bus, Plane, Clock, Info, ArrowRight } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Bus, Plane, Clock, Info, ArrowRight, Building2, LayoutGrid } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
+type HotelSlug = 'all' | 'ibis-styles' | 'ibis-budget'
+
 export function ScheduleSection() {
     const { schedules, loading } = useSchedule()
+    const [hotelFilter, setHotelFilter] = useState<HotelSlug>('all')
     const [showPastPickUps, setShowPastPickUps] = useState(false)
     const [showPastDropOffs, setShowPastDropOffs] = useState(false)
 
-    const { dropOffs, pickUps, nextDropOff, nextPickUp, currentTimeVal } = useMemo(() => {
+    // Current time for "Next Service" logic
+    const { dropOffs, pickUps, nextDropOffs, nextPickUps, currentTimeVal } = useMemo(() => {
         const now = new Date()
         const currentHour = now.getHours()
         const currentMinute = now.getMinutes()
         const val = currentHour + (currentMinute / 60)
 
-        const dSchedules = schedules.filter(s => s.type === "drop_off")
-        const pSchedules = schedules.filter(s => s.type === "pick_up")
+        // Filter by hotel selection
+        const filteredSchedules = hotelFilter === 'all'
+            ? schedules
+            : schedules.filter(s => s.hotelSlug === hotelFilter)
 
-        const findNext = (list: ScheduleItem[]) => {
-            return list.find(item => {
-                const [hour, minute] = item.time.split(':').map(Number)
-                const scheduleTimeVal = hour + (minute / 60)
-                return scheduleTimeVal > val
-            }) || list[0]
+        const dSchedules = filteredSchedules.filter(s => s.type === "drop_off")
+        const pSchedules = filteredSchedules.filter(s => s.type === "pick_up")
+
+        const findNextItems = (list: ScheduleItem[]) => {
+            const styles = list.filter(s => s.hotelSlug === 'ibis-styles')
+            const budget = list.filter(s => s.hotelSlug === 'ibis-budget')
+
+            const getNextForOne = (sublist: ScheduleItem[]) => {
+                const next = sublist.find(item => {
+                    const [hour, minute] = item.time.split(':').map(Number)
+                    const scheduleTimeVal = hour + (minute / 60)
+                    return scheduleTimeVal > val
+                })
+                return next || sublist[0]
+            }
+
+            return {
+                styles: getNextForOne(styles),
+                budget: getNextForOne(budget)
+            }
         }
+
+        const nextDropOffs = findNextItems(dSchedules)
+        const nextPickUps = findNextItems(pSchedules)
 
         return {
             dropOffs: dSchedules,
             pickUps: pSchedules,
-            nextDropOff: findNext(dSchedules),
-            nextPickUp: findNext(pSchedules),
+            nextDropOffs,
+            nextPickUps,
             currentTimeVal: val
         }
-    }, [schedules])
+    }, [schedules, hotelFilter])
 
     if (loading) {
         return (
-            <section className="container mx-auto px-4 md:px-6 py-12">
-                <div className="h-64 bg-slate-100 rounded-3xl animate-pulse" />
+            <section className="container mx-auto px-4 py-12">
+                <div className="h-64 bg-slate-50 border border-slate-100 rounded-3xl animate-pulse" />
             </section>
         )
     }
 
+    const filters: { label: string, value: HotelSlug, icon: any }[] = [
+        { label: "All Hotels", value: "all", icon: LayoutGrid },
+        { label: "Ibis Styles", value: "ibis-styles", icon: Building2 },
+        { label: "Ibis Budget", value: "ibis-budget", icon: Building2 },
+    ]
+
     return (
-        <section className="container mx-auto px-4 md:px-6 py-12 md:py-20">
-            {/* Header Section */}
-            <div className="max-w-3xl mx-auto text-center mb-12 space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/80 text-slate-500 text-[10px] font-bold uppercase tracking-widest border border-slate-200">
+        <section className="container mx-auto px-4 py-12 md:py-24">
+            {/* Header - Cleaned up */}
+            <div className="max-w-3xl mx-auto text-center mb-16 space-y-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/80 text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] border border-slate-200/50">
                     <Clock className="w-3.5 h-3.5" />
-                    Real-time Schedule
+                    Live Schedule
                 </div>
-                <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tight">
+
+                <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
                     Shuttle <span className="text-primary italic">Narrative</span>
                 </h2>
-                <p className="text-slate-500 text-lg max-w-xl mx-auto">
-                    A visual representation of today's shuttle journey across all terminals.
+
+                <p className="text-slate-500 text-lg max-w-xl mx-auto leading-relaxed">
+                    View terminal transfers and departures in real-time.
+                    Filter by hotel for specific schedules.
                 </p>
+
+                {/* Filter - Standardized Pill Style */}
+                <div className="flex flex-wrap justify-center gap-2 mt-8">
+                    <div className="inline-flex p-1 bg-slate-50 border border-slate-200/60 rounded-full shadow-sm">
+                        {filters.map((f) => {
+                            const Icon = f.icon
+                            const isActive = hotelFilter === f.value
+                            return (
+                                <button
+                                    key={f.value}
+                                    onClick={() => setHotelFilter(f.value)}
+                                    className={cn(
+                                        "relative px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-2",
+                                        isActive ? "text-white bg-slate-900 shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-white"
+                                    )}
+                                >
+                                    <Icon className="w-3.5 h-3.5" />
+                                    {f.label}
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 max-w-6xl mx-auto relative px-4 sm:px-8">
-                {/* Decorative Background Element */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-gradient-to-br from-blue-100/20 via-primary/5 to-emerald-100/20 blur-[100px] -z-10 pointer-events-none" />
-
-                {/* PICKUPS COLUMN (LEFT) */}
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 max-w-6xl mx-auto relative px-4">
+                {/* TIMELINE GROUPS */}
                 <TimelineGroup
-                    title="Pick-ups"
-                    subtitle="Airport Points → Hotel"
+                    title="Arrivals & Pick-ups"
+                    subtitle="Terminal → Hotel"
                     items={pickUps}
                     type="pick_up"
                     currentTimeVal={currentTimeVal}
-                    nextItem={nextPickUp}
+                    nextItems={nextPickUps}
                     showPast={showPastPickUps}
                     setShowPast={setShowPastPickUps}
                 />
 
-                {/* DEPARTURES COLUMN (RIGHT) */}
                 <TimelineGroup
-                    title="Departures"
-                    subtitle="Hotel Lobby → Airport"
+                    title="Hotel Departures"
+                    subtitle="Hotel → Terminal"
                     items={dropOffs}
                     type="drop_off"
                     currentTimeVal={currentTimeVal}
-                    nextItem={nextDropOff}
+                    nextItems={nextDropOffs}
                     showPast={showPastDropOffs}
                     setShowPast={setShowPastDropOffs}
                 />
             </div>
 
-            <div className="mt-16 max-w-3xl mx-auto">
-                <div className="bg-white/50 backdrop-blur-md border border-slate-100 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-4 shadow-sm">
-                    <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
-                        <Info className="w-6 h-6" />
+            {/* Note - Unified with app style */}
+            <div className="mt-16 max-w-2xl mx-auto">
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-6 flex items-start gap-4 shadow-sm">
+                    <div className="p-2 bg-white rounded-lg border border-slate-200/60 text-primary shadow-sm shrink-0">
+                        <Info className="w-5 h-5" />
                     </div>
-                    <div className="text-center md:text-left">
-                        <h4 className="font-bold text-slate-900">Note on Punctuality</h4>
-                        <p className="text-sm text-slate-600">Please arrive at least 10 minutes before departure. Departure times are subject to traffic conditions and operational requirements.</p>
+                    <div className="space-y-1">
+                        <h4 className="font-bold text-slate-900">Punctuality Note</h4>
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                            Please be at the meeting point 10 minutes before the scheduled time.
+                            Shuttles operate strictly according to the published schedule.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -107,157 +162,164 @@ export function ScheduleSection() {
     )
 }
 
-function TimelineGroup({ title, subtitle, items, type, currentTimeVal, nextItem, showPast, setShowPast }: any) {
-    const isDropOff = type === "drop_off"
-
-    // Filter items based on whether we show past or not
+function TimelineGroup({ title, subtitle, items, currentTimeVal, nextItems, showPast, setShowPast }: any) {
     const { filteredItems, pastCount } = useMemo(() => {
         const past = items.filter((item: any) => {
             const [h, m] = item.time.split(':').map(Number)
             const itemTimeVal = h + (m / 60)
-            return itemTimeVal < currentTimeVal && item !== nextItem
+            const isNext = item === nextItems.styles || item === nextItems.budget
+            return itemTimeVal < currentTimeVal && !isNext
         })
 
         return {
             filteredItems: showPast ? items : items.filter((item: any) => !past.includes(item)),
             pastCount: past.length
         }
-    }, [items, currentTimeVal, nextItem, showPast])
+    }, [items, currentTimeVal, nextItems, showPast])
 
     return (
         <div className="relative">
-            {/* Timeline Line */}
-            <div className={cn(
-                "absolute left-6 top-8 bottom-8 w-[2px]",
-                isDropOff
-                    ? "bg-gradient-to-b from-blue-200 via-blue-100 to-slate-50"
-                    : "bg-gradient-to-b from-emerald-200 via-emerald-100 to-slate-50"
-            )} />
+            {/* Thinner Timeline Line */}
+            <div className="absolute left-6 top-6 bottom-6 w-[2px] bg-slate-100" />
 
-            <div className="relative pl-16 mb-6">
-                <div className={cn(
-                    "absolute left-0 top-0 w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg z-10",
-                    isDropOff
-                        ? "bg-gradient-to-br from-blue-600 to-indigo-600 shadow-blue-200"
-                        : "bg-gradient-to-br from-emerald-600 to-teal-600 shadow-emerald-200"
-                )}>
-                    {isDropOff ? <Bus className="w-5 h-5" /> : <Plane className="w-5 h-5 rotate-90" />}
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 pt-1 tracking-tight">{title}</h3>
-                <p className="text-sm text-slate-500 font-medium">{subtitle}</p>
+            {/* Header Label */}
+            <div className="relative pl-14 mb-8">
+                <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-white border-4 border-slate-900 z-10" />
+                <h3 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h3>
+                <p className="text-xs text-slate-500 font-medium tracking-wide uppercase mt-0.5">{subtitle}</p>
             </div>
 
-            {/* Past Toggle */}
+            {/* Past Toggle - Clean Label */}
             {pastCount > 0 && (
-                <div className="pl-16 mb-6">
+                <div className="pl-14 mb-6">
                     <button
                         onClick={() => setShowPast(!showPast)}
-                        className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-primary flex items-center gap-2 transition-colors py-1 px-2 rounded-lg hover:bg-slate-50"
+                        className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-2"
                     >
-                        {showPast ? "Hide earlier schedules" : `See ${pastCount} earlier schedules`}
-                        <div className={cn("w-1.5 h-1.5 rounded-full", showPast ? "bg-primary" : "bg-slate-300")} />
+                        {showPast ? "Hide arrived" : `See ${pastCount} earlier schedules`}
+                        <div className={cn("w-1 h-1 rounded-full", showPast ? "bg-slate-900" : "bg-slate-200")} />
                     </button>
                 </div>
             )}
 
             <div className="space-y-6">
-                {filteredItems.map((item: any, i: number) => {
-                    const [h, m] = item.time.split(':').map(Number)
-                    const itemTimeVal = h + (m / 60)
-                    const isNext = item === nextItem
-                    const isPast = itemTimeVal < currentTimeVal && !isNext
+                <AnimatePresence mode="popLayout" initial={false}>
+                    {filteredItems.map((item: any) => {
+                        const [h, m] = item.time.split(':').map(Number)
+                        const itemTimeVal = h + (m / 60)
+                        const isNext = item === nextItems.styles || item === nextItems.budget
+                        const isPast = itemTimeVal < currentTimeVal && !isNext
+                        const isBudget = item.hotelSlug?.includes('budget')
 
-                    // Show "Book This" only for the Next Service (item === nextItem)
-                    const showBookButton = isNext
+                        return (
+                            <motion.div
+                                layout
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                key={`${item.time}-${item.destination}-${item.hotelSlug}`}
+                                className="relative pl-14 group"
+                            >
+                                {/* Circle on Line */}
+                                <div className={cn(
+                                    "absolute left-[20px] top-6 w-3 h-3 rounded-full border-2 border-white shadow-sm z-10 transition-all duration-300",
+                                    isPast ? "bg-slate-200" :
+                                        isNext ? "bg-slate-900 ring-4 ring-slate-100 scale-125" : "bg-slate-300 group-hover:bg-slate-900"
+                                )} />
 
-                    return (
-                        <motion.div
-                            initial={{ opacity: 0, x: isDropOff ? -20 : 20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                            viewport={{ once: true, margin: "-50px" }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 260,
-                                damping: 20,
-                                delay: i * 0.05
-                            }}
-                            key={`${item.time}-${item.destination}`}
-                            className="relative pl-16 group"
-                        >
-                            {/* Node on Line */}
-                            <div className={cn(
-                                "absolute left-[21px] top-4 w-3 h-3 rounded-full border-2 border-white shadow-md z-10 transition-all duration-500",
-                                isPast ? "bg-slate-300" :
-                                    isNext
-                                        ? (isDropOff ? "bg-blue-600 scale-150 ring-4 ring-blue-100/50" : "bg-emerald-600 scale-150 ring-4 ring-emerald-100/50")
-                                        : (isDropOff ? "bg-blue-400 group-hover:bg-blue-600 group-hover:scale-125" : "bg-emerald-400 group-hover:bg-emerald-600 group-hover:scale-125")
-                            )} />
+                                <div className={cn(
+                                    "relative bg-white border rounded-2xl p-5 transition-all duration-300",
+                                    isNext ? "border-slate-900 shadow-xl shadow-slate-200/50" : "border-slate-100 hover:border-slate-300",
+                                    isPast && "opacity-40 grayscale-[0.5]"
+                                )}>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-baseline gap-1">
+                                            <span className={cn(
+                                                "text-2xl font-bold tracking-tighter transition-colors",
+                                                isNext ? "text-slate-900" : "text-slate-700 group-hover:text-slate-900"
+                                            )}>
+                                                {item.time}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">WIB</span>
+                                        </div>
 
-                            <div className={cn(
-                                "relative bg-white/40 backdrop-blur-md border rounded-2xl p-4 transition-all duration-500",
-                                isNext
-                                    ? (isDropOff ? "bg-white border-blue-200 shadow-2xl shadow-blue-100/60 ring-1 ring-blue-50/50" : "bg-white border-emerald-200 shadow-2xl shadow-emerald-100/60 ring-1 ring-emerald-50/50")
-                                    : "border-slate-100 hover:bg-white/80 hover:shadow-xl hover:border-slate-200",
-                                isPast && "opacity-40 grayscale-[0.5] hover:opacity-60"
-                            )}>
-                                <div className="flex items-center justify-between mb-1">
-                                    <span className={cn(
-                                        "text-xl font-black tracking-tighter",
-                                        isNext ? "text-slate-900" : "text-slate-700"
-                                    )}>
-                                        {item.time}
-                                    </span>
+                                        <div className="flex flex-col items-end gap-1.5">
+                                            {/* Hotel IDENTIFIER (User Core Request) */}
+                                            <div className={cn(
+                                                "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
+                                                isBudget ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                            )}>
+                                                {isBudget ? "Ibis Budget" : "Ibis Styles"}
+                                            </div>
+
+                                            {isNext && (
+                                                <span className="text-[9px] font-black text-slate-900 uppercase tracking-[0.2em]">
+                                                    Next Shuttle
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                                <div className={cn("w-1.5 h-1.5 rounded-full", isBudget ? "bg-blue-400" : "bg-emerald-400")} />
+                                                <span className="truncate">{item.destination}</span>
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 mt-0.5 ml-3 font-medium uppercase tracking-wide truncate">
+                                                {item.hotel}
+                                            </div>
+                                        </div>
+
+                                        {isNext && (
+                                            <a href={`/booking/${item.hotelSlug}`}>
+                                                <Button
+                                                    size="sm"
+                                                    className="rounded-full shadow-sm text-[10px] h-8 font-bold uppercase tracking-widest flex items-center gap-2"
+                                                >
+                                                    Book
+                                                    <ArrowRight className="w-3 h-3" />
+                                                </Button>
+                                            </a>
+                                        )}
+                                    </div>
+
+                                    {/* Subtle occupancy indicator */}
                                     {isNext && (
-                                        <Badge className={cn(
-                                            "text-[10px] uppercase font-bold tracking-widest animate-pulse",
-                                            isDropOff ? "bg-blue-600 text-white hover:bg-blue-600" : "bg-emerald-600 text-white hover:bg-emerald-600"
-                                        )}>
-                                            Next Service
-                                        </Badge>
-                                    )}
-                                    {isPast && (
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                            Departed
-                                        </span>
+                                        <div className="mt-4 pt-4 border-t border-slate-50">
+                                            <div className="flex justify-between items-center text-[9px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">
+                                                <span>Capacity</span>
+                                                <span className={cn(
+                                                    "font-bold",
+                                                    item.status === 'full' ? "text-rose-500" :
+                                                        item.status === 'almost-full' ? "text-amber-500" : "text-primary"
+                                                )}>
+                                                    {item.status === 'full' ? 'Full' :
+                                                        item.status === 'almost-full' ? 'Almost Full' : 'Available'}
+                                                </span>
+                                            </div>
+                                            <div className="h-1 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100/50">
+                                                <motion.div
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${Math.round(((item.currentBooked || 0) / (item.maxCapacity || 15)) * 100)}%` }}
+                                                    className={cn(
+                                                        "h-full transition-all duration-1000",
+                                                        item.status === 'full' ? "bg-rose-500" :
+                                                            item.status === 'almost-full' ? "bg-amber-500" : "bg-slate-900"
+                                                    )}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between mt-1 text-[8px] font-medium text-slate-400 uppercase tracking-tighter">
+                                                <span>{item.currentBooked || 0} / {item.maxCapacity || 15} Booked</span>
+                                                <span>{Math.round(((item.currentBooked || 0) / (item.maxCapacity || 15)) * 100)}% Filled</span>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
-
-                                <div className="flex flex-col gap-0.5">
-                                    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-semibold group-hover:text-slate-900 transition-colors">
-                                        <div className={cn("w-1.5 h-1.5 rounded-full transition-transform group-hover:scale-125", isDropOff ? "bg-blue-400" : "bg-emerald-400")} />
-                                        <span className="truncate">{item.destination}</span>
-                                    </div>
-                                    <div className="text-[10px] text-slate-400 flex items-center gap-1 ml-3">
-                                        <span className="font-medium uppercase truncate italic">{item.hotel}</span>
-                                    </div>
-                                </div>
-
-                                {showBookButton && (
-                                    <motion.div
-                                        initial={isNext ? { opacity: 0, y: 10 } : false}
-                                        animate={isNext ? { opacity: 1, y: 0 } : false}
-                                        className="mt-4 flex justify-end"
-                                    >
-                                        <a href={`/booking/${item.hotelSlug || 'ibis-styles'}`}>
-                                            <Button
-                                                size="sm"
-                                                className={cn(
-                                                    "rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 shadow-lg transition-all hover:scale-105 active:scale-95 group/btn",
-                                                    isDropOff ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700",
-                                                    !isNext && "py-1 h-auto" // Slightly smaller for non-highlights
-                                                )}
-                                            >
-                                                Book This
-                                                <ArrowRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1" />
-                                            </Button>
-                                        </a>
-                                    </motion.div>
-                                )}
-                            </div>
-                        </motion.div>
-                    )
-                })}
+                            </motion.div>
+                        )
+                    })}
+                </AnimatePresence>
             </div>
         </div>
     )
