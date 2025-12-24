@@ -7,6 +7,8 @@ export interface ScheduleItem {
     time: string
     destination: string
     hotel?: string
+    hotelSlug?: string
+    type?: "drop_off" | "pick_up"
 }
 
 interface ScheduleContextType {
@@ -27,49 +29,50 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
             try {
                 setLoading(true)
 
-                // 1. Get Hotel "ibis_style" (Reference Hotel)
-                const { data: hotel, error: hotelError } = await supabase
-                    .from("hotels")
-                    .select("id")
-                    .eq("slug", "ibis_style")
-                    .single()
-
-                let query = supabase
+                // Fetch all active schedules with hotel info
+                const { data, error } = await supabase
                     .from("bus_schedules")
-                    .select("departure_time, destination")
+                    .select(`
+                        id,
+                        departure_time,
+                        destination,
+                        hotel_id,
+                        hotels (
+                            id,
+                            name,
+                            slug
+                        )
+                    `)
                     .order("departure_time")
-
-                // If hotel found, filter by it. If not, fallback to all.
-                if (hotel && !hotelError) {
-                    query = query.eq("hotel_id", hotel.id)
-                }
-
-                const { data, error } = await query
 
                 if (error) throw error
 
                 if (data) {
-                    // unique schedules based on time+destination
-                    const uniqueSchedules = data.map(item => ({
+                    const mappedSchedules = data.map((item: any) => ({
                         time: item.departure_time.slice(0, 5),
-                        destination: item.destination
-                    }))
-
-                    // Simple deduplication if needed, though time+dest usually unique per hotel
-                    setSchedules(uniqueSchedules)
+                        destination: item.destination,
+                        hotel: item.hotels?.name || "Unknown Hotel",
+                        hotelSlug: item.hotels?.slug,
+                        // Infer service type: If destination mentions Ibis/Hotel, it's a pick-up (Airport -> Hotel). 
+                        // Otherwise if it mentions Airport, it's a drop-off (Hotel -> Airport).
+                        type: (item.destination.toLowerCase().includes("ibis") || item.destination.toLowerCase().includes("hotel"))
+                            ? "pick_up"
+                            : "drop_off"
+                    } as ScheduleItem))
+                    setSchedules(mappedSchedules)
                 }
             } catch (err: any) {
                 console.error("Error fetching schedules:", err)
                 setError(err.message)
-                // Fallback to static if DB fails
+                // Fallback
                 setSchedules([
-                    { time: "06:00", destination: "Soekarno-Hatta Airport" },
-                    { time: "07:00", destination: "Soekarno-Hatta Airport" },
-                    { time: "08:00", destination: "Soekarno-Hatta Airport" },
-                    { time: "09:00", destination: "Grand Indonesia" },
-                    { time: "10:00", destination: "Soekarno-Hatta Airport" },
-                    { time: "12:00", destination: "Mall Taman Anggrek" },
-                ])
+                    { time: "06:00", destination: "Soekarno-Hatta Airport", hotel: "ibis Styles Jakarta Airport", hotelSlug: "booking/ibis-styles", type: "drop_off" },
+                    { time: "07:00", destination: "Soekarno-Hatta Airport", hotel: "ibis Styles Jakarta Airport", hotelSlug: "booking/ibis-styles", type: "drop_off" },
+                    { time: "08:00", destination: "Soekarno-Hatta Airport", hotel: "ibis Styles Jakarta Airport", hotelSlug: "booking/ibis-styles", type: "drop_off" },
+                    { time: "09:00", destination: "Grand Indonesia", hotel: "ibis Styles Jakarta Airport", hotelSlug: "booking/ibis-styles", type: "pick_up" },
+                    { time: "10:00", destination: "Soekarno-Hatta Airport", hotel: "ibis Budget Jakarta Airport", hotelSlug: "booking/ibis-budget", type: "drop_off" },
+                    { time: "12:00", destination: "Mall Taman Anggrek", hotel: "ibis Budget Jakarta Airport", hotelSlug: "booking/ibis-budget", type: "pick_up" },
+                ] as ScheduleItem[])
             } finally {
                 setLoading(false)
             }

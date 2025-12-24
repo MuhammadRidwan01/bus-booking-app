@@ -15,21 +15,24 @@ export function useRealTimeCapacity(hotelSlug: string, serviceType?: 'drop_off' 
     const today = format(new Date(), "yyyy-MM-dd")
     const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd")
     console.log("Today:", today, "Tomorrow:", tomorrow, "Service Type:", serviceType)
-    
+
     async function fetchSchedules() {
       try {
         setLoading(true)
 
-        // Step 1: Convert URL slug to database format
-        // URL uses "ibis-styles" but database uses "ibis_style"
-        const dbHotelSlug = hotelSlug === "ibis-styles" ? "ibis_style" : 
-                           hotelSlug === "ibis-budget" ? "ibis_budget" : hotelSlug
+        // Step 1: Handle slug variations
+        // 'hotels' table uses hyphens ("ibis-styles")
+        // 'daily_schedules' table uses underscores ("ibis_style") legacy format
+        const hotelTableSlug = hotelSlug
+        const scheduleTableSlug = hotelSlug === "ibis-styles" ? "ibis_style" :
+          hotelSlug === "ibis-budget" ? "ibis_budget" :
+            hotelSlug.replace(/-/g, '_')
 
-        // Get hotel ID from converted slug
+        // Get hotel ID using the hyphenated slug
         const { data: hotel, error: hotelError } = await supabase
           .from("hotels")
           .select("id")
-          .eq("slug", dbHotelSlug)
+          .eq("slug", hotelTableSlug)
           .single()
 
         if (hotelError) {
@@ -37,11 +40,11 @@ export function useRealTimeCapacity(hotelSlug: string, serviceType?: 'drop_off' 
           return
         }
         if (!hotel) {
-          console.warn("Hotel not found for slug:", hotelSlug, "converted to:", dbHotelSlug)
+          console.warn("Hotel not found for slug:", hotelTableSlug)
           return
         }
 
-        // Step 2: Fetch daily_schedules directly with service type filtering
+        // Step 2: Fetch daily_schedules using the underscored slug
         const fetchDailySchedules = async (date: string) => {
           let query = supabase
             .from("daily_schedules")
@@ -63,7 +66,7 @@ export function useRealTimeCapacity(hotelSlug: string, serviceType?: 'drop_off' 
               )
             `)
             .eq("schedule_date", date)
-            .eq("hotel", dbHotelSlug)
+            .eq("hotel", scheduleTableSlug)
             .eq("status", "active")
 
           // Filter by service type if provided
@@ -90,27 +93,22 @@ export function useRealTimeCapacity(hotelSlug: string, serviceType?: 'drop_off' 
             const busSchedule = Array.isArray(schedule.bus_schedules)
               ? schedule.bus_schedules[0]
               : schedule.bus_schedules
-            
+
             // Use departure_time from daily_schedules if available, otherwise from bus_schedules
             const departureTime = schedule.departure_time || busSchedule?.departure_time
-            
+
             // Use capacity from daily_schedules if available, otherwise from bus_schedules
             const maxCapacity = schedule.capacity || busSchedule?.max_capacity
-            
+
             // Determine destination based on service type
             let destination = busSchedule?.destination
             if (!destination) {
-              if (schedule.service_type === 'drop_off') {
-                destination = 'Soekarno-Hatta International Airport'
-              } else if (schedule.service_type === 'pick_up') {
-                destination = 'Soekarno-Hatta Airport Terminal'
-              } else {
-                destination = 'Soekarno-Hatta Airport' // fallback
-              }
+              // Only fallback if absolutely no data
+              destination = 'Unknown Destination'
             }
-            
+
             const isPast = isToday && !isScheduleAvailable(departureTime, schedule.schedule_date)
-            
+
             return {
               id: schedule.id,
               departure_time: departureTime,
@@ -160,10 +158,10 @@ export function useRealTimeCapacity(hotelSlug: string, serviceType?: 'drop_off' 
             prev.map((schedule) =>
               schedule.id === payload.new.id
                 ? {
-                    ...schedule,
-                    current_booked: payload.new.current_booked,
-                    status: getCapacityStatus(payload.new.current_booked, schedule.max_capacity),
-                  }
+                  ...schedule,
+                  current_booked: payload.new.current_booked,
+                  status: getCapacityStatus(payload.new.current_booked, schedule.max_capacity),
+                }
                 : schedule,
             ),
           )
@@ -191,10 +189,10 @@ export function useRealTimeCapacity(hotelSlug: string, serviceType?: 'drop_off' 
             prev.map((schedule) =>
               schedule.id === payload.new.id
                 ? {
-                    ...schedule,
-                    current_booked: payload.new.current_booked,
-                    status: getCapacityStatus(payload.new.current_booked, schedule.max_capacity),
-                  }
+                  ...schedule,
+                  current_booked: payload.new.current_booked,
+                  status: getCapacityStatus(payload.new.current_booked, schedule.max_capacity),
+                }
                 : schedule,
             ),
           )

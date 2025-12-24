@@ -87,21 +87,104 @@ SELECT 'Ibis Budget Jakarta', 'ibis-budget'
 WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE slug = 'ibis-budget');
 
 -- Insert bus schedules (only if they don't exist)
+-- 3. Insert Bus Schedules (Drop-off: Hotel -> Airport)
+
+-- IBIS STYLES DROP-OFF
 INSERT INTO bus_schedules (hotel_id, departure_time, destination, max_capacity)
-SELECT h.id, t.departure_time, t.destination, 15
+SELECT h.id, t.time, 'Soekarno-Hatta International Airport', 15
 FROM hotels h
 CROSS JOIN (
   VALUES 
-    ('07:00'::TIME, 'Bandara Soekarno-Hatta'),
-    ('09:00'::TIME, 'Mall Taman Anggrek'),
-    ('11:00'::TIME, 'Grand Indonesia'),
-    ('14:00'::TIME, 'Bandara Soekarno-Hatta'),
-    ('16:00'::TIME, 'Mall Kelapa Gading'),
-    ('18:00'::TIME, 'Ancol Beach City')
-) AS t(departure_time, destination)
-WHERE NOT EXISTS (
-  SELECT 1 FROM bus_schedules bs 
-  WHERE bs.hotel_id = h.id 
-    AND bs.departure_time = t.departure_time 
-    AND bs.destination = t.destination
-);
+    ('03:00'::TIME), ('04:30'::TIME), ('06:00'::TIME), ('07:30'::TIME),
+    ('09:00'::TIME), ('10:30'::TIME), ('12:00'::TIME), ('14:00'::TIME),
+    ('16:00'::TIME), ('18:00'::TIME), ('20:00'::TIME), ('22:00'::TIME), ('00:00'::TIME)
+) AS t(time)
+WHERE h.slug = 'ibis-styles';
+
+-- IBIS BUDGET DROP-OFF (From new image)
+INSERT INTO bus_schedules (hotel_id, departure_time, destination, max_capacity)
+SELECT h.id, t.time, 'Soekarno-Hatta International Airport', 15
+FROM hotels h
+CROSS JOIN (
+  VALUES 
+    ('02:45'::TIME), ('04:15'::TIME), ('05:45'::TIME), ('07:15'::TIME),
+    ('08:45'::TIME), ('10:15'::TIME), ('11:45'::TIME), ('13:50'::TIME),
+    ('15:50'::TIME), ('17:50'::TIME), ('19:50'::TIME), ('21:50'::TIME), ('23:50'::TIME)
+) AS t(time)
+WHERE h.slug = 'ibis-budget';
+
+
+-- 4. Insert Bus Schedules (Pick-up: Airport -> Hotel)
+
+-- IBIS STYLES PICK-UP
+INSERT INTO bus_schedules (hotel_id, departure_time, destination, max_capacity)
+SELECT h.id, t.time, 'Ibis Styles Jakarta Airport', 15
+FROM hotels h
+CROSS JOIN (
+  VALUES 
+    ('13:00'::TIME), ('14:00'::TIME), ('15:00'::TIME), ('16:00'::TIME),
+    ('17:00'::TIME), ('18:00'::TIME), ('19:00'::TIME), ('20:00'::TIME),
+    ('21:00'::TIME), ('22:00'::TIME), ('23:00'::TIME), ('00:00'::TIME)
+) AS t(time)
+WHERE h.slug = 'ibis-styles';
+
+-- IBIS BUDGET PICK-UP (From new image)
+-- Note: Image shows 24:00 which is 00:00
+INSERT INTO bus_schedules (hotel_id, departure_time, destination, max_capacity)
+SELECT h.id, t.time, 'Ibis Budget Jakarta Airport', 15
+FROM hotels h
+CROSS JOIN (
+  VALUES 
+    ('13:00'::TIME), ('14:00'::TIME), ('15:00'::TIME), ('16:00'::TIME),
+    ('17:00'::TIME), ('18:00'::TIME), ('19:00'::TIME), ('20:00'::TIME),
+    ('21:00'::TIME), ('22:00'::TIME), ('23:00'::TIME), ('00:00'::TIME)
+) AS t(time)
+WHERE h.slug = 'ibis-budget';
+
+-- TERMINAL MEETING POINTS
+INSERT INTO terminal_meeting_points (terminal_code, location_description, arrival_time_offset_min, arrival_time_offset_max) VALUES
+('1A', '2nd line - Arrival pick up point area', 15, 20),
+('1B', '2nd line - Arrival pick up point area', 15, 20),
+('1C', '2nd line - Arrival pick up point area', 15, 20),
+('2D', '2nd line - pick-up point 2D / under sky train', 25, 30),
+('2E', '2nd line - pick-up point 2E / under sky train', 25, 30),
+('2F', '2nd line - pick-up point 2F / under sky train', 25, 30),
+('3', 'East Lobby - in front of domestic parking building', 30, 45)
+ON CONFLICT (terminal_code) DO NOTHING;
+
+-- GENERATE DAILY SCHEDULES
+DO $$
+DECLARE
+  start_date DATE := CURRENT_DATE;
+  end_date DATE := CURRENT_DATE + INTERVAL '30 days';
+  curr_date DATE;
+BEGIN
+  curr_date := start_date;
+  WHILE curr_date <= end_date LOOP
+    INSERT INTO daily_schedules (bus_schedule_id, schedule_date, current_booked, status, service_type, hotel, departure_time, capacity)
+    SELECT 
+      bs.id,
+      curr_date,
+      0,
+      'active',
+      -- Infer service type
+      CASE 
+        WHEN bs.destination LIKE '%Airport%' AND bs.destination NOT LIKE '%Ibis%' THEN 'drop_off'
+        ELSE 'pick_up' 
+      END,
+      -- Map hotel slug to format expected by frontend
+      CASE 
+        WHEN h.slug = 'ibis-styles' THEN 'ibis_style'
+        WHEN h.slug = 'ibis-budget' THEN 'ibis_budget'
+        ELSE REPLACE(h.slug, '-', '_')
+      END,
+      bs.departure_time,
+      bs.max_capacity
+    FROM bus_schedules bs
+    JOIN hotels h ON bs.hotel_id = h.id
+    ON CONFLICT (schedule_date, service_type, hotel, departure_time) DO NOTHING;
+
+    curr_date := curr_date + INTERVAL '1 day';
+  END LOOP;
+END;
+$$;

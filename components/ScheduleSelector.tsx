@@ -30,12 +30,12 @@ export function ScheduleSelector({
 
   const currentSchedules = useMemo(() => {
     const source = selectedDate === "today" ? todaySchedules : tomorrowSchedules
-    
+
     // Filter by service type if specified
-    const filtered = serviceType 
+    const filtered = serviceType
       ? source.filter(schedule => schedule.service_type === serviceType)
       : source
-    
+
     return filtered
       .slice()
       .sort((a, b) => {
@@ -164,7 +164,7 @@ export function ScheduleSelector({
           <CalendarRange className="h-6 w-6 text-primary" />
         </div>
         <div className="mt-3 text-sm text-blue-900 bg-blue-50 rounded-xl px-4 py-3 border border-blue-100">
-          {serviceType === "drop_off" 
+          {serviceType === "drop_off"
             ? "Hotel to Airport - Tickets can be booked up to 20 minutes before departure."
             : "Airport to Hotel - Tickets can be booked up to 20 minutes before departure."
           }
@@ -246,8 +246,8 @@ export function ScheduleSelector({
                       <div className="flex items-center text-sm text-slate-700">
                         <MapPin className="h-4 w-4 mr-2 text-primary" />
                         <span className="font-medium">
-                          {schedule.service_type === "drop_off" 
-                            ? `To ${schedule.destination}` 
+                          {schedule.service_type === "drop_off"
+                            ? `To ${schedule.destination}`
                             : `From ${schedule.destination}`
                           }
                         </span>

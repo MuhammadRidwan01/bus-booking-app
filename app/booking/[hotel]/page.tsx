@@ -229,23 +229,7 @@ export default function BookingPage() {
     (selectedServiceType === "drop_off" || (selectedTerminalCode && selectedMeetingPointId))
   )
 
-  // Auto-scroll to submit button when form becomes valid
-  useEffect(() => {
-    if (isFormValid && selectedScheduleId) {
-      // Small delay to ensure form is rendered
-      const timer = setTimeout(() => {
-        const submitButton = document.querySelector('[data-submit-button]')
-        if (submitButton) {
-          submitButton.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-          })
-        }
-      }, 500)
 
-      return () => clearTimeout(timer)
-    }
-  }, [isFormValid, selectedScheduleId])
 
   // Track if submit button is visible in viewport
   const [isSubmitButtonVisible, setIsSubmitButtonVisible] = useState(true)
@@ -726,13 +710,13 @@ export default function BookingPage() {
                     Important Notes
                   </h3>
                   <ol className="list-decimal list-outside pl-4 space-y-2 text-xs text-slate-600 leading-relaxed marker:text-slate-400 marker:font-medium">
-                    <li>Airport Shuttle (Drop-off/Pick-up) is <strong>ONLY for registered guests</strong>.</li>
-                    <li>Seats are limited for each schedule. First come, first served.</li>
-                    <li>Please register according to the shuttle schedule for your convenience.</li>
-                    <li><strong>Surfboard charge:</strong> IDR 75.000 nett/board/way.</li>
-                    <li><strong>Premium pick-up (Terminal 3 Curbside):</strong> Additional IDR 150.000 nett/car/way.</li>
-                    <li>Please make Pick-up reservation minimum <strong>1 day prior</strong> to arrival.</li>
-                    <li>Please make Drop-off reservation at receptionist upon check-in.</li>
+                    <li>Airport Shuttle (Drop-off/Pick-up) <strong>ONLY for registered guest</strong>.</li>
+                    <li>Seats are limited for each of schedule.</li>
+                    <li>Please register according the shuttle schedule for your convenience.</li>
+                    <li><strong>Surfboard charge:</strong> IDR 75.000,-nett/surfboard/way.</li>
+                    <li><strong>Premium pick-up at terminal 3</strong> (Curbside area and gate 5 - On the 1st floor) will be cost an additional charge IDR 150.000,-nett/car/way.</li>
+                    <li>Please make Pick-up service reservation, minimum <strong>1 day prior arrival date</strong>.</li>
+                    <li>Please make Drop-off reservation to receptionist, upon room check in process.</li>
                     <li><strong>Baggage Allowance:</strong> 2 pieces per person included. Excess items will be charged additionally at the counter.</li>
                   </ol>
                 </CardContent>
