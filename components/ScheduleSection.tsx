@@ -1,16 +1,19 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { useSchedule, type ScheduleItem } from "./ScheduleContext"
 import { motion } from "framer-motion"
-import { Bus, Plane, Clock, Info } from "lucide-react"
+import { Bus, Plane, Clock, Info, ArrowRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export function ScheduleSection() {
     const { schedules, loading } = useSchedule()
+    const [showPastPickUps, setShowPastPickUps] = useState(false)
+    const [showPastDropOffs, setShowPastDropOffs] = useState(false)
 
-    const { dropOffs, pickUps, nextSchedule, currentTimeVal } = useMemo(() => {
+    const { dropOffs, pickUps, nextDropOff, nextPickUp, currentTimeVal } = useMemo(() => {
         const now = new Date()
         const currentHour = now.getHours()
         const currentMinute = now.getMinutes()
@@ -19,9 +22,6 @@ export function ScheduleSection() {
         const dSchedules = schedules.filter(s => s.type === "drop_off")
         const pSchedules = schedules.filter(s => s.type === "pick_up")
 
-        // Find overall next schedule for highlighting if needed, 
-        // but it's better to find per-service.
-        // For simplicity, let's keep the logic consistent with original.
         const findNext = (list: ScheduleItem[]) => {
             return list.find(item => {
                 const [hour, minute] = item.time.split(':').map(Number)
@@ -33,7 +33,8 @@ export function ScheduleSection() {
         return {
             dropOffs: dSchedules,
             pickUps: pSchedules,
-            nextSchedule: findNext(schedules),
+            nextDropOff: findNext(dSchedules),
+            nextPickUp: findNext(pSchedules),
             currentTimeVal: val
         }
     }, [schedules])
@@ -66,24 +67,28 @@ export function ScheduleSection() {
                 {/* Decorative Background Element */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-gradient-to-br from-blue-100/20 via-primary/5 to-emerald-100/20 blur-[100px] -z-10 pointer-events-none" />
 
-                {/* DEPARTURES COLUMN */}
-                <TimelineGroup
-                    title="Departures"
-                    subtitle="Hotel Lobby → Airport"
-                    items={dropOffs}
-                    type="drop_off"
-                    currentTimeVal={currentTimeVal}
-                    nextSchedule={nextSchedule}
-                />
-
-                {/* PICKUPS COLUMN */}
+                {/* PICKUPS COLUMN (LEFT) */}
                 <TimelineGroup
                     title="Pick-ups"
                     subtitle="Airport Points → Hotel"
                     items={pickUps}
                     type="pick_up"
                     currentTimeVal={currentTimeVal}
-                    nextSchedule={nextSchedule}
+                    nextItem={nextPickUp}
+                    showPast={showPastPickUps}
+                    setShowPast={setShowPastPickUps}
+                />
+
+                {/* DEPARTURES COLUMN (RIGHT) */}
+                <TimelineGroup
+                    title="Departures"
+                    subtitle="Hotel Lobby → Airport"
+                    items={dropOffs}
+                    type="drop_off"
+                    currentTimeVal={currentTimeVal}
+                    nextItem={nextDropOff}
+                    showPast={showPastDropOffs}
+                    setShowPast={setShowPastDropOffs}
                 />
             </div>
 
@@ -102,8 +107,22 @@ export function ScheduleSection() {
     )
 }
 
-function TimelineGroup({ title, subtitle, items, type, currentTimeVal, nextSchedule }: any) {
+function TimelineGroup({ title, subtitle, items, type, currentTimeVal, nextItem, showPast, setShowPast }: any) {
     const isDropOff = type === "drop_off"
+
+    // Filter items based on whether we show past or not
+    const { filteredItems, pastCount } = useMemo(() => {
+        const past = items.filter((item: any) => {
+            const [h, m] = item.time.split(':').map(Number)
+            const itemTimeVal = h + (m / 60)
+            return itemTimeVal < currentTimeVal && item !== nextItem
+        })
+
+        return {
+            filteredItems: showPast ? items : items.filter((item: any) => !past.includes(item)),
+            pastCount: past.length
+        }
+    }, [items, currentTimeVal, nextItem, showPast])
 
     return (
         <div className="relative">
@@ -115,7 +134,7 @@ function TimelineGroup({ title, subtitle, items, type, currentTimeVal, nextSched
                     : "bg-gradient-to-b from-emerald-200 via-emerald-100 to-slate-50"
             )} />
 
-            <div className="relative pl-16 mb-10">
+            <div className="relative pl-16 mb-6">
                 <div className={cn(
                     "absolute left-0 top-0 w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg z-10",
                     isDropOff
@@ -128,49 +147,71 @@ function TimelineGroup({ title, subtitle, items, type, currentTimeVal, nextSched
                 <p className="text-sm text-slate-500 font-medium">{subtitle}</p>
             </div>
 
+            {/* Past Toggle */}
+            {pastCount > 0 && (
+                <div className="pl-16 mb-6">
+                    <button
+                        onClick={() => setShowPast(!showPast)}
+                        className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-primary flex items-center gap-2 transition-colors py-1 px-2 rounded-lg hover:bg-slate-50"
+                    >
+                        {showPast ? "Hide earlier schedules" : `See ${pastCount} earlier schedules`}
+                        <div className={cn("w-1.5 h-1.5 rounded-full", showPast ? "bg-primary" : "bg-slate-300")} />
+                    </button>
+                </div>
+            )}
+
             <div className="space-y-6">
-                {items.map((item: any, i: number) => {
+                {filteredItems.map((item: any, i: number) => {
                     const [h, m] = item.time.split(':').map(Number)
                     const itemTimeVal = h + (m / 60)
-                    const isNext = item === nextSchedule
+                    const isNext = item === nextItem
                     const isPast = itemTimeVal < currentTimeVal && !isNext
+
+                    // Show "Book This" only for the Next Service (item === nextItem)
+                    const showBookButton = isNext
 
                     return (
                         <motion.div
                             initial={{ opacity: 0, x: isDropOff ? -20 : 20 }}
                             whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: i * 0.05 }}
+                            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                            viewport={{ once: true, margin: "-50px" }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 260,
+                                damping: 20,
+                                delay: i * 0.05
+                            }}
                             key={`${item.time}-${item.destination}`}
                             className="relative pl-16 group"
                         >
                             {/* Node on Line */}
                             <div className={cn(
-                                "absolute left-[21px] top-4 w-3 h-3 rounded-full border-2 border-white shadow-md z-10 transition-all duration-300",
+                                "absolute left-[21px] top-4 w-3 h-3 rounded-full border-2 border-white shadow-md z-10 transition-all duration-500",
                                 isPast ? "bg-slate-300" :
                                     isNext
-                                        ? (isDropOff ? "bg-blue-600 scale-125 ring-4 ring-blue-100" : "bg-emerald-600 scale-125 ring-4 ring-emerald-100")
-                                        : (isDropOff ? "bg-blue-400 group-hover:bg-blue-600" : "bg-emerald-400 group-hover:bg-emerald-100")
+                                        ? (isDropOff ? "bg-blue-600 scale-150 ring-4 ring-blue-100/50" : "bg-emerald-600 scale-150 ring-4 ring-emerald-100/50")
+                                        : (isDropOff ? "bg-blue-400 group-hover:bg-blue-600 group-hover:scale-125" : "bg-emerald-400 group-hover:bg-emerald-600 group-hover:scale-125")
                             )} />
 
                             <div className={cn(
-                                "relative bg-white/40 backdrop-blur-sm border rounded-2xl p-4 transition-all duration-300",
+                                "relative bg-white/40 backdrop-blur-md border rounded-2xl p-4 transition-all duration-500",
                                 isNext
-                                    ? (isDropOff ? "bg-white border-blue-200 shadow-xl shadow-blue-100/50 scale-[1.02]" : "bg-white border-emerald-200 shadow-xl shadow-emerald-100/50 scale-[1.02]")
-                                    : "border-slate-100 hover:bg-white hover:shadow-lg hover:border-slate-200",
-                                isPast && "opacity-40 grayscale-[0.5]"
+                                    ? (isDropOff ? "bg-white border-blue-200 shadow-2xl shadow-blue-100/60 ring-1 ring-blue-50/50" : "bg-white border-emerald-200 shadow-2xl shadow-emerald-100/60 ring-1 ring-emerald-50/50")
+                                    : "border-slate-100 hover:bg-white/80 hover:shadow-xl hover:border-slate-200",
+                                isPast && "opacity-40 grayscale-[0.5] hover:opacity-60"
                             )}>
                                 <div className="flex items-center justify-between mb-1">
                                     <span className={cn(
-                                        "text-xl font-black tracking-tight",
+                                        "text-xl font-black tracking-tighter",
                                         isNext ? "text-slate-900" : "text-slate-700"
                                     )}>
                                         {item.time}
                                     </span>
                                     {isNext && (
                                         <Badge className={cn(
-                                            "text-[10px] uppercase font-bold tracking-widest",
-                                            isDropOff ? "bg-blue-100 text-blue-700 hover:bg-blue-100" : "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                                            "text-[10px] uppercase font-bold tracking-widest animate-pulse",
+                                            isDropOff ? "bg-blue-600 text-white hover:bg-blue-600" : "bg-emerald-600 text-white hover:bg-emerald-600"
                                         )}>
                                             Next Service
                                         </Badge>
@@ -183,27 +224,35 @@ function TimelineGroup({ title, subtitle, items, type, currentTimeVal, nextSched
                                 </div>
 
                                 <div className="flex flex-col gap-0.5">
-                                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                                        <div className={cn("w-1 h-1 rounded-full", isDropOff ? "bg-blue-300" : "bg-emerald-300")} />
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-semibold group-hover:text-slate-900 transition-colors">
+                                        <div className={cn("w-1.5 h-1.5 rounded-full transition-transform group-hover:scale-125", isDropOff ? "bg-blue-400" : "bg-emerald-400")} />
                                         <span className="truncate">{item.destination}</span>
                                     </div>
-                                    <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                                        <span className="font-semibold uppercase truncate">{item.hotel}</span>
+                                    <div className="text-[10px] text-slate-400 flex items-center gap-1 ml-3">
+                                        <span className="font-medium uppercase truncate italic">{item.hotel}</span>
                                     </div>
                                 </div>
 
-                                {isNext && (
-                                    <div className="mt-4 flex justify-end">
+                                {showBookButton && (
+                                    <motion.div
+                                        initial={isNext ? { opacity: 0, y: 10 } : false}
+                                        animate={isNext ? { opacity: 1, y: 0 } : false}
+                                        className="mt-4 flex justify-end"
+                                    >
                                         <a href={`/booking/${item.hotelSlug || 'ibis-styles'}`}>
-                                            <button className={cn(
-                                                "px-3 py-1.5 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-md transition-transform active:scale-95",
-                                                isDropOff ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
-                                            )}>
+                                            <Button
+                                                size="sm"
+                                                className={cn(
+                                                    "rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 shadow-lg transition-all hover:scale-105 active:scale-95 group/btn",
+                                                    isDropOff ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700",
+                                                    !isNext && "py-1 h-auto" // Slightly smaller for non-highlights
+                                                )}
+                                            >
                                                 Book This
-                                                <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                            </button>
+                                                <ArrowRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1" />
+                                            </Button>
                                         </a>
-                                    </div>
+                                    </motion.div>
                                 )}
                             </div>
                         </motion.div>
