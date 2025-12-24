@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Search, Bus, Calendar, Clock, MapPin, Users, Phone, Download } from "lucide-react"
+import { Search, Bus, Calendar, Clock, MapPin, Users, Phone, Download, Waves, Briefcase } from "lucide-react"
 import { getBookingByCode } from "@/app/actions/booking"
 import type { BookingDetails } from "@/types"
 import { formatDate, formatTime } from "@/lib/utils"
@@ -140,11 +140,10 @@ export default function TrackPage() {
 
                   {/* Service Type and Direction */}
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                      booking.service_type === "pick_up" 
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-blue-100 text-blue-700"
-                    }`}>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${booking.service_type === "pick_up"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-blue-100 text-blue-700"
+                      }`}>
                       {booking.service_type === "pick_up" ? "Pick-up Service" : "Drop-off Service"}
                     </span>
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-slate-100 text-slate-700">
@@ -167,13 +166,13 @@ export default function TrackPage() {
                             {booking.service_type === "pick_up" ? "Pick-up" : "Departure"} • {formatTime(booking.departure_time)} WIB
                           </p>
                           <p className="text-sm font-bold text-slate-900">
-                            {booking.service_type === "pick_up" 
+                            {booking.service_type === "pick_up"
                               ? (booking.terminal_code ? `Terminal ${booking.terminal_code}` : "Airport Terminal")
                               : booking.hotel_name
                             }
                           </p>
                           <p className="text-xs text-slate-600">
-                            {booking.service_type === "pick_up" 
+                            {booking.service_type === "pick_up"
                               ? (booking.meeting_point_location || "Meeting point")
                               : "Hotel Lobby"
                             }
@@ -194,7 +193,7 @@ export default function TrackPage() {
                             )}
                           </p>
                           <p className="text-sm font-bold text-slate-900">
-                            {booking.service_type === "pick_up" 
+                            {booking.service_type === "pick_up"
                               ? booking.hotel_name
                               : booking.destination
                             }
@@ -237,7 +236,21 @@ export default function TrackPage() {
                     <InfoCard icon={<Phone className="h-4 w-4" />} title="WhatsApp number" value={`+${booking.phone}`} />
                     <InfoCard icon={<Calendar className="h-4 w-4" />} title="Date" value={formatDate(booking.schedule_date)} />
                     <InfoCard icon={<Users className="h-4 w-4" />} title="Passengers" value={`${booking.passenger_count} people`} />
-                    {booking.flight_number && <InfoCard icon={<MapPin className="h-4 w-4" />} title="Flight" value={booking.flight_number} />}
+
+                    {/* Conditional: Flight No (Pick-up only) or Room No (Drop-off only) */}
+                    {booking.service_type === "pick_up" ? (
+                      booking.flight_number && <InfoCard icon={<MapPin className="h-4 w-4" />} title="Flight" value={booking.flight_number} />
+                    ) : (
+                      booking.room_number && <InfoCard icon={<MapPin className="h-4 w-4" />} title="Room Number" value={booking.room_number} />
+                    )}
+
+                    {/* New Fields: Surfboards & Baggage */}
+                    {booking.has_surfboard && (
+                      <InfoCard icon={<span>🏄‍♂️</span>} title="Surfboards" value={`${booking.surfboard_count} Board${booking.surfboard_count !== 1 ? 's' : ''}`} />
+                    )}
+                    {(booking.excess_baggage_count ?? 0) > 0 && (
+                      <InfoCard icon={<span>🧳</span>} title="Excess Baggage" value={`${booking.excess_baggage_count} Item${booking.excess_baggage_count !== 1 ? 's' : ''}`} />
+                    )}
                   </div>
 
                   <div className="space-y-3">

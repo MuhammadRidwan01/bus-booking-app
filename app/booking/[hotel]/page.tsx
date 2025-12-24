@@ -15,7 +15,7 @@ import { TerminalSelector } from "@/components/TerminalSelector"
 import { useTerminalMeetingPoints } from "@/hooks/useTerminalMeetingPoints"
 import { ServiceSpecificFields } from "@/components/ServiceSpecificFields"
 import { SurfboardSelector } from "@/components/SurfboardSelector"
-import { BaggageSelector } from "@/components/BaggageSelector"
+// BaggageSelector removed as per new requirements (info only)
 import { PricingBreakdown } from "@/components/PricingBreakdown"
 import { usePricingState } from "@/hooks/usePricing"
 import Image from "next/image"
@@ -113,7 +113,7 @@ export default function BookingPage() {
   const handleScheduleSelect = (scheduleId: string, date: string) => {
     setSelectedScheduleId(scheduleId)
     setSelectedDate(date)
-    
+
     // For pick-up service, scroll to terminal selection; for drop-off, scroll to form
     if (selectedServiceType === "pick_up") {
       setTimeout(() => {
@@ -135,7 +135,7 @@ export default function BookingPage() {
     // Reset service-specific fields
     setRoomNumber("")
     setFlightNumber("")
-    
+
     // Scroll to schedule section
     setTimeout(() => {
       const scheduleSection = document.querySelector('[data-section="schedule"]')
@@ -190,13 +190,13 @@ export default function BookingPage() {
   const getFormCompletionPercentage = () => {
     let completed = 0
     let total = 0
-    
+
     // Basic required fields
     total += 3 // customerName, phoneNumber, passengerCount
     if (customerName.trim()) completed++
     if (phoneNumber.trim()) completed++
     if (passengerCount > 0) completed++
-    
+
     // Service-specific fields
     if (selectedServiceType === "drop_off") {
       total += 1 // roomNumber
@@ -205,22 +205,22 @@ export default function BookingPage() {
       total += 1 // flightNumber  
       if (flightNumber.trim()) completed++
     }
-    
+
     // Optional fields (count as bonus)
     if (hasSurfboard || hasExcessBaggage) {
       total += 1
       completed += 1 // Already configured
     }
-    
+
     return Math.min(100, (completed / total) * 100)
   }
 
   const isFormValid = Boolean(
-    selectedScheduleId && 
-    selectedDate && 
+    selectedScheduleId &&
+    selectedDate &&
     selectedServiceType &&
-    passengerCount >= 1 && 
-    idempotencyKey && 
+    passengerCount >= 1 &&
+    idempotencyKey &&
     phoneNumber.trim() &&
     customerName.trim() &&
     // Service-specific field validation
@@ -236,20 +236,20 @@ export default function BookingPage() {
       const timer = setTimeout(() => {
         const submitButton = document.querySelector('[data-submit-button]')
         if (submitButton) {
-          submitButton.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
+          submitButton.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
           })
         }
       }, 500)
-      
+
       return () => clearTimeout(timer)
     }
   }, [isFormValid, selectedScheduleId])
 
   // Track if submit button is visible in viewport
   const [isSubmitButtonVisible, setIsSubmitButtonVisible] = useState(true)
-  
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -448,13 +448,13 @@ export default function BookingPage() {
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Next step</p>
                   <p className="text-xs text-slate-600">
-                    {!selectedServiceType 
+                    {!selectedServiceType
                       ? "Choose your travel direction first."
-                      : !selectedScheduleId 
-                      ? "Select a departure time."
-                      : selectedServiceType === "pick_up" && !selectedTerminalCode
-                      ? "Choose your arrival terminal."
-                      : "Fill passenger details to complete booking."
+                      : !selectedScheduleId
+                        ? "Select a departure time."
+                        : selectedServiceType === "pick_up" && !selectedTerminalCode
+                          ? "Choose your arrival terminal."
+                          : "Fill passenger details to complete booking."
                     }
                   </p>
                 </div>
@@ -479,7 +479,7 @@ export default function BookingPage() {
                     Passenger Details
                   </CardTitle>
                   <p className="text-sm text-slate-600">Ticket is sent to WhatsApp after confirmation.</p>
-                  
+
                   {/* Progress indicator */}
                   <div className="mt-4">
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
@@ -487,7 +487,7 @@ export default function BookingPage() {
                       <span className="font-medium">{Math.round(getFormCompletionPercentage())}%</span>
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                      <div 
+                      <div
                         className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${getFormCompletionPercentage()}%` }}
                       />
@@ -507,7 +507,7 @@ export default function BookingPage() {
                     <input type="hidden" name="serviceType" value={selectedServiceType || ""} />
                     {selectedTerminalCode && <input type="hidden" name="terminalCode" value={selectedTerminalCode} />}
                     {selectedMeetingPointId && <input type="hidden" name="meetingPointId" value={selectedMeetingPointId} />}
-                    
+
                     {/* Enhanced booking fields */}
                     <input type="hidden" name="roomNumber" value={roomNumber} />
                     <input type="hidden" name="flightNumber" value={flightNumber} />
@@ -609,21 +609,7 @@ export default function BookingPage() {
                       />
                     )}
 
-                    {/* BAGGAGE SELECTOR */}
-                    {config && (
-                      <BaggageSelector
-                        passengerCount={passengerCount}
-                        excessBaggageCount={excessBaggageCount}
-                        terminalCode={selectedTerminalCode || undefined}
-                        onExcessBaggageChange={handleExcessBaggageChange}
-                        pricing={{
-                          freeItemsPerPassenger: config.baggageFreeItemsPerPassenger,
-                          terminal3CurbsideCost: config.baggageTerminal3CurbsideCost,
-                          otherTerminalsCost: config.baggageOtherTerminalsCost,
-                          currency: config.currency
-                        }}
-                      />
-                    )}
+
 
                     {/* PRICING BREAKDOWN */}
                     {pricing && config && (
@@ -640,8 +626,8 @@ export default function BookingPage() {
                     {/* TERMINAL SELECTION FOR DROP-OFF */}
                     {selectedServiceType === "drop_off" && (
                       <FormField label="Terminal (Optional)">
-                        <Select 
-                          value={selectedTerminalCode || "none"} 
+                        <Select
+                          value={selectedTerminalCode || "none"}
                           onValueChange={(value) => {
                             if (value === "none") {
                               setSelectedTerminalCode(null)
@@ -691,51 +677,39 @@ export default function BookingPage() {
 
                     {/* SUBMIT BUTTON - Normal positioning */}
                     <div className="pt-4 space-y-3">
-                      {/* Quick summary */}
-                      {pricing && pricing.totalCost > 0 && (
-                        <div className="text-center p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                          <p className="text-sm font-medium text-blue-900">
-                            Total Cost: {new Intl.NumberFormat('id-ID', {
-                              style: 'currency',
-                              currency: config?.currency || 'IDR',
-                              minimumFractionDigits: 0,
-                              maximumFractionDigits: 0
-                            }).format(pricing.totalCost)}
-                          </p>
-                        </div>
-                      )}
-                      
+
+
                       <Button
                         type="submit"
                         className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl"
                         disabled={!isFormValid || isSubmitting || isPending}
                         data-submit-button
                       >
-                        {isSubmitting || isPending 
-                          ? "Processing..." 
-                          : isFormValid 
-                          ? `✓ Confirm ${selectedServiceType === "drop_off" ? "Drop-off" : "Pick-up"} Booking`
-                          : "Complete booking details"
+                        {isSubmitting || isPending
+                          ? "Processing..."
+                          : isFormValid
+                            ? `✓ Confirm ${selectedServiceType === "drop_off" ? "Drop-off" : "Pick-up"} Booking`
+                            : "Complete booking details"
                         }
                       </Button>
-                      
+
                       {!isFormValid && (
                         <div className="text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                          {!selectedServiceType 
+                          {!selectedServiceType
                             ? "Choose service type and schedule to continue."
                             : !selectedScheduleId
-                            ? "Select a departure time to continue."
-                            : selectedServiceType === "pick_up" && !selectedTerminalCode
-                            ? "Select your arrival terminal to continue."
-                            : selectedServiceType === "drop_off" && !roomNumber.trim()
-                            ? "Enter your room number to continue."
-                            : selectedServiceType === "pick_up" && !flightNumber.trim()
-                            ? "Enter your flight number to continue."
-                            : !customerName.trim()
-                            ? "Enter your full name to continue."
-                            : !phoneNumber.trim()
-                            ? "Enter your WhatsApp number to continue."
-                            : "Fill all required details to continue."
+                              ? "Select a departure time to continue."
+                              : selectedServiceType === "pick_up" && !selectedTerminalCode
+                                ? "Select your arrival terminal to continue."
+                                : selectedServiceType === "drop_off" && !roomNumber.trim()
+                                  ? "Enter your room number to continue."
+                                  : selectedServiceType === "pick_up" && !flightNumber.trim()
+                                    ? "Enter your flight number to continue."
+                                    : !customerName.trim()
+                                      ? "Enter your full name to continue."
+                                      : !phoneNumber.trim()
+                                        ? "Enter your WhatsApp number to continue."
+                                        : "Fill all required details to continue."
                           }
                         </div>
                       )}
@@ -744,18 +718,23 @@ export default function BookingPage() {
                 </CardContent>
               </Card>
 
-              {/* INFO BOX */}
-              <Card className="border border-slate-100 shadow-md rounded-2xl">
-                <CardContent className="p-4 space-y-2">
+              {/* IMPORTANT INFO CARD */}
+              <Card className="border border-slate-200 shadow-sm rounded-2xl bg-slate-50/50">
+                <CardContent className="p-5 space-y-3">
                   <h3 className="font-semibold text-slate-900 flex items-center gap-2">
                     <Shield className="h-4 w-4 text-primary" />
-                    Important info
+                    Important Notes
                   </h3>
-                  <ul className="space-y-1 text-xs text-slate-700">
-                    <li>• Arrive at the lobby 10 minutes before departure.</li>
-                    <li>• Show your WhatsApp ticket when boarding.</li>
-                    <li>• Ensure flight number and passenger count are correct.</li>
-                  </ul>
+                  <ol className="list-decimal list-outside pl-4 space-y-2 text-xs text-slate-600 leading-relaxed marker:text-slate-400 marker:font-medium">
+                    <li>Airport Shuttle (Drop-off/Pick-up) is <strong>ONLY for registered guests</strong>.</li>
+                    <li>Seats are limited for each schedule. First come, first served.</li>
+                    <li>Please register according to the shuttle schedule for your convenience.</li>
+                    <li><strong>Surfboard charge:</strong> IDR 75.000 nett/board/way.</li>
+                    <li><strong>Premium pick-up (Terminal 3 Curbside):</strong> Additional IDR 150.000 nett/car/way.</li>
+                    <li>Please make Pick-up reservation minimum <strong>1 day prior</strong> to arrival.</li>
+                    <li>Please make Drop-off reservation at receptionist upon check-in.</li>
+                    <li><strong>Baggage Allowance:</strong> 2 pieces per person included. Excess items will be charged additionally at the counter.</li>
+                  </ol>
                 </CardContent>
               </Card>
             </div>
@@ -798,7 +777,7 @@ export default function BookingPage() {
                 </svg>
               )}
             </Button>
-            
+
             {/* Tooltip */}
             <div className="absolute bottom-16 right-0 bg-slate-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity">
               Complete Booking

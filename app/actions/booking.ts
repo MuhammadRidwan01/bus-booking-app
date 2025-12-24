@@ -74,13 +74,13 @@ export async function createBooking(formData: FormData) {
     }
 
     // Create departure datetime for advance booking validation
-    const busSchedule = Array.isArray(schedule.bus_schedules) 
-      ? schedule.bus_schedules[0] 
+    const busSchedule = Array.isArray(schedule.bus_schedules)
+      ? schedule.bus_schedules[0]
       : schedule.bus_schedules
     const departureTime = schedule.departure_time || busSchedule?.departure_time
     if (departureTime) {
       const departureDateTime = new Date(`${schedule.schedule_date}T${departureTime}`)
-      
+
       // Validate advance booking requirement (minimum 20 minutes prior)
       if (!validateAdvanceBooking(departureDateTime)) {
         throw new Error("Booking harus dilakukan minimal 20 menit sebelum keberangkatan")
@@ -190,13 +190,13 @@ export async function createBookingOptimistic(formData: FormData) {
     }
 
     // Create departure datetime for advance booking validation
-    const busSchedule = Array.isArray(schedule.bus_schedules) 
-      ? schedule.bus_schedules[0] 
+    const busSchedule = Array.isArray(schedule.bus_schedules)
+      ? schedule.bus_schedules[0]
       : schedule.bus_schedules
     const departureTime = schedule.departure_time || busSchedule?.departure_time
     if (departureTime) {
       const departureDateTime = new Date(`${schedule.schedule_date}T${departureTime}`)
-      
+
       // Validate advance booking requirement (minimum 20 minutes prior)
       if (!validateAdvanceBooking(departureDateTime)) {
         return { success: false, error: "Booking harus dilakukan minimal 20 menit sebelum keberangkatan" }
@@ -238,33 +238,48 @@ export async function createBookingOptimistic(formData: FormData) {
  * Get booking by code - now proxies to Edge Function
  */
 export async function getBookingByCode(code: string) {
-  try {
-    // Call Edge Function with anon key (public access)
-    const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/booking-status?code=${encodeURIComponent(code)}`
+  let attempts = 0
+  const maxAttempts = 3
 
-    const response = await fetch(edgeFunctionUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json',
-        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  while (attempts < maxAttempts) {
+    try {
+      // Call Edge Function with anon key (public access)
+      const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/booking-status?code=${encodeURIComponent(code)}`
+
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        },
+        cache: 'no-store' // Ensure fresh data
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.ok && result.found) {
+        return {
+          found: true,
+          booking: result.booking
+        }
       }
-    })
 
-    const result = await response.json()
-
-    if (!response.ok || !result.ok) {
-      return { found: false, booking: null }
+      // If not found or error, wait and retry
+      attempts++
+      if (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    } catch (error) {
+      console.error(`Error getting booking by code (attempt ${attempts + 1}):`, error)
+      attempts++
+      if (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
     }
-
-    return {
-      found: result.found,
-      booking: result.booking
-    }
-  } catch (error) {
-    console.error("Error getting booking by code:", error)
-    return { found: false, booking: null }
   }
+
+  return { found: false, booking: null }
 }
 
 export async function getHotelDetails(hotelId: string) {
@@ -367,10 +382,10 @@ export async function calculateBookingCosts(
       const config = await getActivePricingConfig()
       const surfboardCost = surfboardCount * config.surfboard_cost_per_board
       const isTerminal3 = terminalCode === 'Terminal 3' || terminalCode === 'terminal3' || terminalCode === 'T3'
-      const baggageCost = excessBaggageCount > 0 ? 
+      const baggageCost = excessBaggageCount > 0 ?
         (isTerminal3 ? config.baggage_terminal3_curbside_cost : config.baggage_other_terminals_cost) : 0
       const totalCost = surfboardCost + baggageCost
-      
+
       return [{
         surfboard_cost: surfboardCost,
         baggage_cost: baggageCost,
@@ -386,17 +401,17 @@ export async function calculateBookingCosts(
 }
 
 export async function getAvailableSchedules(
-  hotelSlug: string, 
-  date: string, 
+  hotelSlug: string,
+  date: string,
   serviceType?: "drop_off" | "pick_up"
 ) {
   try {
     const supabaseAdmin = await getSupabaseAdmin()
-    
+
     // Convert URL slug to database format
-    const dbHotelSlug = hotelSlug === "ibis-styles" ? "ibis_style" : 
-                       hotelSlug === "ibis-budget" ? "ibis_budget" : hotelSlug
-    
+    const dbHotelSlug = hotelSlug === "ibis-styles" ? "ibis_style" :
+      hotelSlug === "ibis-budget" ? "ibis_budget" : hotelSlug
+
     let query = supabaseAdmin
       .from("daily_schedules")
       .select(`

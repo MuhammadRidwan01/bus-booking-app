@@ -53,11 +53,11 @@ export function SurfboardSelector({
           <Waves className="h-4 w-4 text-primary" />
           Surfboard Equipment
         </Label>
-        <Select 
-          value={hasSurfboard ? "yes" : "no"} 
+        <Select
+          value={hasSurfboard ? "yes" : "no"}
           onValueChange={handleHasSurfboardChange}
         >
-          <SelectTrigger 
+          <SelectTrigger
             id="hasSurfboard"
             className={`h-10 rounded-xl ${errors.hasSurfboard ? 'border-red-500' : ''}`}
           >
@@ -82,11 +82,11 @@ export function SurfboardSelector({
           <Label htmlFor="surfboardCount" className="text-sm font-semibold text-slate-800">
             Number of surfboards
           </Label>
-          <Select 
-            value={surfboardCount.toString()} 
+          <Select
+            value={surfboardCount.toString()}
             onValueChange={handleCountChange}
           >
-            <SelectTrigger 
+            <SelectTrigger
               id="surfboardCount"
               className={`h-10 rounded-xl ${errors.surfboardCount ? 'border-red-500' : ''}`}
             >
@@ -103,11 +103,7 @@ export function SurfboardSelector({
           {errors.surfboardCount && (
             <p className="text-sm text-red-600">{errors.surfboardCount}</p>
           )}
-          {totalCost > 0 && (
-            <p className="text-sm font-medium text-blue-600">
-              Total: {formatCurrency(totalCost)}
-            </p>
-          )}
+
         </div>
       )}
 

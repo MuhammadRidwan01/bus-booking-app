@@ -16,7 +16,9 @@ import {
     Bus,
     RefreshCw,
     MapPin,
-    Clock
+    Clock,
+    Waves,
+    Briefcase
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -31,6 +33,7 @@ type BookingDetail = {
     destination: string
     passenger_count: number
     flight_number?: string
+    room_number?: string
     whatsapp_sent: boolean
     whatsapp_attempts: number
     whatsapp_last_error: string | null
@@ -40,6 +43,10 @@ type BookingDetail = {
     meeting_point_location?: string
     arrival_time_offset_min?: number
     arrival_time_offset_max?: number
+    // Enhanced fields
+    has_surfboard?: boolean
+    surfboard_count?: number
+    excess_baggage_count?: number
 }
 
 interface ConfirmationViewProps {
@@ -123,10 +130,10 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
         ? format(new Date(booking.schedule_date), "EEE, d MMM yyyy")
         : "Date not set"
 
-    const pickupLocation = booking.service_type === "pick_up" 
+    const pickupLocation = booking.service_type === "pick_up"
         ? (booking.terminal_code ? `Terminal ${booking.terminal_code}` : "Airport Terminal")
         : (booking.hotel_name || "Ibis Hotel")
-    
+
     const dropoffLocation = booking.service_type === "pick_up"
         ? (booking.hotel_name || "Ibis Hotel")
         : (booking.destination || "Airport")
@@ -135,7 +142,7 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
     const serviceTypeLabel = booking.service_type === "pick_up" ? "Pick-up Service" : "Drop-off Service"
 
     const showResend = !booking.whatsapp_sent && (booking.whatsapp_attempts > 0 || !!booking.whatsapp_last_error)
-    
+
     // Check if user indicated no WhatsApp based on error message
     const userIndicatedNoWhatsApp = booking.whatsapp_last_error?.toLowerCase().includes("user indicated number is not on whatsapp") ?? false
 
@@ -176,11 +183,10 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                                 <span className="w-1.5 h-1.5 bg-green-600 rounded-full mr-1.5 animate-pulse"></span>
                                 Confirmed
                             </span>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                                booking.service_type === "pick_up" 
-                                    ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300"
-                                    : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
-                            }`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${booking.service_type === "pick_up"
+                                ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300"
+                                : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
+                                }`}>
                                 {serviceTypeLabel}
                             </span>
                         </div>
@@ -217,7 +223,7 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                                 </p>
                                 <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{pickupLocation}</p>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
-                                    {booking.service_type === "pick_up" 
+                                    {booking.service_type === "pick_up"
                                         ? (booking.meeting_point_location || "Meeting point")
                                         : "Hotel Lobby"
                                     }
@@ -273,13 +279,26 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                                 {booking.passenger_count} Person{booking.passenger_count > 1 ? 's' : ''}
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Flight No</label>
-                            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold text-sm">
-                                <Plane className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                {booking.flight_number || "-"}
+
+                        {/* Conditional: Flight No (Pick-up only) or Room No (Drop-off only) */}
+                        {booking.service_type === "pick_up" ? (
+                            <div>
+                                <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Flight No</label>
+                                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold text-sm">
+                                    <Plane className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                    {booking.flight_number || "-"}
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div>
+                                <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Room No</label>
+                                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold text-sm">
+                                    <Home className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                    {booking.room_number || "-"}
+                                </div>
+                            </div>
+                        )}
+
                         <div>
                             <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Date</label>
                             <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold text-sm">
@@ -307,6 +326,30 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                                     </div>
                                 </div>
                             </>
+                        )}
+
+                        {/* New Fields: Surfboards & Baggage */}
+                        {(booking.has_surfboard || (booking.excess_baggage_count ?? 0) > 0) && (
+                            <div className="col-span-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-4">
+                                {booking.has_surfboard && (
+                                    <div>
+                                        <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Surfboards</label>
+                                        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold text-sm">
+                                            <Waves className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                            {booking.surfboard_count} Board{booking.surfboard_count !== 1 ? 's' : ''}
+                                        </div>
+                                    </div>
+                                )}
+                                {(booking.excess_baggage_count ?? 0) > 0 && (
+                                    <div>
+                                        <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Excess Baggage</label>
+                                        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold text-sm">
+                                            <Briefcase className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                            {booking.excess_baggage_count} Item{booking.excess_baggage_count !== 1 ? 's' : ''}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>

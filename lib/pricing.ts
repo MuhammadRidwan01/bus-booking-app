@@ -1,8 +1,8 @@
 import { supabase } from "@/lib/supabase-browser"
-import { 
-  calculateSurfboardCost, 
-  calculateBaggageCost, 
-  calculateTotalCost 
+import {
+  calculateSurfboardCost,
+  calculateBaggageCost,
+  calculateTotalCost
 } from "@/lib/validations"
 
 // Types for pricing configuration
@@ -52,7 +52,7 @@ const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
  */
 export async function getActivePricingConfig(): Promise<PricingConfig> {
   const now = Date.now()
-  
+
   // Return cached config if still valid
   if (pricingConfigCache && (now - cacheTimestamp) < CACHE_DURATION) {
     return pricingConfigCache
@@ -78,11 +78,25 @@ export async function getActivePricingConfig(): Promise<PricingConfig> {
       return getDefaultPricingConfig()
     }
 
+    // Map snake_case to camelCase
+    const mappedConfig: PricingConfig = {
+      id: data.id,
+      surfboardCostPerBoard: data.surfboard_cost_per_board,
+      baggageFreeItemsPerPassenger: data.baggage_free_items_per_passenger,
+      baggageTerminal3CurbsideCost: data.baggage_terminal_3_curbside_cost,
+      baggageOtherTerminalsCost: data.baggage_other_terminals_cost,
+      currency: data.currency,
+      effectiveDate: data.effective_date,
+      createdBy: data.created_by,
+      createdAt: data.created_at,
+      isActive: data.is_active
+    }
+
     // Update cache
-    pricingConfigCache = data
+    pricingConfigCache = mappedConfig
     cacheTimestamp = now
 
-    return data
+    return mappedConfig
   } catch (error) {
     console.error('Error in getActivePricingConfig:', error)
     return getDefaultPricingConfig()
@@ -114,25 +128,25 @@ export async function calculateBookingPricing(
   input: PricingCalculationInput
 ): Promise<PricingCalculationResult> {
   const config = await getActivePricingConfig()
-  
+
   // Calculate costs using the configuration
   const surfboardCost = calculateSurfboardCost(
-    input.surfboardCount, 
+    input.surfboardCount,
     config.surfboardCostPerBoard
   )
-  
+
   const baggageCost = calculateBaggageCost(
     input.hasExcessBaggage,
     input.terminalCode,
     config.baggageTerminal3CurbsideCost,
     config.baggageOtherTerminalsCost
   )
-  
+
   const totalCost = calculateTotalCost(surfboardCost, baggageCost)
-  
+
   // Generate breakdown items
   const breakdown: PricingBreakdownItem[] = []
-  
+
   if (input.surfboardCount > 0) {
     breakdown.push({
       description: `Surfboard handling (${input.surfboardCount} board${input.surfboardCount > 1 ? 's' : ''})`,
@@ -141,19 +155,19 @@ export async function calculateBookingPricing(
       totalPrice: surfboardCost
     })
   }
-  
+
   if (input.hasExcessBaggage) {
-    const isTerminal3 = input.terminalCode === 'Terminal 3' || 
-                       input.terminalCode === 'terminal3' || 
-                       input.terminalCode === 'T3'
-    const unitPrice = isTerminal3 ? 
-      config.baggageTerminal3CurbsideCost : 
+    const isTerminal3 = input.terminalCode === 'Terminal 3' ||
+      input.terminalCode === 'terminal3' ||
+      input.terminalCode === 'T3'
+    const unitPrice = isTerminal3 ?
+      config.baggageTerminal3CurbsideCost :
       config.baggageOtherTerminalsCost
-    
-    const terminalDescription = input.terminalCode ? 
-      ` (${input.terminalCode})` : 
+
+    const terminalDescription = input.terminalCode ?
+      ` (${input.terminalCode})` :
       ' (terminal-dependent)'
-    
+
     breakdown.push({
       description: `Excess baggage${terminalDescription}`,
       quantity: 1, // Baggage cost is per trip, not per item
@@ -161,7 +175,7 @@ export async function calculateBookingPricing(
       totalPrice: baggageCost
     })
   }
-  
+
   return {
     surfboardCost,
     baggageCost,
@@ -179,24 +193,24 @@ export function calculateBookingPricingSync(
   input: PricingCalculationInput
 ): Omit<PricingCalculationResult, 'config'> {
   const config = pricingConfigCache || getDefaultPricingConfig()
-  
+
   const surfboardCost = calculateSurfboardCost(
-    input.surfboardCount, 
+    input.surfboardCount,
     config.surfboardCostPerBoard
   )
-  
+
   const baggageCost = calculateBaggageCost(
     input.hasExcessBaggage,
     input.terminalCode,
     config.baggageTerminal3CurbsideCost,
     config.baggageOtherTerminalsCost
   )
-  
+
   const totalCost = calculateTotalCost(surfboardCost, baggageCost)
-  
+
   // Generate breakdown items
   const breakdown: PricingBreakdownItem[] = []
-  
+
   if (input.surfboardCount > 0) {
     breakdown.push({
       description: `Surfboard handling (${input.surfboardCount} board${input.surfboardCount > 1 ? 's' : ''})`,
@@ -205,19 +219,19 @@ export function calculateBookingPricingSync(
       totalPrice: surfboardCost
     })
   }
-  
+
   if (input.hasExcessBaggage) {
-    const isTerminal3 = input.terminalCode === 'Terminal 3' || 
-                       input.terminalCode === 'terminal3' || 
-                       input.terminalCode === 'T3'
-    const unitPrice = isTerminal3 ? 
-      config.baggageTerminal3CurbsideCost : 
+    const isTerminal3 = input.terminalCode === 'Terminal 3' ||
+      input.terminalCode === 'terminal3' ||
+      input.terminalCode === 'T3'
+    const unitPrice = isTerminal3 ?
+      config.baggageTerminal3CurbsideCost :
       config.baggageOtherTerminalsCost
-    
-    const terminalDescription = input.terminalCode ? 
-      ` (${input.terminalCode})` : 
+
+    const terminalDescription = input.terminalCode ?
+      ` (${input.terminalCode})` :
       ' (terminal-dependent)'
-    
+
     breakdown.push({
       description: `Excess baggage${terminalDescription}`,
       quantity: 1,
@@ -225,7 +239,7 @@ export function calculateBookingPricingSync(
       totalPrice: baggageCost
     })
   }
-  
+
   return {
     surfboardCost,
     baggageCost,
@@ -258,19 +272,19 @@ export async function validatePricingCalculation(
   const result = await calculateBookingPricing(input)
   const errors: string[] = []
   const tolerance = 0.01 // Allow for floating point precision
-  
+
   if (Math.abs(result.surfboardCost - expectedSurfboardCost) > tolerance) {
     errors.push(`Surfboard cost mismatch: expected ${expectedSurfboardCost}, got ${result.surfboardCost}`)
   }
-  
+
   if (Math.abs(result.baggageCost - expectedBaggageCost) > tolerance) {
     errors.push(`Baggage cost mismatch: expected ${expectedBaggageCost}, got ${result.baggageCost}`)
   }
-  
+
   if (Math.abs(result.totalCost - expectedTotalCost) > tolerance) {
     errors.push(`Total cost mismatch: expected ${expectedTotalCost}, got ${result.totalCost}`)
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors

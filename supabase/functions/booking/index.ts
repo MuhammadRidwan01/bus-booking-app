@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
           hotel_id,
           max_capacity,
           departure_time,
-          destination,
+          destination
         )
       `)
       .eq('id', validatedData.scheduleId)
@@ -243,8 +243,8 @@ Deno.serve(async (req) => {
     }
 
     // Use capacity from daily_schedules if available, otherwise fall back to bus_schedules
-    const maxCapacity = schedule.capacity || (Array.isArray(schedule.bus_schedules) 
-      ? schedule.bus_schedules[0]?.max_capacity 
+    const maxCapacity = schedule.capacity || (Array.isArray(schedule.bus_schedules)
+      ? schedule.bus_schedules[0]?.max_capacity
       : schedule.bus_schedules?.max_capacity)
 
     // Check capacity - ensure we have a valid capacity value
@@ -265,7 +265,7 @@ Deno.serve(async (req) => {
     const departureTime = schedule.departure_time || (Array.isArray(schedule.bus_schedules)
       ? schedule.bus_schedules[0]?.departure_time
       : schedule.bus_schedules?.departure_time)
-    
+
     if (departureTime) {
       const departureDateTime = new Date(`${schedule.schedule_date}T${departureTime}`)
       if (!validateAdvanceBooking(departureDateTime)) {
@@ -285,12 +285,12 @@ Deno.serve(async (req) => {
 
     // Get hotel_id from schedule data
     let hotelId = null
-    
+
     // First try to get hotel_id from bus_schedules if available
     const busSchedule = Array.isArray(schedule.bus_schedules)
       ? schedule.bus_schedules[0]
       : schedule.bus_schedules
-    
+
     if (busSchedule?.hotel_id) {
       hotelId = busSchedule.hotel_id
     } else if (schedule.hotel) {
@@ -409,8 +409,8 @@ Deno.serve(async (req) => {
     const trackLink = `${baseUrl}/track?code=${bookingCode}`
     const pdfLink = `${baseUrl}/api/ticket/${bookingCode}`
 
-    const serviceTypeText = validatedData.serviceType === 'drop_off' 
-      ? 'Hotel ke Bandara' 
+    const serviceTypeText = validatedData.serviceType === 'drop_off'
+      ? 'Hotel ke Bandara'
       : 'Bandara ke Hotel'
 
     const messageParts = [
@@ -456,7 +456,7 @@ Deno.serve(async (req) => {
     if (validatedData.excessBaggageCount > 0) {
       driverNotifications.push(`⚠️ BAGASI BERLEBIH: ${validatedData.excessBaggageCount} item bagasi tambahan`)
     }
-    
+
     // Store driver notifications in booking record
     if (driverNotifications.length > 0) {
       await supabaseAdmin
@@ -547,7 +547,7 @@ Deno.serve(async (req) => {
         passengerCount: validatedData.passengerCount
       } : 'validation failed'
     })
-    
+
     // Handle all errors securely (no internal details exposed)
     return handleError(error, 'booking-main')
   }
@@ -560,9 +560,9 @@ Deno.serve(async (req) => {
  */
 function validateAdvanceBooking(departureDateTime: Date): boolean {
   const now = new Date()
-  const jakartaNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Jakarta"}))
+  const jakartaNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }))
   const twentyMinutesFromNow = new Date(jakartaNow.getTime() + 20 * 60 * 1000)
-  
+
   return departureDateTime >= twentyMinutesFromNow
 }
 
