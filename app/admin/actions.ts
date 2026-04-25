@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache"
 import { getSupabaseAdmin } from "@/lib/supabase-server"
 import { normalizeTo62 } from "@/lib/phone"
-import { sendWhatsappMessage } from "@/lib/whatsapp"
 import { formatDate, formatTime } from "@/lib/utils"
 import { previewGenerateSchedules } from "./data"
 import { addDays, formatISO } from "date-fns"
@@ -19,77 +18,7 @@ async function logAdminAction(action: string, meta?: Record<string, unknown>) {
 }
 
 export async function resendWhatsapp(bookingId: string) {
-  const supabase = await getSupabaseAdmin()
-  const { data: booking } = await supabase
-    .from("booking_details")
-    .select("*")
-    .eq("id", bookingId)
-    .single()
-
-  if (!booking) {
-    return { ok: false, error: "Booking tidak ditemukan" }
-  }
-
-  if ((booking as any).has_whatsapp === false) {
-    return { ok: false, error: "Number marked inactive; WhatsApp skipped" }
-  }
-
-  const normalizedPhone = normalizeTo62(booking.phone)
-  const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "") || ""
-  const trackLink = `${baseUrl}/track?code=${booking.booking_code}`
-  const pdfLink = `${baseUrl}/api/ticket/${booking.booking_code}`
-  const serviceTypeText = (booking as any).service_type === 'drop_off' 
-    ? 'Hotel ke Bandara' 
-    : 'Bandara ke Hotel'
-
-  const messageParts = [
-    `Halo ${booking.customer_name}, booking shuttle kamu sudah berhasil.`,
-    `Hotel: ${booking.hotel_name ?? "Ibis Hotel"}`,
-    `Layanan: ${serviceTypeText}`,
-    booking.schedule_date ? `Tanggal: ${formatDate(booking.schedule_date)}` : null,
-    booking.departure_time ? `Jam: ${formatTime(booking.departure_time)} WIB` : null,
-    booking.destination ? `Tujuan: ${booking.destination}` : null,
-  ]
-
-  // Add terminal and meeting point info for pick-up bookings
-  if ((booking as any).service_type === 'pick_up' && (booking as any).meeting_point_location) {
-    messageParts.push(`Terminal: ${(booking as any).terminal_code}`)
-    messageParts.push(`Titik Jemput: ${(booking as any).meeting_point_location}`)
-    if ((booking as any).arrival_time_offset_min && (booking as any).arrival_time_offset_max) {
-      messageParts.push(`Estimasi Tiba: ${(booking as any).arrival_time_offset_min}-${(booking as any).arrival_time_offset_max} menit setelah keberangkatan`)
-    }
-  }
-
-  messageParts.push(
-    `Kode Booking: ${booking.booking_code}`,
-    `Lacak tiket: ${trackLink}`,
-    "Terima kasih."
-  )
-  const message = messageParts.filter(Boolean).join("\n")
-
-  const waResult = await sendWhatsappMessage({
-    phone: normalizedPhone,
-    message,
-    pdfUrl: pdfLink,
-    caption: `Tiket Shuttle - ${booking.booking_code}`,
-  })
-  const waErrorMessage = waResult.ok ? null : (waResult.data as any)?.error ?? "Fonnte send failed"
-
-  await supabase
-    .from("bookings")
-    .update({
-      whatsapp_attempts: (booking as any).whatsapp_attempts ? Number((booking as any).whatsapp_attempts) + 1 : 1,
-      whatsapp_sent: waResult.ok,
-      whatsapp_last_error: waResult.ok ? null : waErrorMessage,
-    })
-    .eq("id", bookingId)
-
-  await logAdminAction("RESEND_WA", { booking_id: bookingId, ok: waResult.ok })
-  revalidatePath("/admin/bookings")
-
-  return waResult.ok
-    ? { ok: true }
-    : { ok: false, error: waErrorMessage ?? "Gagal kirim WA" }
+  return { ok: false, error: "WhatsApp integration has been removed" }
 }
 
 export async function cancelBooking(bookingId: string) {
@@ -112,49 +41,6 @@ export async function cancelBooking(bookingId: string) {
   revalidatePath("/admin/bookings")
   revalidatePath("/admin/schedules")
 
-  // Fire-and-forget WhatsApp notification if possible
-  if (bookingDetail && bookingDetail.has_whatsapp !== false) {
-    const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "") || ""
-    const normalizedPhone = normalizeTo62(bookingDetail.phone)
-    const serviceTypeText = (bookingDetail as any).service_type === 'drop_off' 
-      ? 'Hotel ke Bandara' 
-      : 'Bandara ke Hotel'
-
-    const messageParts = [
-      `Halo ${bookingDetail.customer_name}, tiket shuttle kamu dengan kode ${bookingDetail.booking_code} dibatalkan oleh admin.`,
-      bookingDetail.hotel_name ? `Hotel: ${bookingDetail.hotel_name}` : null,
-      `Layanan: ${serviceTypeText}`,
-      bookingDetail.schedule_date ? `Tanggal: ${formatDate(bookingDetail.schedule_date)}` : null,
-      bookingDetail.departure_time ? `Jam: ${formatTime(bookingDetail.departure_time)} WIB` : null,
-      bookingDetail.destination ? `Tujuan: ${bookingDetail.destination}` : null,
-    ]
-
-    // Add terminal and meeting point info for pick-up bookings
-    if ((bookingDetail as any).service_type === 'pick_up' && (bookingDetail as any).meeting_point_location) {
-      messageParts.push(`Terminal: ${(bookingDetail as any).terminal_code}`)
-      messageParts.push(`Titik Jemput: ${(bookingDetail as any).meeting_point_location}`)
-    }
-
-    messageParts.push(
-      `Silakan hubungi resepsionis jika perlu penjadwalan ulang.`,
-      baseUrl ? `Lihat status: ${baseUrl}/track?code=${bookingDetail.booking_code}` : null,
-    )
-
-    const waResult = await sendWhatsappMessage({
-      phone: normalizedPhone,
-      message: messageParts.filter(Boolean).join("\n"),
-      caption: `Tiket dibatalkan - ${bookingDetail.booking_code}`,
-    })
-
-    await supabase
-      .from("bookings")
-      .update({
-        whatsapp_attempts: (bookingDetail as any).whatsapp_attempts ? Number((bookingDetail as any).whatsapp_attempts) + 1 : 1,
-        whatsapp_sent: waResult.ok,
-        whatsapp_last_error: waResult.ok ? null : (waResult.data as any)?.error ?? "Fonnte send failed (cancel notice)",
-      })
-      .eq("id", bookingId)
-  }
 
   return { ok: true, data }
 }
@@ -403,75 +289,8 @@ export async function getSchedulePreview(startDate: string, days: number) {
 }
 
 export async function fetchSendQueueAction(filter?: { mode?: "all" | "pending" | "failed" }) {
-  const supabase = await getSupabaseAdmin()
-  const buildViewQuery = () => {
-    let query = supabase
-      .from("booking_details")
-      .select(
-        "id, booking_code, customer_name, phone, schedule_date, departure_time, destination, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, created_at",
-      )
-      .eq("whatsapp_sent", false)
-      .order("created_at", { ascending: false })
-      .limit(400)
-
-    if (filter?.mode === "pending") {
-      query = query.eq("whatsapp_attempts", 0)
-    } else if (filter?.mode === "failed") {
-      query = query.gt("whatsapp_attempts", 0)
-    }
-    return query
-  }
-
-  const attempt = await buildViewQuery()
-
-  if (attempt.error?.code === "42703") {
-    let fb = supabase
-      .from("bookings")
-      .select(
-        `id, booking_code, customer_name, phone, passenger_count, status, whatsapp_sent, whatsapp_attempts, whatsapp_last_error, created_at,
-         daily_schedules ( schedule_date, bus_schedules ( departure_time, destination ) )`
-      )
-      .eq("whatsapp_sent", false)
-      .order("created_at", { ascending: false })
-      .limit(400)
-
-    if (filter?.mode === "pending") {
-      fb = fb.eq("whatsapp_attempts", 0)
-    } else if (filter?.mode === "failed") {
-      fb = fb.gt("whatsapp_attempts", 0)
-    }
-
-    const { data, error } = await fb
-    if (error) {
-      await logAdminAction("FETCH_SEND_QUEUE_FAIL", { error: error.message })
-      throw new Error(error.message)
-    }
-
-    const mapped = (data ?? []).map((row: any) => ({
-      id: row.id,
-      booking_code: row.booking_code,
-      customer_name: row.customer_name,
-      phone: row.phone,
-      schedule_date: row.daily_schedules?.schedule_date ?? "",
-      departure_time: row.daily_schedules?.bus_schedules?.departure_time ?? "",
-      destination: row.daily_schedules?.bus_schedules?.destination ?? "",
-      whatsapp_sent: row.whatsapp_sent,
-      whatsapp_attempts: row.whatsapp_attempts ?? 0,
-      whatsapp_last_error: row.whatsapp_last_error ?? null,
-      created_at: row.created_at,
-    }))
-
-    await logAdminAction("FETCH_SEND_QUEUE", { count: mapped.length, mode: filter?.mode ?? "all", source: "fallback" })
-    return mapped
-  }
-
-  if (attempt.error) {
-    await logAdminAction("FETCH_SEND_QUEUE_FAIL", { error: attempt.error.message })
-    throw new Error(attempt.error.message)
-  }
-
-  await logAdminAction("FETCH_SEND_QUEUE", { count: attempt.data?.length ?? 0, mode: filter?.mode ?? "all" })
-  return attempt.data ?? []
+  // WhatsApp feature removed
+  return []
 }
 
 export async function quickSearch(query: string) {
@@ -618,90 +437,18 @@ export async function cancelSchedule(scheduleId: string) {
     console.error("Error cancelling bookings:", bookingsError)
   }
 
-  // Send WhatsApp notifications to all affected passengers (fire-and-forget)
-  const busSchedule = Array.isArray(schedule.bus_schedules)
-    ? schedule.bus_schedules[0]
-    : schedule.bus_schedules
-  const hotelName = (busSchedule as any)?.hotels?.name ?? "Hotel"
-  const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "") || ""
-
-  let notificationsSent = 0
-  if (affectedBookings && affectedBookings.length > 0) {
-    for (const booking of affectedBookings) {
-      if ((booking as any).has_whatsapp === false) continue
-
-      const normalizedPhone = normalizeTo62(booking.phone)
-      const serviceTypeText = (booking as any).service_type === 'drop_off' 
-        ? 'Hotel ke Bandara' 
-        : 'Bandara ke Hotel'
-
-      const messageParts = [
-        `PEMBERITAHUAN PEMBATALAN JADWAL`,
-        ``,
-        `Yth. ${booking.customer_name},`,
-        ``,
-        `Dengan ini kami informasikan bahwa jadwal shuttle Anda telah dibatalkan.`,
-        ``,
-        `Detail Booking:`,
-        `Kode: ${booking.booking_code}`,
-        `Hotel: ${hotelName}`,
-        `Layanan: ${serviceTypeText}`,
-        schedule.schedule_date ? `Tanggal: ${formatDate(schedule.schedule_date)}` : null,
-        busSchedule?.departure_time ? `Jam: ${formatTime(busSchedule.departure_time)} WIB` : null,
-        busSchedule?.destination ? `Tujuan: ${busSchedule.destination}` : null,
-      ]
-
-      // Add terminal and meeting point info for pick-up bookings
-      if ((booking as any).service_type === 'pick_up' && (booking as any).meeting_point_location) {
-        messageParts.push(`Terminal: ${(booking as any).terminal_code}`)
-        messageParts.push(`Titik Jemput: ${(booking as any).meeting_point_location}`)
-      }
-
-      messageParts.push(
-        ``,
-        `Mohon maaf atas ketidaknyamanan ini. Silakan hubungi resepsionis hotel untuk penjadwalan ulang.`,
-        ``,
-        baseUrl ? `Lihat status tiket: ${baseUrl}/track?code=${booking.booking_code}` : null,
-        ``,
-        `Terima kasih.`,
-      )
-
-
-      try {
-        const waResult = await sendWhatsappMessage({
-          phone: normalizedPhone,
-          message: messageParts.filter(Boolean).join("\n"),
-          caption: `Jadwal dibatalkan - ${booking.booking_code}`,
-        })
-
-        await supabase
-          .from("bookings")
-          .update({
-            whatsapp_attempts: ((booking as any).whatsapp_attempts ?? 0) + 1,
-            whatsapp_sent: waResult.ok,
-            whatsapp_last_error: waResult.ok ? null : (waResult.data as any)?.error ?? "Fonnte send failed (cancel notice)",
-          })
-          .eq("id", booking.id)
-
-        if (waResult.ok) notificationsSent++
-      } catch (waError) {
-        console.error("Error sending cancel notification:", waError)
-      }
-    }
-  }
-
   await logAdminAction("CANCEL_SCHEDULE", {
     schedule_id: scheduleId,
     ok: true,
     cancelled_bookings: cancelledBookings?.length ?? 0,
-    notifications_sent: notificationsSent
+    notifications_sent: 0
   })
 
   revalidatePath("/admin/schedules")
   return {
     ok: true,
     cancelledBookings: cancelledBookings?.length ?? 0,
-    notificationsSent
+    notificationsSent: 0
   }
 }
 

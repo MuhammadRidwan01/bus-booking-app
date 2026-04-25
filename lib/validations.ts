@@ -3,7 +3,7 @@ import { z } from "zod"
 // Base booking schema with common fields
 const baseBookingSchema = z.object({
   customerName: z.string().min(2, "Nama minimal 2 karakter").max(100, "Nama maksimal 100 karakter"),
-  phoneNumber: z.string().regex(/^(\+62|62|0)8[1-9][0-9]{6,9}$/, "Format nomor HP tidak valid"),
+  phoneNumber: z.string().regex(/^(\+62|62|0)?8[1-9][0-9]{6,10}$/, "Format nomor HP tidak valid").optional().or(z.literal('')),
   bookingDate: z.string(),
   scheduleId: z.string().uuid("Schedule ID tidak valid"),
   passengerCount: z.number().min(1, "Minimal 1 penumpang").max(5, "Maksimal 5 penumpang"),

@@ -19,13 +19,12 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 // Validation schema matching the updated booking schema
 const bookingRequestSchema = z.object({
   customerName: z.string().min(1, 'Nama lengkap harus diisi'),
-  phoneNumber: z.string().min(5, 'Nomor WhatsApp tidak valid'),
-  countryCode: z.string().min(1, 'Kode negara harus diisi'),
+  phoneNumber: z.string().optional().or(z.literal('')),
+  countryCode: z.string().optional().or(z.literal('')),
   bookingDate: z.string().min(1, 'Tanggal booking harus dipilih'),
   scheduleId: z.string().uuid('Schedule ID tidak valid'),
   passengerCount: z.number().min(1).max(5, 'Jumlah penumpang maksimal 5 orang'),
   idempotencyKey: z.string().min(8, 'Idempotency key tidak valid'),
-  hasWhatsapp: z.enum(['yes', 'no']).default('yes'),
   serviceType: z.enum(['drop_off', 'pick_up'], {
     required_error: 'Jenis layanan harus dipilih',
     invalid_type_error: 'Jenis layanan tidak valid'
@@ -398,115 +397,6 @@ Deno.serve(async (req) => {
       meetingPointInfo = meetingPoint
     }
 
-    // Prepare WhatsApp message
-    const baseUrl = Deno.env.get('APP_BASE_URL')?.replace(/\/$/, '') || ''
-    const trackLink = `${baseUrl}/track?code=${bookingCode}`
-    const pdfLink = `${baseUrl}/api/ticket/${bookingCode}`
-
-    const serviceTypeText = validatedData.serviceType === 'drop_off'
-      ? 'Hotel ke Bandara'
-      : 'Bandara ke Hotel'
-
-    const messageParts = [
-      `Halo ${validatedData.customerName}, booking shuttle kamu sudah berhasil.`,
-      `Hotel: ${hotel?.name ?? 'Ibis Hotel'}`,
-      `Layanan: ${serviceTypeText}`,
-      `Tanggal: ${formatDate(validatedData.bookingDate)}`,
-      departureTime ? `Jam: ${formatTime(departureTime)} WIB` : null,
-      busSchedule?.destination ? `Tujuan: ${busSchedule.destination}` : null,
-    ]
-
-    // Add service-specific information
-    if (validatedData.serviceType === 'drop_off' && validatedData.roomNumber) {
-      messageParts.push(`Kamar: ${validatedData.roomNumber}`)
-    }
-    if (validatedData.serviceType === 'pick_up' && validatedData.flightNumber) {
-      messageParts.push(`Penerbangan: ${validatedData.flightNumber}`)
-    }
-
-    // Add terminal and meeting point info for pick-up bookings
-    if (validatedData.serviceType === 'pick_up' && meetingPointInfo) {
-      messageParts.push(`Terminal: ${validatedData.terminalCode}`)
-      messageParts.push(`Titik Jemput: ${meetingPointInfo.location_description}`)
-      messageParts.push(`Estimasi Tiba: ${meetingPointInfo.arrival_time_offset_min}-${meetingPointInfo.arrival_time_offset_max} menit setelah keberangkatan`)
-    }
-
-    // Add additional services information
-    if (validatedData.hasSurfboard && validatedData.surfboardCount > 0) {
-      messageParts.push(`Surfboard: ${validatedData.surfboardCount} papan`)
-    }
-    if (validatedData.excessBaggageCount > 0) {
-      messageParts.push(`Bagasi Tambahan: ${validatedData.excessBaggageCount} item`)
-    }
-    if (validatedData.totalCost > 0) {
-      messageParts.push(`Total Biaya: Rp ${validatedData.totalCost.toLocaleString('id-ID')}`)
-    }
-
-    // Generate driver notifications for additional services
-    const driverNotifications: string[] = []
-    if (validatedData.hasSurfboard && validatedData.surfboardCount > 0) {
-      driverNotifications.push(`⚠️ SURFBOARD: ${validatedData.surfboardCount} papan surfboard memerlukan penanganan khusus`)
-    }
-    if (validatedData.excessBaggageCount > 0) {
-      driverNotifications.push(`⚠️ BAGASI BERLEBIH: ${validatedData.excessBaggageCount} item bagasi tambahan`)
-    }
-
-    // Store driver notifications in booking record
-    if (driverNotifications.length > 0) {
-      await supabaseAdmin
-        .from('bookings')
-        .update({
-          driver_notes: driverNotifications.join(' | ')
-        })
-        .eq('id', booking.id)
-    }
-
-    // Create structured driver notifications for tracking and acknowledgment
-    try {
-      await supabaseAdmin
-        .rpc('create_driver_notifications_for_booking', {
-          p_booking_id: booking.id
-        })
-    } catch (notificationError) {
-      console.error('Failed to create driver notifications:', notificationError)
-      // Don't fail the booking if notification creation fails
-    }
-
-    messageParts.push(
-      `Kode Booking: ${bookingCode}`,
-      `Lacak tiket: ${trackLink}`,
-      'Terima kasih.'
-    )
-
-    const whatsappMessage = messageParts.filter(Boolean).join('\n')
-
-    // Send WhatsApp in background (don't block response)
-    const attemptCount = (booking as any)?.whatsapp_attempts ? Number((booking as any).whatsapp_attempts) : 0
-    const userHasWhatsapp = validatedData.hasWhatsapp !== 'no'
-
-    if (!userHasWhatsapp) {
-      // User indicated no WhatsApp, log it
-      await supabaseAdmin
-        .from('bookings')
-        .update({
-          whatsapp_attempts: attemptCount,
-          whatsapp_sent: false,
-          whatsapp_last_error: 'User indicated number is not on WhatsApp',
-        })
-        .eq('id', booking.id)
-    } else {
-      // Send WhatsApp in background (async, don't await)
-      sendWhatsAppInBackground(
-        supabaseAdmin,
-        booking.id,
-        normalizedPhone,
-        whatsappMessage,
-        pdfLink,
-        bookingCode,
-        attemptCount
-      )
-    }
-
     // Return success response immediately
     return corsJsonResponse({
       ok: true,
@@ -535,11 +425,6 @@ Deno.serve(async (req) => {
     console.error('[Booking Error]', {
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,
-      validatedData: validatedData ? {
-        scheduleId: validatedData.scheduleId,
-        serviceType: validatedData.serviceType,
-        passengerCount: validatedData.passengerCount
-      } : 'validation failed'
     })
 
     // Handle all errors securely (no internal details exposed)
@@ -627,147 +512,4 @@ function formatTime(time: string): string {
   return `${hours}:${minutes}`
 }
 
-/**
- * Send WhatsApp message in background
- */
-async function sendWhatsAppInBackground(
-  supabaseAdmin: any,
-  bookingId: string,
-  phone: string,
-  message: string,
-  pdfUrl: string,
-  bookingCode: string,
-  attemptCount: number
-) {
-  try {
-    const waResult = await sendWhatsappMessage({
-      phone,
-      message,
-      pdfUrl,
-      caption: `Tiket Shuttle - ${bookingCode}`,
-    })
 
-    const waErrorMessage = waResult.ok
-      ? null
-      : (waResult.data as any)?.error ?? (waResult.data as any)?.detail ?? 'Fonnte send failed'
-
-    if (!waResult.ok && waResult.data && (waResult.data as any).pdfUrl) {
-      console.error('[WhatsApp] PDF not sent, link fallback', (waResult.data as any).pdfUrl)
-    }
-
-    // Update booking with WhatsApp status
-    await supabaseAdmin
-      .from('bookings')
-      .update({
-        whatsapp_attempts: attemptCount + 1,
-        whatsapp_sent: waResult.ok,
-        whatsapp_last_error: waResult.ok ? null : waErrorMessage,
-      })
-      .eq('id', bookingId)
-  } catch (waError) {
-    console.error('[WhatsApp Error]', waError instanceof Error ? waError.message : waError)
-
-    // Log error to database
-    await supabaseAdmin
-      .from('bookings')
-      .update({
-        whatsapp_attempts: attemptCount + 1,
-        whatsapp_sent: false,
-        whatsapp_last_error: waError instanceof Error ? waError.message : 'Network/timeout to Fonnte',
-      })
-      .eq('id', bookingId)
-  }
-}
-
-/**
- * Send WhatsApp message via Fonnte API
- */
-async function sendWhatsappMessage(params: {
-  phone: string
-  message: string
-  pdfUrl?: string
-  caption?: string
-}): Promise<{ ok: boolean; data: unknown }> {
-  const fonnteToken = Deno.env.get('FONNTE_TOKEN')
-
-  if (!fonnteToken) {
-    console.error('[WhatsApp Config] Missing FONNTE_TOKEN')
-    return { ok: false, data: { error: 'WhatsApp configuration missing' } }
-  }
-
-  let lastError: unknown = null
-
-  // Fonnte accepts FormData
-  const formData = new FormData()
-  formData.append('target', params.phone)
-  formData.append('message', params.message)
-  formData.append('countryCode', '62') // Default to Indonesia
-
-  if (params.pdfUrl) {
-    // Attempt to fetch the PDF server-side to handle localhost/internal URLs
-    try {
-      console.log('[WhatsApp] Fetching PDF from:', params.pdfUrl)
-      const pdfRes = await fetch(params.pdfUrl)
-      if (pdfRes.ok) {
-        const pdfBuffer = await pdfRes.arrayBuffer()
-        // Append file with filename 'tiket-shuttle.pdf'
-        // Blob is supported in Deno
-        formData.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }), 'tiket-shuttle.pdf')
-      } else {
-        console.warn('[WhatsApp] Failed to fetch PDF, falling back to URL:', pdfRes.status)
-        formData.append('url', params.pdfUrl)
-        formData.append('filename', 'tiket-shuttle.pdf')
-      }
-    } catch (err) {
-      console.error('[WhatsApp] Error fetching PDF:', err)
-      // Fallback to URL if fetch fails completely
-      formData.append('url', params.pdfUrl)
-      formData.append('filename', 'tiket-shuttle.pdf')
-    }
-  }
-
-  // Retry up to 2 times
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const response = await fetch('https://api.fonnte.com/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': fonnteToken,
-        },
-        body: formData,
-      })
-
-      const data = await response.json().catch(() => ({ ok: false, error: 'Invalid JSON response' }))
-
-      // Fonnte success response usually has "status": true
-      if (response.ok && (data as any)?.status) {
-        return { ok: true, data }
-      }
-
-      // If response is not ok, or status is false
-      const shouldRetry = response.status >= 500 || response.status === 408
-      if (!shouldRetry || attempt === 2) {
-        lastError = data
-        break
-      }
-
-      // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      continue
-    } catch (error) {
-      lastError = error
-      if (attempt === 2) {
-        break
-      }
-      // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    }
-  }
-
-  console.error('[WhatsApp Send Failed]', {
-    phone: params.phone,
-    error: lastError instanceof Error ? lastError.message : lastError,
-  })
-
-  return { ok: false, data: lastError }
-}

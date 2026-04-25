@@ -55,7 +55,6 @@ export default function BookingPage() {
   const [roomNumber, setRoomNumber] = useState<string>("")
   const [flightNumber, setFlightNumber] = useState<string>("")
   const [phoneNumber, setPhoneNumber] = useState<string>("")
-  const [hasWhatsapp, setHasWhatsapp] = useState<string>("yes")
   const [terminal, setTerminal] = useState<number>(1)
   const [surfboard, setSurfboard] = useState<string>("no")
   const [countryCode, setCountryCode] = useState<string>("62")
@@ -221,7 +220,6 @@ export default function BookingPage() {
     selectedServiceType &&
     passengerCount >= 1 &&
     idempotencyKey &&
-    phoneNumber.trim() &&
     customerName.trim() &&
     // Service-specific field validation
     (selectedServiceType === "drop_off" ? roomNumber.trim() : flightNumber.trim()) &&
@@ -475,7 +473,7 @@ export default function BookingPage() {
                     <User className="h-6 w-6 text-primary" />
                     Passenger Details
                   </CardTitle>
-                  <p className="text-sm text-slate-600">Ticket is sent to WhatsApp after confirmation.</p>
+                  <p className="text-sm text-slate-600">Download your digital ticket after confirmation.</p>
 
                   {/* Progress indicator */}
                   <div className="mt-4">
@@ -528,8 +526,8 @@ export default function BookingPage() {
                       />
                     </FormField>
 
-                    {/* WHATSAPP */}
-                    <FormField label="WhatsApp number">
+                    {/* PHONE NUMBER */}
+                    <FormField label="Phone number (Optional)">
                       <div className="grid grid-cols-[100px_1fr] gap-2">
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-slate-500">+</span>
@@ -546,24 +544,11 @@ export default function BookingPage() {
                           id="phoneNumber"
                           name="phoneNumber"
                           type="tel"
-                          required
                           placeholder="812xxxxxx"
                           className="h-10 rounded-xl flex-1"
                           value={phoneNumber}
                           onChange={(e) => setPhoneNumber(e.target.value)}
                         />
-                      </div>
-
-                      <div className="mt-2">
-                        <Select name="hasWhatsapp" value={hasWhatsapp} onValueChange={setHasWhatsapp}>
-                          <SelectTrigger className="h-10 rounded-xl">
-                            <SelectValue placeholder="WhatsApp active?" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="yes">Yes, active</SelectItem>
-                            <SelectItem value="no">No / not active</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
                     </FormField>
 
@@ -706,9 +691,7 @@ export default function BookingPage() {
                                     ? "Enter your flight number to continue."
                                     : !customerName.trim()
                                       ? "Enter your full name to continue."
-                                      : !phoneNumber.trim()
-                                        ? "Enter your WhatsApp number to continue."
-                                        : "Fill all required details to continue."
+                                      : "Fill all required details to continue."
                           }
                         </div>
                       )}

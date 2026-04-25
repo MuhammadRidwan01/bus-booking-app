@@ -12,7 +12,6 @@ import { getBookingByCode } from "@/app/actions/booking"
 import type { BookingDetails } from "@/types"
 import { formatDate, formatTime } from "@/lib/utils"
 import { useSearchParams } from "next/navigation"
-import { BookingStatusCard } from "@/components/BookingStatusCard"
 import { PublicShell } from "@/components/PublicShell"
 import TrackSkeleton from "@/components/TrackSkeleton"
 
@@ -63,7 +62,7 @@ export default function TrackPage() {
               <Search className="h-5 w-5 text-primary" />
               Enter your booking code
             </CardTitle>
-            <p className="text-sm text-slate-600">Find the code in WhatsApp or on the confirmation page.</p>
+            <p className="text-sm text-slate-600">Find the code on your confirmation page or downloaded ticket.</p>
           </CardHeader>
           <CardContent className="pt-4">
             <form onSubmit={handleSearch} className="space-y-4">
@@ -83,7 +82,7 @@ export default function TrackPage() {
                   />
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 </div>
-                <p className="text-xs text-slate-500">Use the code sent after your booking succeeds.</p>
+                <p className="text-xs text-slate-500">Use the code provided after your booking succeeds.</p>
               </div>
 
               <Button type="submit" className="h-11 w-full rounded-xl text-base font-semibold shadow-md shadow-primary/15" disabled={loading}>
@@ -111,7 +110,7 @@ export default function TrackPage() {
                     <p className="mt-1 text-3xl font-mono font-bold tracking-[0.2em]">{booking.booking_code}</p>
                   </div>
 
-                  {booking.status === "confirmed" && (booking.whatsapp_sent || (booking.whatsapp_attempts ?? 0) > 0 || booking.phone) && (
+                  {booking.status === "confirmed" && (
                     <Button
                       onClick={() => {
                         if (downloading) return
@@ -264,16 +263,7 @@ export default function TrackPage() {
                       </span>
                     </div>
 
-                    {booking.status === "confirmed" ? (
-                      <BookingStatusCard
-                        bookingCode={booking.booking_code}
-                        initialStatus={{
-                          whatsapp_sent: booking.whatsapp_sent,
-                          whatsapp_attempts: booking.whatsapp_attempts ?? 0,
-                          whatsapp_last_error: booking.whatsapp_last_error ?? null,
-                        }}
-                      />
-                    ) : (
+                    {booking.status !== "confirmed" && (
                       <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
                         <p className="font-semibold text-rose-900">Booking Cancelled</p>
                         <p>This ticket has been cancelled. The schedule may have been cancelled by the operator.</p>
@@ -326,7 +316,7 @@ export default function TrackPage() {
                       ) : (
                         <>
                           <p>Arrive at the hotel lobby 10 minutes before departure.</p>
-                          <p>Show your WhatsApp ticket to the driver.</p>
+                          <p>Show your digital ticket (QR code) to the driver.</p>
                           <p>Bring a valid ID.</p>
                         </>
                       )}
@@ -345,7 +335,7 @@ export default function TrackPage() {
                     <p className="text-sm text-slate-600">Please check the booking code you entered.</p>
                   </div>
                   <div className="space-y-1 text-xs text-slate-500">
-                    <p>Make sure the code matches the one sent on WhatsApp.</p>
+                    <p>Make sure the code matches the one on your digital ticket.</p>
                     <p>Avoid spaces or extra characters.</p>
                   </div>
                 </CardContent>

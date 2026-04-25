@@ -203,7 +203,6 @@ Deno.serve(async (req) => {
         surfboard_cost: surfboardCost,
         baggage_cost: baggageCost,
         total_cost: totalCost,
-        has_whatsapp: true,
       })
       .select()
       .single()
@@ -223,61 +222,6 @@ Deno.serve(async (req) => {
       console.error('[Capacity Update Error]', capacityError)
       // Don't fail the booking, just log the error
     }
-
-    // Get hotel details for WhatsApp message
-    const hotel = validatedData.hotelId ? await getHotelDetails(supabaseAdmin, validatedData.hotelId) : null
-
-    // Prepare WhatsApp message
-    const serviceTypeText = schedule.service_type === 'drop_off' 
-      ? 'Hotel to Airport' 
-      : 'Airport to Hotel'
-
-    const messageParts = [
-      `Hi ${validatedData.customerName}, your shuttle booking is confirmed.`,
-      `Hotel: ${hotel?.name ?? 'Ibis Hotel'}`,
-      `Service: ${serviceTypeText}`,
-      `Date: ${formatDate(schedule.schedule_date)}`,
-      busSchedule.departure_time ? `Time: ${formatTime(busSchedule.departure_time)} WIB` : null,
-      busSchedule.destination ? `Destination: ${busSchedule.destination}` : null,
-    ]
-
-    // Add service-specific information
-    if (schedule.service_type === 'drop_off' && validatedData.roomNumber) {
-      messageParts.push(`Room: ${validatedData.roomNumber}`)
-    } else if (schedule.service_type === 'pick_up' && validatedData.flightNumber) {
-      messageParts.push(`Flight: ${validatedData.flightNumber}`)
-    }
-
-    // Add additional services information
-    if (validatedData.hasSurfboard && validatedData.surfboardCount > 0) {
-      messageParts.push(`Surfboards: ${validatedData.surfboardCount}x (IDR ${surfboardCost.toLocaleString()})`)
-    }
-    if (validatedData.excessBaggageCount > 0) {
-      messageParts.push(`Excess Baggage: +${validatedData.excessBaggageCount} items (IDR ${baggageCost.toLocaleString()})`)
-    }
-    if (totalCost > 0) {
-      messageParts.push(`Total Cost: IDR ${totalCost.toLocaleString()}`)
-    }
-
-    messageParts.push(
-      `Booking code: ${bookingCode}`,
-      `Track your ticket: ${trackLink}`,
-      'Thank you.'
-    )
-
-    const whatsappMessage = messageParts.filter(Boolean).join('\n')
-
-    // Send WhatsApp in background (async, don't await)
-    const attemptCount = (booking as any)?.whatsapp_attempts ? Number((booking as any).whatsapp_attempts) : 0
-    sendWhatsAppInBackground(
-      supabaseAdmin,
-      booking.id,
-      normalizedPhone,
-      whatsappMessage,
-      pdfLink,
-      bookingCode,
-      attemptCount
-    )
 
     // Return success response immediately
     return corsJsonResponse({
@@ -301,7 +245,6 @@ Deno.serve(async (req) => {
           hotel_id: validatedData.hotelId,
           daily_schedule_id: validatedData.dailyScheduleId,
         },
-        whatsappSent: true, // Optimistic response, actual status updated in background
       },
     })
   } catch (error) {
@@ -368,145 +311,7 @@ function formatTime(time: string): string {
   return `${hours}:${minutes}`
 }
 
-/**
- * Send WhatsApp message in background
- */
-async function sendWhatsAppInBackground(
-  supabaseAdmin: any,
-  bookingId: string,
-  phone: string,
-  message: string,
-  pdfUrl: string,
-  bookingCode: string,
-  attemptCount: number
-) {
-  try {
-    const waResult = await sendWhatsappMessage({
-      phone,
-      message,
-      pdfUrl,
-      caption: `Shuttle Ticket - ${bookingCode}`,
-    })
 
-    const waErrorMessage = waResult.ok
-      ? null
-      : (waResult.data as any)?.error ?? (waResult.data as any)?.detail ?? 'Fonnte send failed'
-
-    // Update booking with WhatsApp status
-    await supabaseAdmin
-      .from('bookings')
-      .update({
-        whatsapp_attempts: attemptCount + 1,
-        whatsapp_sent: waResult.ok,
-        whatsapp_last_error: waResult.ok ? null : waErrorMessage,
-      })
-      .eq('id', bookingId)
-  } catch (waError) {
-    console.error('[WhatsApp Error]', waError instanceof Error ? waError.message : waError)
-
-    // Log error to database
-    await supabaseAdmin
-      .from('bookings')
-      .update({
-        whatsapp_attempts: attemptCount + 1,
-        whatsapp_sent: false,
-        whatsapp_last_error: waError instanceof Error ? waError.message : 'Network/timeout to Fonnte',
-      })
-      .eq('id', bookingId)
-  }
-}
-
-/**
- * Send WhatsApp message via Fonnte API
- */
-async function sendWhatsappMessage(params: {
-  phone: string
-  message: string
-  pdfUrl?: string
-  caption?: string
-}): Promise<{ ok: boolean; data: unknown }> {
-  const fonnteToken = Deno.env.get('FONNTE_TOKEN')
-
-  if (!fonnteToken) {
-    console.error('[WhatsApp Config] Missing FONNTE_TOKEN')
-    return { ok: false, data: { error: 'WhatsApp configuration missing' } }
-  }
-
-  let lastError: unknown = null
-
-  // Fonnte accepts FormData
-  const formData = new FormData()
-  formData.append('target', params.phone)
-  formData.append('message', params.message)
-  formData.append('countryCode', '62') // Default to Indonesia
-
-  if (params.pdfUrl) {
-    // Attempt to fetch the PDF server-side to handle localhost/internal URLs
-    try {
-      console.log('[WhatsApp] Fetching PDF from:', params.pdfUrl)
-      const pdfRes = await fetch(params.pdfUrl)
-      if (pdfRes.ok) {
-        const pdfBuffer = await pdfRes.arrayBuffer()
-        // Append file with filename 'shuttle-ticket.pdf'
-        formData.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }), 'shuttle-ticket.pdf')
-      } else {
-        console.warn('[WhatsApp] Failed to fetch PDF, falling back to URL:', pdfRes.status)
-        formData.append('url', params.pdfUrl)
-        formData.append('filename', 'shuttle-ticket.pdf')
-      }
-    } catch (err) {
-      console.error('[WhatsApp] Error fetching PDF:', err)
-      // Fallback to URL if fetch fails completely
-      formData.append('url', params.pdfUrl)
-      formData.append('filename', 'shuttle-ticket.pdf')
-    }
-  }
-
-  // Retry up to 2 times
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const response = await fetch('https://api.fonnte.com/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': fonnteToken,
-        },
-        body: formData,
-      })
-
-      const data = await response.json().catch(() => ({ ok: false, error: 'Invalid JSON response' }))
-
-      // Fonnte success response usually has "status": true
-      if (response.ok && (data as any)?.status) {
-        return { ok: true, data }
-      }
-
-      // If response is not ok, or status is false
-      const shouldRetry = response.status >= 500 || response.status === 408
-      if (!shouldRetry || attempt === 2) {
-        lastError = data
-        break
-      }
-
-      // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      continue
-    } catch (error) {
-      lastError = error
-      if (attempt === 2) {
-        break
-      }
-      // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    }
-  }
-
-  console.error('[WhatsApp Send Failed]', {
-    phone: params.phone,
-    error: lastError instanceof Error ? lastError.message : lastError,
-  })
-
-  return { ok: false, data: lastError }
-}
 
 /**
  * Get hotel details from database

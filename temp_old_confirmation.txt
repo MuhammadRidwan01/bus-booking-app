@@ -23,7 +23,6 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import QRCode from "react-qr-code"
 
 // Type definition matching the booking_details view + extra fields from API
 type BookingDetail = {
@@ -36,6 +35,9 @@ type BookingDetail = {
     passenger_count: number
     flight_number?: string
     room_number?: string
+    whatsapp_sent: boolean
+    whatsapp_attempts: number
+    whatsapp_last_error: string | null
     phone: string
     service_type?: "drop_off" | "pick_up"
     terminal_code?: string
@@ -57,7 +59,29 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
     const router = useRouter()
     const [booking, setBooking] = useState<BookingDetail>(initialBooking)
     const [downloading, setDownloading] = useState(false)
-    // WA polling and resend removed
+    const [resending, setResending] = useState(false)
+
+    // Polling logic for WA status
+    useEffect(() => {
+        if (booking.whatsapp_sent) return // Stop polling if sent
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/booking-status?code=${bookingCode}`)
+                const json = await res.json()
+                if (json.ok && json.data) {
+                    setBooking(prev => ({ ...prev, ...json.data }))
+                    if (json.data.whatsapp_sent) {
+                        clearInterval(interval)
+                    }
+                }
+            } catch (err) {
+                console.error("Polling error", err)
+            }
+        }, 4000)
+
+        return () => clearInterval(interval)
+    }, [bookingCode, booking.whatsapp_sent])
 
     // Download Handler
     const handleDownload = async () => {
@@ -78,6 +102,30 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
         }
     }
 
+    // Resend WA Handler
+    const handleResend = async () => {
+        setResending(true)
+        try {
+            const res = await fetch("/api/resend-wa", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: bookingCode }),
+            })
+            const json = await res.json()
+            if (json.ok) {
+                toast.success("WhatsApp resent successfully")
+                // Optimistic update
+                setBooking(prev => ({ ...prev, whatsapp_sent: true, whatsapp_last_error: null }))
+            } else {
+                toast.error(json.error || "Failed to resend")
+            }
+        } catch (e) {
+            toast.error("Network error")
+        } finally {
+            setResending(false)
+        }
+    }
+
     // Derived Display Values
     const formattedDate = booking.schedule_date
         ? format(new Date(booking.schedule_date), "EEE, d MMM yyyy")
@@ -94,7 +142,10 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
     const serviceDirection = booking.service_type === "pick_up" ? "Airport → Hotel" : "Hotel → Airport"
     const serviceTypeLabel = booking.service_type === "pick_up" ? "Pick-up Service" : "Drop-off Service"
 
-    // No extra WA display values needed
+    const showResend = !booking.whatsapp_sent && (booking.whatsapp_attempts > 0 || !!booking.whatsapp_last_error)
+
+    // Check if user indicated no WhatsApp based on error message
+    const userIndicatedNoWhatsApp = booking.whatsapp_last_error?.toLowerCase().includes("user indicated number is not on whatsapp") ?? false
 
     return (
         <div className="flex-grow flex flex-col items-center justify-center py-3 px-4 sm:px-6 relative w-full overflow-hidden">
@@ -118,7 +169,7 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                     Booking Confirmed!
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 max-w-sm text-xs mx-auto leading-relaxed">
-                    Shuttle successfully booked. Your digital ticket is ready.
+                    Shuttle successfully booked. Ticket sent to WhatsApp.
                 </p>
             </div>
 
@@ -329,21 +380,58 @@ export function ConfirmationView({ initialBooking, bookingCode }: ConfirmationVi
                     </div>
                 )}
 
-                {/* Digital Ticket / QR Footer */}
-                <div className="px-4 sm:px-5 py-6 flex flex-col items-center justify-center border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-800/20">
-                    <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-slate-200">
-                        <QRCode
-                            value={booking.booking_code}
-                            size={140}
-                            className="w-[120px] h-[120px] sm:w-[140px] sm:h-[140px]"
-                        />
+                {/* WhatsApp Status Footer - Colored background for better visibility */}
+                <div className={`px-4 sm:px-5 py-3 flex items-start gap-3 border-t transition-colors ${userIndicatedNoWhatsApp
+                    ? "bg-slate-50/60 dark:bg-slate-800/10 border-slate-100 dark:border-slate-700/30"
+                    : booking.whatsapp_sent
+                        ? "bg-blue-50/60 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30"
+                        : "bg-amber-50/60 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30"
+                    }`}>
+                    <MessageCircle className={`w-5 h-5 mt-0.5 shrink-0 ${userIndicatedNoWhatsApp
+                        ? "text-slate-400 dark:text-slate-500"
+                        : booking.whatsapp_sent
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-amber-600 dark:text-amber-400"
+                        }`} />
+                    <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold ${userIndicatedNoWhatsApp
+                            ? "text-slate-700 dark:text-slate-300"
+                            : booking.whatsapp_sent
+                                ? "text-blue-900 dark:text-blue-100"
+                                : "text-amber-900 dark:text-amber-100"
+                            }`}>
+                            {userIndicatedNoWhatsApp
+                                ? "No WhatsApp delivery"
+                                : booking.whatsapp_sent
+                                    ? "Ticket sent via WhatsApp"
+                                    : "Sending ticket..."
+                            }
+                        </p>
+                        <p className={`text-xs mt-0.5 leading-relaxed ${userIndicatedNoWhatsApp
+                            ? "text-slate-600 dark:text-slate-400"
+                            : booking.whatsapp_sent
+                                ? "text-blue-700 dark:text-blue-300"
+                                : "text-amber-700 dark:text-amber-300"
+                            }`}>
+                            {userIndicatedNoWhatsApp
+                                ? "Download your ticket using the button below."
+                                : booking.whatsapp_sent
+                                    ? `Sent to +${booking.phone}. Show to driver.`
+                                    : "Processing digital ticket delivery."
+                            }
+                        </p>
+
+                        {showResend && !userIndicatedNoWhatsApp && (
+                            <button
+                                onClick={handleResend}
+                                disabled={resending}
+                                className="mt-2 text-xs font-semibold underline decoration-dotted hover:decoration-solid flex items-center gap-1 text-slate-600 dark:text-slate-400"
+                            >
+                                {resending ? "Resending..." : "Resend WhatsApp"}
+                                <RefreshCw className={`w-3 h-3 ${resending ? 'animate-spin' : ''}`} />
+                            </button>
+                        )}
                     </div>
-                    <p className="mt-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-center">
-                        Scan to verify ticket
-                    </p>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 text-center max-w-xs">
-                        Show this QR code or your downloaded PDF ticket to the driver upon boarding.
-                    </p>
                 </div>
             </div>
 
