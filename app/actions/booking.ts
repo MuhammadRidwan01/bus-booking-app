@@ -37,6 +37,7 @@ export async function createBooking(formData: FormData) {
       surfboardCost: Number.parseFloat(formData.get("surfboardCost") as string) || 0,
       baggageCost: Number.parseFloat(formData.get("baggageCost") as string) || 0,
       totalCost: Number.parseFloat(formData.get("totalCost") as string) || 0,
+      hasWhatsapp: (formData.get("hasWhatsapp") as string) !== "false",
     }
 
     // Validate service type is provided
@@ -152,6 +153,7 @@ export async function createBookingOptimistic(formData: FormData) {
       surfboardCost: Number.parseFloat(formData.get("surfboardCost") as string) || 0,
       baggageCost: Number.parseFloat(formData.get("baggageCost") as string) || 0,
       totalCost: Number.parseFloat(formData.get("totalCost") as string) || 0,
+      hasWhatsapp: (formData.get("hasWhatsapp") as string) !== "false",
     }
 
     // Validate service type is provided
