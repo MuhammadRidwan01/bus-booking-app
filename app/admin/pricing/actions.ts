@@ -142,7 +142,7 @@ export async function updatePricingConfig(payload: {
     // Validate input using Zod schema
     const validationResult = PricingUpdateSchema.safeParse(payload)
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(e => e.message).join(', ')
+      const errors = validationResult.error.issues.map(e => e.message).join(', ')
       await logAdminAction("UPDATE_PRICING_CONFIG", { 
         ok: false, 
         error: `Validation failed: ${errors}`,
@@ -294,7 +294,7 @@ export async function validatePricingUpdate(payload: {
     // Validate input using Zod schema
     const validationResult = PricingUpdateSchema.safeParse(payload)
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(e => ({
+      const errors = validationResult.error.issues.map(e => ({
         field: e.path.join('.'),
         message: e.message
       }))

@@ -57,7 +57,8 @@ export function ScheduleSelector({
   const todayLabel = useMemo(() => format(new Date(), "EEE, dd MMM"), [])
   const tomorrowLabel = useMemo(() => format(addDays(new Date(), 1), "EEE, dd MMM"), [])
 
-  const getCapacityColor = (status: string) => {
+  const getCapacityColor = (status: string, isPast?: boolean) => {
+    if (isPast) return "bg-slate-100 text-slate-600 border border-slate-200"
     switch (status) {
       case "available":
         return "bg-emerald-50 text-emerald-700 border border-emerald-100"
@@ -70,7 +71,8 @@ export function ScheduleSelector({
     }
   }
 
-  const getCapacityText = (status: string) => {
+  const getCapacityText = (status: string, isPast?: boolean) => {
+    if (isPast) return "Expired"
     switch (status) {
       case "available":
         return "Available"
@@ -237,18 +239,18 @@ export function ScheduleSelector({
                         </div>
                         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                           {getServiceTypeIcon(schedule.service_type)}
-                          <Badge className={`${getCapacityColor(schedule.status)} px-2.5 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider`}>
-                            {getCapacityText(schedule.status)}
+                          <Badge className={`${getCapacityColor(schedule.status, schedule.isPast)} px-2.5 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider`}>
+                            {getCapacityText(schedule.status, schedule.isPast)}
                           </Badge>
                         </div>
                       </div>
 
                       <div className="flex items-center text-sm text-slate-700">
-                        <MapPin className="h-4 w-4 mr-2 text-primary" />
+                        <MapPin className="h-4 w-4 mr-2 text-primary shrink-0" />
                         <span className="font-medium">
                           {schedule.service_type === "drop_off"
-                            ? `To ${schedule.destination}`
-                            : `From ${schedule.destination}`
+                            ? `Hotel Lobby ➔ Soekarno-Hatta Airport`
+                            : `Soekarno-Hatta Airport ➔ Hotel Lobby`
                           }
                         </span>
                       </div>

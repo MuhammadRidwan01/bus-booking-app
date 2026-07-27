@@ -265,8 +265,9 @@ export default function BookingPage() {
     formDataRef.current = formData
 
     // Store pending booking for recovery
+    const nowTimestamp = new Date().getTime()
     const { storePendingBooking } = await import("@/lib/booking-recovery")
-    storePendingBooking(idempotencyKey, Date.now())
+    storePendingBooking(idempotencyKey, nowTimestamp)
 
     // Optimistic navigation - navigate immediately
     startTransition(() => {
@@ -288,11 +289,12 @@ export default function BookingPage() {
       ]) as { success: boolean; bookingCode?: string; error?: string }
 
       if (result.success && result.bookingCode) {
-        // Success - clear pending and replace URL with actual booking code
+        // Success - clear pending and navigate to actual booking confirmation
         const { clearPendingBooking } = await import("@/lib/booking-recovery")
         clearPendingBooking()
-        router.replace(`/booking/confirmation?code=${result.bookingCode}`)
-        setIsSubmitting(false)
+        startTransition(() => {
+          router.push(`/booking/confirmation?code=${result.bookingCode}`)
+        })
       } else {
         // Failed - stay on page and show error
         handleBookingError(result.error || "Booking failed")
@@ -308,17 +310,14 @@ export default function BookingPage() {
       clearPendingBooking()
     })
 
-    // Navigate back to booking page (stay on current page)
-    router.replace(`/booking/${hotelSlug}`)
-
-    // Map error messages to user-friendly English
+    // Map error messages to user-friendly text
     let displayError = errorMessage
     if (errorMessage.includes('Kapasitas tidak mencukupi') || errorMessage.includes('capacity')) {
       displayError = '❌ Sorry, the shuttle is fully booked for this schedule. Please choose another time.'
     } else if (errorMessage.includes('timeout')) {
       displayError = '⏱️ Request timed out. Please try again.'
     } else if (errorMessage.includes('network')) {
-      displayError = '🌐 Network error occurred. Please check your connection.'
+      displayError = '🌐 Network error occurred. Please check your internet connection.'
     } else if (errorMessage.includes('Jadwal tidak ditemukan') || errorMessage.includes('not found')) {
       displayError = '📅 Schedule not found. Please select an available schedule.'
     }
@@ -330,7 +329,7 @@ export default function BookingPage() {
     // Scroll to form to show error message
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
-    }, 200)
+    }, 150)
   }
 
   return (
