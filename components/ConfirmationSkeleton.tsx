@@ -1,89 +1,100 @@
 export function ConfirmationSkeleton() {
     return (
         <div className="flex-grow flex flex-col items-center justify-center py-6 px-4 sm:px-6 relative w-full overflow-hidden">
-            {/* Soft Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-100/50 via-transparent to-slate-100/50 dark:from-slate-900/20 dark:to-slate-900/20 -z-20 pointer-events-none" />
-
-            {/* Decorative Background */}
-            <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
-                <div className="absolute -top-[10%] -left-[10%] w-[700px] h-[700px] bg-slate-200/50 dark:bg-slate-800/30 rounded-full blur-[120px]" />
-                <div className="absolute -bottom-[20%] right-[-10%] w-[600px] h-[600px] bg-slate-200/50 dark:bg-slate-800/30 rounded-full blur-[120px]" />
-            </div>
+            {/* Dark void background */}
+            <div className="absolute inset-0 -z-20 pointer-events-none" style={{
+                background: 'var(--sp-void, #101823)',
+                backgroundImage: `
+                    radial-gradient(circle at 50% 0%, rgba(255,255,255,0.04), transparent 60%),
+                    repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 48px),
+                    repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 48px)
+                `
+            }} />
 
             {/* Header Skeleton */}
-            <div className="text-center mb-6 w-full flex flex-col items-center">
-                <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800 rounded-full mb-4 animate-pulse" />
-                <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded-lg mb-2 animate-pulse" />
-                <div className="h-4 w-64 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+            <div className="text-center mb-5 w-full flex flex-col items-center">
+                <div className="w-12 h-12 rounded-full mb-3 animate-pulse" style={{ background: 'rgba(244,237,221,0.1)' }} />
+                <div className="h-7 w-48 rounded-lg mb-2 animate-pulse" style={{ background: 'rgba(244,237,221,0.1)' }} />
+                <div className="h-4 w-56 rounded animate-pulse" style={{ background: 'rgba(244,237,221,0.06)' }} />
             </div>
 
-            {/* Card Skeleton - Matches new max-w-xl and shadow-xl */}
-            <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden">
-                {/* Card Header */}
-                <div className="bg-slate-50/80 dark:bg-slate-800/50 p-6 border-b border-dashed border-slate-200 dark:border-slate-700 flex justify-between items-start">
-                    <div className="space-y-2">
-                        <div className="w-16 h-5 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse" />
-                        <div className="w-40 h-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                        <div className="w-24 h-3 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                    </div>
-                    <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse hidden sm:block" />
+            {/* Card Skeleton */}
+            <div className="w-full max-w-[400px] rounded-[20px] overflow-hidden" style={{
+                background: 'var(--sp-paper, #F4EDDD)',
+                boxShadow: '0 30px 60px -20px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.4) inset',
+            }}>
+                {/* Eyebrow Row */}
+                <div className="flex items-center justify-between" style={{ padding: '18px 22px 0' }}>
+                    <div className="w-20 h-3 rounded animate-pulse" style={{ background: 'rgba(24,34,49,0.1)' }} />
+                    <div className="w-20 h-5 rounded-full animate-pulse" style={{ background: 'rgba(24,34,49,0.08)' }} />
                 </div>
 
-                {/* Card Body */}
-                <div className="p-6">
-                    {/* Timeline Skeleton */}
-                    <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between mb-8">
-                        <div className="flex gap-3 items-start w-full md:w-auto">
-                            <div className="flex flex-col items-center gap-1 mt-1">
-                                <div className="w-2.5 h-2.5 rounded-full bg-slate-200 dark:bg-slate-700" />
-                                <div className="w-0.5 h-10 bg-slate-200 dark:bg-slate-700" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <div className="w-20 h-2.5 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                                <div className="w-32 h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                                <div className="w-16 h-2.5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-                            </div>
-                        </div>
+                {/* Brand */}
+                <div style={{ padding: '14px 22px 0' }}>
+                    <div className="w-48 h-6 rounded animate-pulse" style={{ background: 'rgba(24,34,49,0.12)' }} />
+                    <div className="w-36 h-3 rounded animate-pulse mt-2" style={{ background: 'rgba(24,34,49,0.08)' }} />
+                </div>
 
-                        <div className="hidden md:flex flex-1 mx-2 h-px bg-slate-100 dark:bg-slate-800" />
-
-                        <div className="flex gap-3 items-start w-full md:w-auto">
-                            <div className="flex flex-col items-center gap-1 mt-1">
-                                <div className="w-0.5 h-10 bg-slate-200 dark:bg-slate-700 md:hidden" />
-                                <div className="w-2.5 h-2.5 rounded-full bg-slate-200 dark:bg-slate-700" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <div className="w-20 h-2.5 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                                <div className="w-32 h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                                <div className="w-16 h-2.5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-                            </div>
-                        </div>
+                {/* Route */}
+                <div className="flex items-start justify-between" style={{ padding: '22px 22px 6px' }}>
+                    <div>
+                        <div className="w-12 h-2 rounded animate-pulse mb-2" style={{ background: 'rgba(24,34,49,0.1)' }} />
+                        <div className="w-28 h-4 rounded animate-pulse" style={{ background: 'rgba(24,34,49,0.12)' }} />
+                        <div className="w-16 h-2.5 rounded animate-pulse mt-1" style={{ background: 'rgba(24,34,49,0.08)' }} />
                     </div>
-
-                    <div className="h-px w-full bg-slate-100 dark:bg-slate-800 mb-6" />
-
-                    {/* Details Grid Skeleton */}
-                    <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-                        {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="space-y-1.5">
-                                <div className="w-16 h-2 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-                                <div className="w-24 h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                            </div>
-                        ))}
+                    <div className="text-right">
+                        <div className="w-12 h-2 rounded animate-pulse mb-2 ml-auto" style={{ background: 'rgba(24,34,49,0.1)' }} />
+                        <div className="w-28 h-4 rounded animate-pulse" style={{ background: 'rgba(24,34,49,0.12)' }} />
+                        <div className="w-20 h-2.5 rounded animate-pulse mt-1 ml-auto" style={{ background: 'rgba(24,34,49,0.08)' }} />
                     </div>
                 </div>
 
-                {/* Footer Skeleton */}
-                <div className="bg-slate-50 dark:bg-slate-800/20 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
-                    <div className="w-32 h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mb-2" />
-                    <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                {/* Track */}
+                <div style={{ margin: '8px 22px 4px', height: 20, position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: '50%', left: 6, right: 6, borderTop: '1.5px dashed rgba(24,34,49,0.1)', transform: 'translateY(-50%)' }} />
+                    <div className="animate-pulse" style={{ position: 'absolute', top: '50%', left: 0, width: 7, height: 7, borderRadius: '50%', background: 'rgba(24,34,49,0.15)', transform: 'translateY(-50%)' }} />
+                    <div className="animate-pulse" style={{ position: 'absolute', top: '50%', right: 0, width: 7, height: 7, borderRadius: '50%', background: 'rgba(24,34,49,0.15)', transform: 'translateY(-50%)' }} />
+                </div>
+
+                {/* Depart Row */}
+                <div className="flex items-baseline justify-between" style={{ padding: '10px 22px 20px', borderBottom: '1px dashed rgba(24,34,49,0.18)' }}>
+                    <div className="w-20 h-5 rounded animate-pulse" style={{ background: 'rgba(24,34,49,0.12)' }} />
+                    <div className="w-24 h-3 rounded animate-pulse" style={{ background: 'rgba(24,34,49,0.08)' }} />
+                </div>
+
+                {/* Notch */}
+                <div style={{ position: 'relative', height: 0 }}>
+                    <div style={{ position: 'absolute', top: -11, left: -11, width: 22, height: 22, borderRadius: '50%', background: 'var(--sp-void, #101823)' }} />
+                    <div style={{ position: 'absolute', top: -11, right: -11, width: 22, height: 22, borderRadius: '50%', background: 'var(--sp-void, #101823)' }} />
+                </div>
+
+                {/* Details Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 12px', padding: '22px 22px 6px' }}>
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i}>
+                            <div className="w-16 h-2 rounded animate-pulse mb-2" style={{ background: 'rgba(24,34,49,0.1)' }} />
+                            <div className="w-24 h-4 rounded animate-pulse" style={{ background: 'rgba(24,34,49,0.12)' }} />
+                        </div>
+                    ))}
+                </div>
+
+                {/* Stub */}
+                <div className="flex items-center" style={{ gap: 14, padding: '16px 22px 20px' }}>
+                    <div className="w-[52px] h-[52px] rounded-lg animate-pulse" style={{ background: 'rgba(24,34,49,0.12)' }} />
+                    <div className="flex-1">
+                        <div className="w-16 h-2 rounded animate-pulse mb-2" style={{ background: 'rgba(24,34,49,0.1)' }} />
+                        <div className="w-32 h-4 rounded animate-pulse" style={{ background: 'rgba(24,34,49,0.12)' }} />
+                    </div>
                 </div>
             </div>
+
+            {/* Stage Hint */}
+            <div className="w-28 h-3 rounded animate-pulse mt-4" style={{ background: 'rgba(244,237,221,0.08)' }} />
 
             {/* Buttons Skeleton */}
-            <div className="mt-6 flex flex-col sm:flex-row gap-3 w-full max-w-sm">
-                <div className="flex-1 h-11 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
-                <div className="flex-1 h-11 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+            <div className="mt-5 flex flex-col sm:flex-row gap-3 w-full max-w-[400px]">
+                <div className="flex-1 h-10 rounded-xl animate-pulse" style={{ background: 'rgba(244,237,221,0.1)' }} />
+                <div className="flex-1 h-10 rounded-xl animate-pulse" style={{ background: 'rgba(244,237,221,0.06)' }} />
             </div>
         </div>
     )

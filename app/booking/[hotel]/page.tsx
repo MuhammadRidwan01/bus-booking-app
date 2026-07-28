@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, Shield, Clock, Loader2, Plane } from "lucide-react"
+import { User, Shield, Clock, Loader2, Plane, MapPin, ArrowRight, ArrowLeft } from "lucide-react"
 import { ScheduleSelector } from "@/components/ScheduleSelector"
 import { useRealTimeCapacity } from "@/hooks/useRealTimeCapacity"
 import { ServiceTypeSelector } from "@/components/ServiceTypeSelector"
@@ -15,7 +15,6 @@ import { TerminalSelector } from "@/components/TerminalSelector"
 import { useTerminalMeetingPoints } from "@/hooks/useTerminalMeetingPoints"
 import { ServiceSpecificFields } from "@/components/ServiceSpecificFields"
 import { SurfboardSelector } from "@/components/SurfboardSelector"
-// BaggageSelector removed as per new requirements (info only)
 import { PricingBreakdown } from "@/components/PricingBreakdown"
 import { usePricingState } from "@/hooks/usePricing"
 import Image from "next/image"
@@ -26,7 +25,6 @@ function generateUUID() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
-  // Fallback UUID generator
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = Math.random() * 16 | 0
     const v = c === 'x' ? r : (r & 0x3 | 0x8)
@@ -39,13 +37,13 @@ export default function BookingPage() {
   const params = useParams()
   const hotelSlug = params.hotel as string
 
-  // Redirect legacy slug
   useEffect(() => {
     if (hotelSlug === "ibis-style") {
       router.replace("/booking/ibis-styles")
     }
   }, [hotelSlug, router])
 
+  const [bookingStep, setBookingStep] = useState<1 | 2>(1)
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>("")
   const [selectedServiceType, setSelectedServiceType] = useState<"drop_off" | "pick_up" | null>(null)
@@ -55,32 +53,23 @@ export default function BookingPage() {
   const [roomNumber, setRoomNumber] = useState<string>("")
   const [flightNumber, setFlightNumber] = useState<string>("")
   const [phoneNumber, setPhoneNumber] = useState<string>("")
-  const [terminal, setTerminal] = useState<number>(1)
-  const [surfboard, setSurfboard] = useState<string>("no")
+  const [surfboardCount, setSurfboardCount] = useState<number>(0)
   const [countryCode, setCountryCode] = useState<string>("62")
   const [customerName, setCustomerName] = useState<string>("")
   const [idempotencyKey] = useState(() => generateUUID())
-  const formRef = useRef<HTMLDivElement | null>(null)
 
   const [isPending, startTransition] = useTransition()
 
-  // Enhanced booking state with pricing
   const {
-    surfboardCount,
-    hasExcessBaggage,
-    excessBaggageCount, // Keep for backward compatibility
-    setSurfboardCount,
-    setHasExcessBaggage,
-    setExcessBaggageCount, // Keep for backward compatibility
+    setSurfboardCount: setPricingSurfboardCount,
+    setExcessBaggageCount,
     setTerminalCode: setPricingTerminalCode,
     setPassengerCount: setPricingPassengerCount,
     pricing,
     config,
-    loading: pricingLoading,
-    error: pricingError,
     hasSurfboard,
-    totalCost,
-    clearError: clearPricingError
+    hasExcessBaggage,
+    excessBaggageCount
   } = usePricingState({
     passengerCount: 1,
     surfboardCount: 0,
@@ -95,16 +84,8 @@ export default function BookingPage() {
   const hotelShortName = hotelSlug === "ibis-styles" ? "ibis styles" : "ibis Budget"
 
   const hotelImages = {
-    "ibis-styles": {
-      logo: "/ibis-styles-logo.png",
-      main: "/ISJA-depan.jpeg",
-      photos: ["/ISJA-depan.jpeg", "/ISJA-resize.jpg", "/photi1a.jpg"]
-    },
-    "ibis-budget": {
-      logo: "/ibis-budget-logo.png",
-      main: "/IBJA-Depan.jpg",
-      photos: ["/IBJA-Depan.jpg", "/photo2.jpg", "/Lobby-IBJA.jpg"]
-    }
+    "ibis-styles": { logo: "/ibis-styles-logo.png", main: "/ISJA-depan.jpeg", photos: ["/ISJA-depan.jpeg", "/ISJA-resize.jpg", "/photi1a.jpg"] },
+    "ibis-budget": { logo: "/ibis-budget-logo.png", main: "/IBJA-Depan.jpg", photos: ["/IBJA-Depan.jpg", "/photo2.jpg", "/Lobby-IBJA.jpg"] }
   }
 
   const currentHotel = hotelImages[hotelSlug as keyof typeof hotelImages]
@@ -112,30 +93,23 @@ export default function BookingPage() {
   const handleScheduleSelect = (scheduleId: string, date: string) => {
     setSelectedScheduleId(scheduleId)
     setSelectedDate(date)
-
-    // For pick-up service, scroll to terminal selection; for drop-off, scroll to form
     if (selectedServiceType === "pick_up") {
       setTimeout(() => {
         const terminalSection = document.querySelector('[data-section="terminal"]')
         terminalSection?.scrollIntoView({ behavior: "smooth", block: "start" })
       }, 150)
-    } else {
-      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150)
     }
   }
 
   const handleServiceTypeSelect = (serviceType: "drop_off" | "pick_up") => {
     setSelectedServiceType(serviceType)
-    // Reset schedule and terminal selection when service type changes
     setSelectedScheduleId(null)
     setSelectedDate("")
     setSelectedTerminalCode(null)
     setSelectedMeetingPointId(null)
-    // Reset service-specific fields
     setRoomNumber("")
     setFlightNumber("")
 
-    // Scroll to schedule section
     setTimeout(() => {
       const scheduleSection = document.querySelector('[data-section="schedule"]')
       scheduleSection?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -143,7 +117,6 @@ export default function BookingPage() {
   }
 
   const handleTerminalSelect = (terminalCode: string, meetingPointId: string) => {
-    // For drop-off service, allow empty values (skip terminal selection)
     if (selectedServiceType === "drop_off" && terminalCode === "" && meetingPointId === "") {
       setSelectedTerminalCode(null)
       setSelectedMeetingPointId(null)
@@ -153,64 +126,41 @@ export default function BookingPage() {
       setSelectedMeetingPointId(meetingPointId)
       setPricingTerminalCode(terminalCode)
     }
-    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150)
   }
 
-  // Sync passenger count with pricing state
+  const isStep1Complete = Boolean(
+    selectedServiceType &&
+    selectedScheduleId &&
+    (selectedServiceType === "drop_off" || selectedTerminalCode)
+  )
+
   const handlePassengerCountChange = (count: number) => {
     setPassengerCount(count)
     setPricingPassengerCount(count)
   }
 
-  // Handle surfboard selection
   const handleSurfboardChange = (has: boolean, count: number) => {
     setSurfboardCount(count)
+    setPricingSurfboardCount(count)
   }
 
-  // Handle baggage selection
-  const handleExcessBaggageChange = (count: number) => {
-    setExcessBaggageCount(count) // This will internally set hasExcessBaggage to count > 0
-  }
+  const handleRoomNumberChange = (value: string) => setRoomNumber(value)
+  const handleFlightNumberChange = (value: string) => setFlightNumber(value)
+  const handleCustomerNameChange = (value: string) => setCustomerName(value)
 
-  // Handle service-specific field changes
-  const handleRoomNumberChange = (value: string) => {
-    setRoomNumber(value)
-  }
-
-  const handleFlightNumberChange = (value: string) => {
-    setFlightNumber(value)
-  }
-
-  const handleCustomerNameChange = (value: string) => {
-    setCustomerName(value)
-  }
-
-  // Calculate form completion percentage for progress indicator
   const getFormCompletionPercentage = () => {
     let completed = 0
-    let total = 0
-
-    // Basic required fields
-    total += 3 // customerName, phoneNumber, passengerCount
+    let total = 3
     if (customerName.trim()) completed++
     if (phoneNumber.trim()) completed++
     if (passengerCount > 0) completed++
-
-    // Service-specific fields
     if (selectedServiceType === "drop_off") {
-      total += 1 // roomNumber
+      total += 1
       if (roomNumber.trim()) completed++
     } else if (selectedServiceType === "pick_up") {
-      total += 1 // flightNumber  
+      total += 1
       if (flightNumber.trim()) completed++
     }
-
-    // Optional fields (count as bonus)
-    if (hasSurfboard || hasExcessBaggage) {
-      total += 1
-      completed += 1 // Already configured
-    }
-
     return Math.min(100, (completed / total) * 100)
   }
 
@@ -221,40 +171,12 @@ export default function BookingPage() {
     passengerCount >= 1 &&
     idempotencyKey &&
     customerName.trim() &&
-    // Service-specific field validation
     (selectedServiceType === "drop_off" ? roomNumber.trim() : flightNumber.trim()) &&
-    // For pick-up service, terminal selection is required
     (selectedServiceType === "drop_off" || (selectedTerminalCode && selectedMeetingPointId))
   )
 
-
-
-  // Track if submit button is visible in viewport
-  const [isSubmitButtonVisible, setIsSubmitButtonVisible] = useState(true)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsSubmitButtonVisible(entry.isIntersecting)
-      },
-      { threshold: 0.1 }
-    )
-
-    const submitButton = document.querySelector('[data-submit-button]')
-    if (submitButton) {
-      observer.observe(submitButton)
-    }
-
-    return () => {
-      if (submitButton) {
-        observer.unobserve(submitButton)
-      }
-    }
-  }, [selectedScheduleId])
-
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const formDataRef = useRef<FormData | null>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -262,518 +184,380 @@ export default function BookingPage() {
     setIsSubmitting(true)
 
     const formData = new FormData(e.currentTarget)
-    formDataRef.current = formData
-
-    // Store pending booking for recovery
-    const nowTimestamp = new Date().getTime()
     const { storePendingBooking } = await import("@/lib/booking-recovery")
-    storePendingBooking(idempotencyKey, nowTimestamp)
-
-    // Optimistic navigation - navigate immediately
-    startTransition(() => {
-      router.push(`/booking/confirmation?code=loading`)
-    })
+    storePendingBooking(idempotencyKey, new Date().getTime())
 
     try {
-      // Import the optimistic version with timeout
       const { createBookingOptimistic } = await import("@/app/actions/booking")
-
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Request timeout - please try again")), 30000)
-      )
-
       const result = await Promise.race([
         createBookingOptimistic(formData),
-        timeoutPromise
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout")), 30000))
       ]) as { success: boolean; bookingCode?: string; error?: string }
 
       if (result.success && result.bookingCode) {
-        // Success - clear pending and navigate to actual booking confirmation
-        const { clearPendingBooking } = await import("@/lib/booking-recovery")
-        clearPendingBooking()
-        startTransition(() => {
-          router.push(`/booking/confirmation?code=${result.bookingCode}`)
-        })
+        (await import("@/lib/booking-recovery")).clearPendingBooking()
+        startTransition(() => router.push(`/booking/confirmation?code=${result.bookingCode}`))
       } else {
-        // Failed - stay on page and show error
         handleBookingError(result.error || "Booking failed")
       }
     } catch (err: any) {
-      handleBookingError(err?.message || "Booking failed, please try again")
+      handleBookingError(err?.message || "Booking failed")
     }
   }
 
   function handleBookingError(errorMessage: string) {
-    // Clear pending booking
-    import("@/lib/booking-recovery").then(({ clearPendingBooking }) => {
-      clearPendingBooking()
-    })
-
-    // Map error messages to user-friendly text
+    (import("@/lib/booking-recovery")).then(({ clearPendingBooking }) => clearPendingBooking())
     let displayError = errorMessage
-    if (errorMessage.includes('Kapasitas tidak mencukupi') || errorMessage.includes('capacity')) {
-      displayError = '❌ Sorry, the shuttle is fully booked for this schedule. Please choose another time.'
-    } else if (errorMessage.includes('timeout')) {
-      displayError = '⏱️ Request timed out. Please try again.'
-    } else if (errorMessage.includes('network')) {
-      displayError = '🌐 Network error occurred. Please check your internet connection.'
-    } else if (errorMessage.includes('Jadwal tidak ditemukan') || errorMessage.includes('not found')) {
-      displayError = '📅 Schedule not found. Please select an available schedule.'
-    }
-
-    // Show error message on the form
+    if (errorMessage.includes('Kapasitas')) displayError = '❌ Sorry, the shuttle is fully booked. Please choose another time.'
+    else if (errorMessage.includes('timeout')) displayError = '⏱️ Request timed out. Please try again.'
     setError(displayError)
     setIsSubmitting(false)
-
-    // Scroll to form to show error message
-    setTimeout(() => {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
-    }, 150)
   }
 
   return (
     <PublicShell showBack backHref="/" hideCta>
       <BookingRecovery />
-      <div className="space-y-6">
-
+      <div className="space-y-6 max-w-4xl mx-auto">
         {/* HOTEL HEADER CARD */}
-        <Card className="overflow-hidden border border-slate-100 shadow-lg rounded-2xl">
-          <div className="relative h-56 sm:h-64 md:h-72">
-            {currentHotel?.main && (
-              <Image src={currentHotel.main} alt={hotelName} fill priority className="object-cover" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
-
-            <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 text-white">
+        <Card className="overflow-hidden border border-slate-100 shadow-md rounded-2xl">
+          <div className="relative h-44 sm:h-56">
+            {currentHotel?.main && <Image src={currentHotel.main} alt={hotelName} fill priority className="object-cover" />}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 text-white">
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/90 rounded-2xl p-2 shadow-md shrink-0">
-                  <Image src={currentHotel.logo} alt={`${hotelShortName} logo`} width={60} height={60} className="object-contain" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/90 rounded-2xl p-2 shadow-md shrink-0">
+                  <Image src={currentHotel.logo} alt={`${hotelShortName} logo`} width={50} height={50} className="object-contain" />
                 </div>
-
                 <div className="min-w-0 flex-1">
-                  <p className="hidden sm:block text-xs uppercase tracking-[0.2em] text-white/70">Hotel pickup</p>
-                  <h2 className="text-xl sm:text-3xl md:text-4xl font-semibold leading-tight">{hotelName}</h2>
+                  <p className="hidden sm:block text-[10px] uppercase tracking-[0.2em] text-white/70">Airport Shuttle Service</p>
+                  <h2 className="text-lg sm:text-2xl font-bold leading-tight">{hotelName}</h2>
                 </div>
               </div>
-
-              <div className="flex flex-wrap items-center gap-2 mt-3 text-xs sm:text-sm text-white/90 font-medium">
+              <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-white/90 font-medium">
                 <BadgeInfo icon={<Clock className="h-3.5 w-3.5" />} label="06:00 - 22:00" />
-                <BadgeInfo icon={<Shield className="h-3.5 w-3.5" />} label="Free for guests" />
+                <BadgeInfo icon={<Shield className="h-3.5 w-3.5 text-emerald-400" />} label="Free for hotel guests" />
               </div>
             </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 p-4 bg-slate-50">
-            {currentHotel?.photos.slice(0, 3).map((p, i) => (
-              <div key={i} className="relative h-20 sm:h-24 rounded-xl overflow-hidden">
-                <Image src={p} alt={hotelName} fill className="object-cover" />
-              </div>
-            ))}
           </div>
         </Card>
 
-        {/* STEPS */}
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs md:text-sm">
-            <StepPill active>1. Service</StepPill>
-            <StepPill active={Boolean(selectedServiceType)}>2. Schedule</StepPill>
-            {selectedServiceType === "pick_up" && (
-              <StepPill active={Boolean(selectedTerminalCode)}>3. Terminal</StepPill>
-            )}
-            <StepPill active={Boolean(selectedScheduleId && (selectedServiceType === "drop_off" || selectedTerminalCode))}>
-              {selectedServiceType === "pick_up" ? "4. Details" : "3. Details"}
-            </StepPill>
-          </div>
+        {/* STEP WIZARD TABS */}
+        <div className="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/60 shadow-inner flex items-center justify-between gap-1.5">
+          <button
+            type="button"
+            onClick={() => setBookingStep(1)}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 ${
+              bookingStep === 1
+                ? "bg-slate-900 text-white shadow-lg shadow-slate-900/15 scale-[1.01]"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+            }`}
+          >
+            <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${
+              bookingStep === 1 ? "bg-emerald-400 text-slate-950" : "bg-slate-200 text-slate-700"
+            }`}>1</span>
+            <span>Choose Schedule & Route</span>
+          </button>
 
-          {/* GRID — SERVICE TYPE + SCHEDULE + TERMINAL + FORM */}
-          <div className="grid lg:grid-cols-[1.4fr,1fr] gap-6 items-start">
-
-            {/* LEFT SIDE - SERVICE TYPE, SCHEDULE, AND TERMINAL SELECTION */}
-            <div className="space-y-6 lg:order-1 order-1">
-              {/* SERVICE TYPE SELECTION */}
-              <ServiceTypeSelector
-                selectedServiceType={selectedServiceType}
-                onServiceTypeSelect={handleServiceTypeSelect}
-              />
-
-              {/* SCHEDULE SELECTION */}
-              <div data-section="schedule">
-                <ScheduleSelector
-                  todaySchedules={todaySchedules}
-                  tomorrowSchedules={tomorrowSchedules}
-                  selectedScheduleId={selectedScheduleId}
-                  onScheduleSelect={handleScheduleSelect}
-                  loading={loading}
-                  serviceType={selectedServiceType}
-                />
-              </div>
-
-              {/* TERMINAL SELECTION (only for pick-up service) */}
-              {selectedServiceType === "pick_up" && selectedScheduleId && (
-                <div data-section="terminal">
-                  <TerminalSelector
-                    terminalMeetingPoints={terminalMeetingPoints}
-                    selectedTerminalCode={selectedTerminalCode}
-                    selectedMeetingPointId={selectedMeetingPointId}
-                    onTerminalSelect={handleTerminalSelect}
-                    loading={terminalLoading}
-                    serviceType={selectedServiceType}
-                    isOptional={false}
-                  />
-                </div>
-              )}
-
-              {/* NEXT STEP GUIDANCE */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">Next step</p>
-                  <p className="text-xs text-slate-600">
-                    {!selectedServiceType
-                      ? "Choose your travel direction first."
-                      : !selectedScheduleId
-                        ? "Select a departure time."
-                        : selectedServiceType === "pick_up" && !selectedTerminalCode
-                          ? "Choose your arrival terminal."
-                          : "Fill passenger details to complete booking."
-                    }
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="rounded-xl lg:inline-flex hidden"
-                  disabled={!selectedServiceType || !selectedScheduleId || (selectedServiceType === "pick_up" && !selectedTerminalCode)}
-                  onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                >
-                  {selectedServiceType === "pick_up" && !selectedTerminalCode ? "Select terminal first" : "Open passenger form"}
-                </Button>
-              </div>
-            </div>
-
-            {/* FORM SIDEBAR */}
-            <div className="space-y-4 lg:order-2 order-2" ref={formRef} data-section="form">
-              {/* Selection Summary (Visible on mobile when something is selected) */}
-              {(selectedScheduleId || selectedTerminalCode) && (
-                <div className="lg:hidden">
-                  <SelectionSummary
-                    serviceType={selectedServiceType}
-                    scheduleId={selectedScheduleId}
-                    terminalCode={selectedTerminalCode}
-                    date={selectedDate}
-                    todaySchedules={todaySchedules}
-                    tomorrowSchedules={tomorrowSchedules}
-                  />
-                </div>
-              )}
-              <Card className="shadow-lg border border-slate-100 rounded-2xl transition-all duration-300 hover:shadow-xl">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-xl md:text-2xl text-slate-900">
-                    <User className="h-6 w-6 text-primary" />
-                    Passenger Details
-                  </CardTitle>
-                  <p className="text-sm text-slate-600">Download your digital ticket after confirmation.</p>
-
-                  {/* Progress indicator */}
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                      <span>Form Progress</span>
-                      <span className="font-medium">{Math.round(getFormCompletionPercentage())}%</span>
-                    </div>
-                    <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${getFormCompletionPercentage()}%` }}
-                      />
-                    </div>
-                    {getFormCompletionPercentage() === 100 && (
-                      <p className="text-xs text-green-600 mt-1 animate-pulse">✓ Ready to book!</p>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pt-4">
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <input type="hidden" name="scheduleId" value={selectedScheduleId || ""} />
-                    <input type="hidden" name="bookingDate" value={selectedDate} />
-                    <input type="hidden" name="passengerCount" value={passengerCount} />
-                    <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
-                    <input type="hidden" name="serviceType" value={selectedServiceType || ""} />
-                    {selectedTerminalCode && <input type="hidden" name="terminalCode" value={selectedTerminalCode} />}
-                    {selectedMeetingPointId && <input type="hidden" name="meetingPointId" value={selectedMeetingPointId} />}
-
-                    {/* Enhanced booking fields */}
-                    <input type="hidden" name="roomNumber" value={roomNumber} />
-                    <input type="hidden" name="flightNumber" value={flightNumber} />
-                    <input type="hidden" name="hasSurfboard" value={hasSurfboard ? "true" : "false"} />
-                    <input type="hidden" name="surfboardCount" value={surfboardCount} />
-                    <input type="hidden" name="excessBaggageCount" value={excessBaggageCount} />
-                    <input type="hidden" name="surfboardCost" value={pricing?.surfboardCost || 0} />
-                    <input type="hidden" name="baggageCost" value={pricing?.baggageCost || 0} />
-                    <input type="hidden" name="totalCost" value={pricing?.totalCost || 0} />
-
-                    {/* FORM — NAME */}
-                    <FormField label="Full name">
-                      <Input
-                        id="customerName"
-                        name="customerName"
-                        required
-                        placeholder="Full name as per ID"
-                        className="h-10 rounded-xl"
-                        value={customerName}
-                        onChange={(e) => handleCustomerNameChange(e.target.value)}
-                      />
-                    </FormField>
-
-                    {/* PHONE NUMBER */}
-                    <FormField label="Phone number (Optional)">
-                      <div className="grid grid-cols-[100px_1fr] gap-2">
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-slate-500">+</span>
-                          <Input
-                            name="countryCode"
-                            type="tel"
-                            className="h-10 rounded-xl px-2 text-sm"
-                            value={countryCode}
-                            onChange={(e) => setCountryCode(e.target.value.replace(/\D/g, ""))}
-                            placeholder="62"
-                          />
-                        </div>
-                        <Input
-                          id="phoneNumber"
-                          name="phoneNumber"
-                          type="tel"
-                          placeholder="812xxxxxx"
-                          className="h-10 rounded-xl flex-1"
-                          value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value)}
-                        />
-                      </div>
-                    </FormField>
-
-                    {/* PASSENGERS */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <FormField label="Passengers">
-                        <Select
-                          value={passengerCount.toString()}
-                          onValueChange={(v) => handlePassengerCountChange(Number(v))}
-                        >
-                          <SelectTrigger className="h-10 rounded-xl">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <SelectItem key={n} value={n.toString()}>{n} person</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormField>
-                    </div>
-
-                    {/* SERVICE-SPECIFIC FIELDS */}
-                    <ServiceSpecificFields
-                      serviceType={selectedServiceType}
-                      roomNumber={roomNumber}
-                      flightNumber={flightNumber}
-                      onRoomNumberChange={handleRoomNumberChange}
-                      onFlightNumberChange={handleFlightNumberChange}
-                    />
-
-                    {/* SURFBOARD SELECTOR */}
-                    {config && (
-                      <SurfboardSelector
-                        hasSurfboard={hasSurfboard}
-                        surfboardCount={surfboardCount}
-                        onSurfboardChange={handleSurfboardChange}
-                        pricing={{
-                          costPerBoard: config.surfboardCostPerBoard,
-                          currency: config.currency
-                        }}
-                      />
-                    )}
-
-
-
-                    {/* PRICING BREAKDOWN */}
-                    {pricing && config && (
-                      <PricingBreakdown
-                        basePrice={0}
-                        surfboardCost={pricing.surfboardCost}
-                        baggageCost={pricing.baggageCost}
-                        totalCost={pricing.totalCost}
-                        currency={config.currency}
-                        breakdown={pricing.breakdown}
-                      />
-                    )}
-
-                    {/* TERMINAL SELECTION FOR DROP-OFF */}
-                    {selectedServiceType === "drop_off" && (
-                      <FormField label="Terminal (Optional)">
-                        <Select
-                          value={selectedTerminalCode || "none"}
-                          onValueChange={(value) => {
-                            if (value === "none") {
-                              setSelectedTerminalCode(null)
-                              setSelectedMeetingPointId(null)
-                              setPricingTerminalCode(undefined)
-                            } else {
-                              const terminal = terminalMeetingPoints.find(t => t.terminalCode === value)
-                              if (terminal) {
-                                setSelectedTerminalCode(terminal.terminalCode)
-                                setSelectedMeetingPointId(terminal.id)
-                                setPricingTerminalCode(terminal.terminalCode)
-                              }
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="h-10 rounded-xl">
-                            <SelectValue placeholder="Select terminal (optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No terminal specified</SelectItem>
-                            {terminalMeetingPoints.map((terminal) => (
-                              <SelectItem key={terminal.id} value={terminal.terminalCode}>
-                                Terminal {terminal.terminalCode} ({terminal.terminalCode.includes('3') ? 'Domestic' : 'International'})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormField>
-                    )}
-
-                    {/* ERRORS */}
-                    {error && (
-                      <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-3 shadow-md animate-in slide-in-from-top-2">
-                        <div className="flex items-start gap-2">
-                          <div className="flex-shrink-0 mt-0.5">
-                            <svg className="h-4 w-4 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-sm font-semibold text-rose-900 mb-1">Booking Failed</h4>
-                            <p className="text-sm text-rose-800">{error}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* SUBMIT BUTTON - Normal positioning */}
-                    <div className="pt-4 space-y-3">
-
-
-                      <Button
-                        type="submit"
-                        className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl"
-                        disabled={!isFormValid || isSubmitting || isPending}
-                        data-submit-button
-                      >
-                        {isSubmitting || isPending
-                          ? "Processing..."
-                          : isFormValid
-                            ? `✓ Confirm ${selectedServiceType === "drop_off" ? "Drop-off" : "Pick-up"} Booking`
-                            : "Complete booking details"
-                        }
-                      </Button>
-
-                      {!isFormValid && (
-                        <div className="text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                          {!selectedServiceType
-                            ? "Choose service type and schedule to continue."
-                            : !selectedScheduleId
-                              ? "Select a departure time to continue."
-                              : selectedServiceType === "pick_up" && !selectedTerminalCode
-                                ? "Select your arrival terminal to continue."
-                                : selectedServiceType === "drop_off" && !roomNumber.trim()
-                                  ? "Enter your room number to continue."
-                                  : selectedServiceType === "pick_up" && !flightNumber.trim()
-                                    ? "Enter your flight number to continue."
-                                    : !customerName.trim()
-                                      ? "Enter your full name to continue."
-                                      : "Fill all required details to continue."
-                          }
-                        </div>
-                      )}
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-
-              {/* IMPORTANT INFO CARD */}
-              <Card className="border border-slate-200 shadow-sm rounded-2xl bg-slate-50/50">
-                <CardContent className="p-5 space-y-3">
-                  <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-primary" />
-                    Important Notes
-                  </h3>
-                  <ol className="list-decimal list-outside pl-4 space-y-2 text-xs text-slate-600 leading-relaxed marker:text-slate-400 marker:font-medium">
-                    <li>Airport Shuttle (Drop-off/Pick-up) <strong>ONLY for registered guest</strong>.</li>
-                    <li>Seats are limited for each of schedule.</li>
-                    <li>Please register according the shuttle schedule for your convenience.</li>
-                    <li><strong>Surfboard charge:</strong> IDR 75.000,-nett/surfboard/way.</li>
-                    <li><strong>Premium pick-up at terminal 3</strong> (Curbside area and gate 5 - On the 1st floor) will be cost an additional charge IDR 150.000,-nett/car/way.</li>
-                    <li>Please make Pick-up service reservation, minimum <strong>1 day prior arrival date</strong>.</li>
-                    <li>Please make Drop-off reservation to receptionist, upon room check in process.</li>
-                    <li><strong>Baggage Allowance:</strong> 2 pieces per person included. Excess items will be charged additionally at the counter.</li>
-                  </ol>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => isStep1Complete && setBookingStep(2)}
+            disabled={!isStep1Complete}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 ${
+              bookingStep === 2
+                ? "bg-slate-900 text-white shadow-lg shadow-slate-900/15 scale-[1.01]"
+                : isStep1Complete
+                ? "text-slate-700 hover:text-slate-900 hover:bg-white/60 cursor-pointer"
+                : "text-slate-400 cursor-not-allowed opacity-60"
+            }`}
+          >
+            <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${
+              bookingStep === 2 ? "bg-emerald-400 text-slate-950" : "bg-slate-200 text-slate-700"
+            }`}>2</span>
+            <span>Passenger Details</span>
+          </button>
         </div>
 
-        {/* FLOATING ACTION BUTTON - Shows when form is ready */}
-        {selectedScheduleId && (selectedServiceType === "drop_off" || selectedTerminalCode) && (
-          <div className="fixed bottom-6 right-6 z-50 lg:hidden">
-            <Button
-              type="button"
-              size="lg"
-              className="h-14 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl hover:shadow-2xl transition-all duration-300 rounded-full"
-              onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
-            >
-              <User className="h-5 w-5 mr-2" />
-              Complete Booking
-            </Button>
-          </div>
-        )}
+        {/* STEP 1: SELECT SERVICE & SCHEDULE */}
+        {bookingStep === 1 && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <ServiceTypeSelector
+              selectedServiceType={selectedServiceType}
+              onServiceTypeSelect={handleServiceTypeSelect}
+            />
 
-        {/* Smart Floating Action Button - Only shows when submit button is not visible */}
-        {selectedScheduleId && isFormValid && !isSubmitButtonVisible && (
-          <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-2">
-            <Button
-              onClick={() => {
-                const form = document.querySelector('form')
-                if (form) {
-                  form.requestSubmit()
-                }
-              }}
-              className="h-14 w-14 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
-              disabled={!isFormValid || isSubmitting || isPending}
-            >
-              {isPending ? (
-                <Loader2 className="h-6 w-6 animate-spin text-white" />
-              ) : (
-                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              )}
-            </Button>
-
-            {/* Tooltip */}
-            <div className="absolute bottom-16 right-0 bg-slate-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity">
-              Complete Booking
+            <div data-section="schedule">
+              <ScheduleSelector
+                todaySchedules={todaySchedules}
+                tomorrowSchedules={tomorrowSchedules}
+                selectedScheduleId={selectedScheduleId}
+                onScheduleSelect={handleScheduleSelect}
+                loading={loading}
+                serviceType={selectedServiceType}
+              />
             </div>
+
+            {selectedServiceType === "pick_up" && selectedScheduleId && (
+              <div data-section="terminal">
+                <TerminalSelector
+                  terminalMeetingPoints={terminalMeetingPoints}
+                  selectedTerminalCode={selectedTerminalCode}
+                  selectedMeetingPointId={selectedMeetingPointId}
+                  onTerminalSelect={handleTerminalSelect}
+                  loading={terminalLoading}
+                  serviceType={selectedServiceType}
+                  isOptional={false}
+                />
+              </div>
+            )}
+
+            {/* ACTION BUTTON TO PROCEED TO STEP 2 */}
+            <div className="pt-2">
+              <Button
+                type="button"
+                className="w-full h-13 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl"
+                disabled={!isStep1Complete}
+                onClick={() => setBookingStep(2)}
+              >
+                {isStep1Complete
+                  ? "Continue to Passenger Details ➔"
+                  : !selectedServiceType
+                  ? "Select travel direction first"
+                  : !selectedScheduleId
+                  ? "Select departure time"
+                  : "Select arrival terminal"
+                }
+              </Button>
+            </div>
+
+            <Card className="border border-slate-200 shadow-sm rounded-2xl bg-slate-50/50">
+              <CardContent className="p-5 space-y-3">
+                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  Important Notes
+                </h3>
+                <ol className="list-decimal list-outside pl-4 space-y-1.5 text-xs text-slate-600 leading-relaxed marker:text-slate-400 marker:font-medium">
+                  <li>Airport Shuttle (Drop-off/Pick-up) <strong>ONLY for registered hotel guests</strong>.</li>
+                  <li>Seats are limited for each departure schedule.</li>
+                  <li><strong>Surfboard charge:</strong> IDR 75.000,-nett/surfboard/way.</li>
+                  <li><strong>Premium pick-up at terminal 3</strong> (Curbside area gate 5) additional IDR 150.000,-nett/car/way.</li>
+                  <li>Please complete booking minimum <strong>20 minutes prior to departure</strong>.</li>
+                </ol>
+              </CardContent>
+            </Card>
           </div>
         )}
 
+        {/* STEP 2: PASSENGER FORM & CONFIRMATION */}
+        {bookingStep === 2 && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* SELECTION SUMMARY HEADER */}
+            <SelectionSummary
+              serviceType={selectedServiceType}
+              scheduleId={selectedScheduleId}
+              terminalCode={selectedTerminalCode}
+              date={selectedDate}
+              todaySchedules={todaySchedules}
+              tomorrowSchedules={tomorrowSchedules}
+              onChangeSchedule={() => setBookingStep(1)}
+            />
+
+            <Card className="shadow-lg border border-slate-100 rounded-2xl">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-xl md:text-2xl text-slate-900">
+                  <User className="h-6 w-6 text-primary" />
+                  Passenger Details
+                </CardTitle>
+                <p className="text-xs text-slate-600">Download your digital ticket immediately after confirmation.</p>
+
+                <div className="mt-4">
+                  <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                    <span>Form Progress</span>
+                    <span className="font-semibold text-slate-800">{Math.round(getFormCompletionPercentage())}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${getFormCompletionPercentage()}%` }}
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pt-2">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <input type="hidden" name="scheduleId" value={selectedScheduleId || ""} />
+                  <input type="hidden" name="bookingDate" value={selectedDate} />
+                  <input type="hidden" name="passengerCount" value={passengerCount} />
+                  <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+                  <input type="hidden" name="serviceType" value={selectedServiceType || ""} />
+                  {selectedTerminalCode && <input type="hidden" name="terminalCode" value={selectedTerminalCode} />}
+                  {selectedMeetingPointId && <input type="hidden" name="meetingPointId" value={selectedMeetingPointId} />}
+
+                  <input type="hidden" name="roomNumber" value={roomNumber} />
+                  <input type="hidden" name="flightNumber" value={flightNumber} />
+                  <input type="hidden" name="hasSurfboard" value={hasSurfboard ? "true" : "false"} />
+                  <input type="hidden" name="surfboardCount" value={surfboardCount} />
+                  <input type="hidden" name="excessBaggageCount" value={excessBaggageCount} />
+                  <input type="hidden" name="surfboardCost" value={pricing?.surfboardCost || 0} />
+                  <input type="hidden" name="baggageCost" value={pricing?.baggageCost || 0} />
+                  <input type="hidden" name="totalCost" value={pricing?.totalCost || 0} />
+
+                  <FormField label="Full Name">
+                    <Input
+                      id="customerName"
+                      name="customerName"
+                      required
+                      placeholder="Enter full name as per ID"
+                      className="h-10 rounded-xl text-sm"
+                      value={customerName}
+                      onChange={(e) => handleCustomerNameChange(e.target.value)}
+                    />
+                  </FormField>
+
+                  <FormField label="Phone Number (WhatsApp)">
+                    <div className="grid grid-cols-[130px_1fr] gap-2">
+                      <Select
+                        value={countryCode}
+                        onValueChange={(val) => setCountryCode(val)}
+                      >
+                        <SelectTrigger className="h-10 rounded-xl px-2 text-xs font-semibold">
+                          <SelectValue placeholder="+62" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countryOptions.map((country) => (
+                            <SelectItem key={country.code} value={country.dial} className="text-xs">
+                              +{country.dial} ({country.label})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <input type="hidden" name="countryCode" value={countryCode} />
+                      <Input
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        type="tel"
+                        placeholder="8123456789"
+                        className="h-10 rounded-xl flex-1 text-sm"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                      />
+                    </div>
+                  </FormField>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField label="Passengers">
+                      <Select
+                        value={passengerCount.toString()}
+                        onValueChange={(v) => handlePassengerCountChange(Number(v))}
+                      >
+                        <SelectTrigger className="h-10 rounded-xl text-sm">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <SelectItem key={n} value={n.toString()}>{n} person{n > 1 ? 's' : ''}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+                  </div>
+
+                  <ServiceSpecificFields
+                    serviceType={selectedServiceType}
+                    roomNumber={roomNumber}
+                    flightNumber={flightNumber}
+                    onRoomNumberChange={handleRoomNumberChange}
+                    onFlightNumberChange={handleFlightNumberChange}
+                  />
+
+                  {config && (
+                    <SurfboardSelector
+                      hasSurfboard={hasSurfboard}
+                      surfboardCount={surfboardCount}
+                      onSurfboardChange={handleSurfboardChange}
+                      pricing={{
+                        costPerBoard: config.surfboardCostPerBoard,
+                        currency: config.currency
+                      }}
+                    />
+                  )}
+
+                  {pricing && config && (
+                    <PricingBreakdown
+                      basePrice={0}
+                      surfboardCost={pricing.surfboardCost}
+                      baggageCost={pricing.baggageCost}
+                      totalCost={pricing.totalCost}
+                      currency={config.currency}
+                      breakdown={pricing.breakdown}
+                    />
+                  )}
+
+                  {error && (
+                    <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-3 shadow-md animate-in slide-in-from-top-2">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <svg className="h-4 w-4 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-semibold text-rose-900 mb-1">Booking Failed</h4>
+                          <p className="text-sm text-rose-800">{error}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-4 space-y-3">
+                    <Button
+                      type="submit"
+                      className={`w-full h-13 text-base font-semibold transition-all duration-300 rounded-xl shadow-md ${
+                        isFormValid
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-500/20 hover:shadow-lg hover:scale-[1.01]"
+                          : "bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-100 cursor-not-allowed"
+                      }`}
+                      disabled={!isFormValid || isSubmitting || isPending}
+                    >
+                      {isSubmitting || isPending ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Processing booking...
+                        </span>
+                      ) : isFormValid ? (
+                        `✓ Confirm ${selectedServiceType === "drop_off" ? "Drop-off" : "Pick-up"} Booking (Free)`
+                      ) : (
+                        <span className="flex items-center justify-center gap-2 text-sm text-slate-600">
+                          {selectedServiceType === "drop_off" && !roomNumber.trim()
+                            ? "Enter hotel room number to continue"
+                            : selectedServiceType === "pick_up" && !flightNumber.trim()
+                            ? "Enter flight number to continue"
+                            : !customerName.trim()
+                            ? "Enter full passenger name to continue"
+                            : "Fill all required details"
+                          }
+                        </span>
+                      )}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-11 text-xs sm:text-sm font-semibold rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50"
+                      onClick={() => setBookingStep(1)}
+                    >
+                      ← Back to Schedule Selection
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
-    </PublicShell >
+    </PublicShell>
   )
 }
-
-/* ------------------------------------------------------------
-   COMPONENTS
------------------------------------------------------------- */
 
 function SelectionSummary({
   serviceType,
@@ -781,7 +565,8 @@ function SelectionSummary({
   terminalCode,
   date,
   todaySchedules,
-  tomorrowSchedules
+  tomorrowSchedules,
+  onChangeSchedule
 }: {
   serviceType: string | null
   scheduleId: string | null
@@ -789,6 +574,7 @@ function SelectionSummary({
   date: string
   todaySchedules: any[]
   tomorrowSchedules: any[]
+  onChangeSchedule?: () => void
 }) {
   const allSchedules = [...todaySchedules, ...tomorrowSchedules]
   const schedule = allSchedules.find(s => s.id === scheduleId)
@@ -796,54 +582,67 @@ function SelectionSummary({
   if (!scheduleId && !terminalCode) return null
 
   return (
-    <Card className="border-primary/20 bg-primary/5 shadow-md overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
-      <div className="bg-primary px-4 py-2 text-white text-[10px] font-bold uppercase tracking-wider">
-        Your Selection
-      </div>
-      <CardContent className="p-4 flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex gap-4">
-          {schedule && (
-            <div className="space-y-0.5">
-              <p className="text-[10px] text-slate-500 uppercase font-bold">Departure</p>
-              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
-                <Clock className="h-3.5 w-3.5 text-primary" />
-                {schedule.departure_time.split(':').slice(0, 2).join(':')} WIB
-              </div>
-            </div>
-          )}
+    <div className="relative group overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white p-5 shadow-xl border border-slate-700/80 transition-all duration-300 hover:shadow-2xl">
+      {/* Decorative background glow */}
+      <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
 
-          {terminalCode && (
-            <div className="space-y-0.5">
-              <p className="text-[10px] text-slate-500 uppercase font-bold">Terminal</p>
-              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
-                <Plane className="h-3.5 w-3.5 text-primary" />
-                T{terminalCode}
+      {/* Ticket Side Notches */}
+      <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-50 border border-slate-300/40" />
+      <div className="absolute -right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-50 border border-slate-300/40" />
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10 px-2 sm:px-4">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Reserved Slot
+            </span>
+            <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">
+              {serviceType === "drop_off" ? "Hotel ➔ Airport" : "Airport ➔ Hotel"}
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-3 flex-wrap">
+            {schedule && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-emerald-400" />
+                <span className="text-2xl font-black tracking-tight">
+                  {schedule.departure_time.split(':').slice(0, 2).join(':')}
+                  <span className="text-xs font-medium text-slate-400 ml-1">WIB</span>
+                </span>
               </div>
-            </div>
-          )}
+            )}
+
+            {terminalCode && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-white/10 text-xs font-semibold text-white border border-white/15 backdrop-blur-sm">
+                <Plane className="h-3.5 w-3.5 text-indigo-300" />
+                Terminal {terminalCode}
+              </span>
+            )}
+          </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-[10px] font-bold rounded-lg border-primary/30 text-primary hover:bg-primary/10"
-          onClick={() => {
-            const section = terminalCode ? 'terminal' : 'schedule'
-            document.querySelector(`[data-section="${section}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }}
-        >
-          Change Selection
-        </Button>
-      </CardContent>
-    </Card>
+        {onChangeSchedule && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-10 px-4 text-xs font-bold rounded-xl border-white/20 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all duration-200 hover:scale-105 self-start sm:self-center"
+            onClick={onChangeSchedule}
+          >
+            ✏️ Change Route / Time
+          </Button>
+        )}
+      </div>
+    </div>
   )
 }
 
-
 function FormField({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="space-y-2">
-      <Label className="text-sm font-semibold text-slate-800">{label}</Label>
+    <div className="space-y-1.5">
+      <Label className="text-xs font-semibold text-slate-800">{label}</Label>
       {children}
     </div>
   )
@@ -851,20 +650,9 @@ function FormField({ label, children }: { label: string; children: ReactNode }) 
 
 function BadgeInfo({ icon, label }: { icon: ReactNode; label: string }) {
   return (
-    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20">
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20">
       {icon}
       {label}
-    </span>
-  )
-}
-
-function StepPill({ active, children }: { active?: boolean; children: ReactNode }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${active ? "bg-primary/10 text-primary border-primary/20" : "bg-white text-slate-600 border-slate-200"
-        }`}
-    >
-      {children}
     </span>
   )
 }

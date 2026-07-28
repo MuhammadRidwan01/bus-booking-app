@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ibis Styles Jakarta — Shuttle Pass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F4EDDD;
+    --paper-2:#EAE0C7;
+    --ink:#182231;
+    --ink-soft:#5A6577;
+    --ink-faint:#8B93A0;
+    --transit:#1F6F5C;
+    --transit-dark:#123F34;
+    --transit-bg:#DEEAE3;
+    --stamp:#B14226;
+    --amber:#C98A2E;
+    --line:rgba(24,34,49,0.18);
+    --void:#101823;
+    --void-2:#0B1119;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--void);
+    background-image:
+      radial-gradient(circle at 50% 0%, rgba(255,255,255,0.04), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 48px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 48px);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:48px 20px;
+    font-family:'Inter',sans-serif;
+  }
+  .stage{
+    width:100%;
+    max-width:400px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  @media (min-width: 1024px) {
+    .stage {
+      transform: scale(1.15);
+    }
+  }
+  .perspective{
+    width:100%;
+    perspective:1800px;
+  }
+  .pass{
+    position:relative;
+    width:100%;
+    transform-style:preserve-3d;
+    transition:transform 0.7s cubic-bezier(.4,.2,.2,1);
+    cursor:pointer;
+  }
+  .pass.flipped{ transform:rotateY(180deg); }
+  .pass:focus-visible{ outline:2px solid var(--transit); outline-offset:6px; border-radius:20px; }
+  .face{
+    backface-visibility:hidden;
+    background:var(--paper);
+    border-radius:20px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.4) inset;
+    overflow:hidden;
+    color:var(--ink);
+  }
+  .face-back{
+    position:absolute;
+    inset:0;
+    transform:rotateY(180deg);
+  }
+
+  .eyebrow-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 22px 0;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+  }
+  .status-pill{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    padding:5px 10px 5px 8px;
+    border-radius:100px;
+    background:var(--transit-bg);
+    color:var(--transit-dark);
+  }
+  .status-pill .dot{ width:6px; height:6px; border-radius:50%; background:var(--transit); }
+  .status-pill.is-departed{ background:#E7E1D2; color:var(--ink-soft); }
+  .status-pill.is-departed .dot{ background:var(--ink-faint); }
+
+  .brand{
+    padding:14px 22px 0;
+  }
+  .brand h1{
+    margin:0;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:-0.01em;
+  }
+  .brand p{
+    margin:3px 0 0;
+    font-size:13.5px;
+    color:var(--ink-soft);
+  }
+
+  .route{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    padding:22px 22px 6px;
+    gap:10px;
+  }
+  .stop{ flex:1; min-width:0; }
+  .stop.end{ text-align:right; }
+  .stop-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.1em;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    margin:0 0 4px;
+  }
+  .stop-name{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14.5px;
+    line-height:1.25;
+    margin:0;
+  }
+  .stop-sub{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin:2px 0 0;
+  }
+
+  .track{
+    position:relative;
+    height:20px;
+    margin:8px 22px 4px;
+  }
+  .track-line{
+    position:absolute;
+    top:50%;
+    left:6px;
+    right:6px;
+    border-top:1.5px dashed var(--ink-faint);
+    transform:translateY(-50%);
+  }
+  .track-node{
+    position:absolute;
+    top:50%;
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--transit);
+    transform:translateY(-50%);
+  }
+  .track-node.start{ left:0; }
+  .track-node.end{ right:0; background:var(--ink); }
+  .track-vehicle{
+    position:absolute;
+    top:50%;
+    width:16px;
+    height:10px;
+    left:6%;
+    opacity:0;
+    transform:translate(-50%,-50%);
+    animation:travel 4.5s linear infinite;
+  }
+  .track-vehicle svg{ width:100%; height:100%; display:block; }
+  @keyframes travel{
+    0%{ left:6%; opacity:0; }
+    10%{ opacity:1; }
+    85%{ opacity:1; }
+    100%{ left:94%; opacity:0; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .track-vehicle{ animation:none; left:50%; opacity:1; }
+    .pass{ transition:none; }
+  }
+
+  .depart-row{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    padding:10px 22px 20px;
+    border-bottom:1px dashed var(--line);
+  }
+  .depart-time{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:19px;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  .depart-time span{
+    font-size:12px;
+    color:var(--ink-faint);
+    font-weight:400;
+    margin-left:4px;
+  }
+  .depart-status{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:var(--transit-dark);
+  }
+  .depart-status.is-departed{ color:var(--ink-faint); }
+
+  .notch-row{
+    position:relative;
+    height:0;
+  }
+  .notch{
+    position:absolute;
+    top:-11px;
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    background:var(--void);
+  }
+  .notch.left{ left:-11px; }
+  .notch.right{ right:-11px; }
+
+  .details{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px 12px;
+    padding:22px 22px 6px;
+  }
+  .detail-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 4px;
+  }
+  .detail-value{
+    font-size:14.5px;
+    font-weight:500;
+    margin:0;
+    text-transform:capitalize;
+  }
+
+  .stub{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    padding:16px 22px 20px;
+  }
+  .stub-qr{
+    width:52px;
+    height:52px;
+    border-radius:8px;
+    background:var(--void);
+    flex-shrink:0;
+    padding:5px;
+  }
+  .stub-qr canvas{ width:100%; height:100%; display:block; }
+  .stub-mid{ flex:1; min-width:0; }
+  .booking-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .booking-id{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;
+    font-weight:600;
+    letter-spacing:0.02em;
+  }
+  .copy-btn{
+    position:relative;
+    border:none;
+    background:transparent;
+    color:var(--ink-faint);
+    cursor:pointer;
+    padding:6px;
+    display:inline-flex;
+    border-radius:6px;
+  }
+  .copy-btn::after{
+    content:'';
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    width:44px; height:44px;
+  }
+  .copy-btn:hover{ background:var(--paper-2); color:var(--ink); }
+  .copy-btn svg{ width:14px; height:14px; display:block; }
+  .flip-hint{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size:12px;
+    color:var(--ink-faint);
+    white-space:nowrap;
+  }
+  .flip-hint svg{ width:13px; height:13px; }
+
+  .stamp{
+    position:absolute;
+    right:20px;
+    bottom:96px;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:0.1em;
+    color:var(--stamp);
+    border:2px solid var(--stamp);
+    border-radius:8px;
+    padding:4px 8px;
+    transform:rotate(-9deg);
+    opacity:0.85;
+    text-transform:uppercase;
+    pointer-events:none;
+  }
+  .stamp.is-departed{
+    color:var(--ink-faint);
+    border-color:var(--ink-faint);
+  }
+
+  .back-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:20px 22px 0;
+  }
+  .back-brand{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14px;
+  }
+  .back-brand span{
+    display:block;
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:400;
+    font-size:12px;
+    letter-spacing:0.1em;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    margin-top:2px;
+  }
+  .big-qr-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:22px 22px 6px;
+  }
+  .big-qr{
+    width:168px;
+    height:168px;
+    background:var(--void);
+    border-radius:14px;
+    padding:12px;
+  }
+  .big-qr canvas{ width:100%; height:100%; display:block; }
+  .big-qr-caption{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:14px 0 0;
+  }
+  .big-qr-sub{
+    font-size:13px;
+    color:var(--ink-faint);
+    text-align:center;
+    max-width:260px;
+    margin:6px 0 0;
+    line-height:1.5;
+  }
+  .back-divider{
+    margin:20px 22px 0;
+    border-top:1px dashed var(--line);
+  }
+  .contact{
+    padding:16px 22px 20px;
+  }
+  .contact-title{
+    font-size:13px;
+    font-weight:600;
+    margin:0 0 12px;
+  }
+  .contact-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px 0;
+    text-decoration:none;
+    color:var(--ink);
+  }
+  .contact-row svg{ width:15px; height:15px; color:var(--ink-faint); flex-shrink:0; }
+  .contact-row .ct-label{
+    font-size:12px;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    display:block;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .contact-row .ct-value{ font-size:13px; font-weight:500; }
+  .back-flip-hint{
+    text-align:center;
+    padding:0 22px 20px;
+    font-size:12px;
+    color:var(--ink-faint);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+  }
+  .back-flip-hint svg{ width:13px; height:13px; }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:28px;
+    transform:translateX(-50%) translateY(12px);
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    padding:9px 16px;
+    border-radius:8px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.25s ease, transform 0.25s ease;
+  }
+  .toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+
+  .stage-hint{
+    margin-top:22px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.08em;
+    color:rgba(244,237,221,0.45);
+    text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="perspective">
+    <div class="pass" id="pass" tabindex="0" role="button" aria-pressed="false" aria-label="Tiket shuttle, ketuk untuk membalik dan melihat kode QR">
+
+      <div class="face face-front">
+        <div class="eyebrow-row">
+          <p class="eyebrow">Shuttle pass</p>
+          <div class="status-pill" id="statusPill">
+            <span class="dot"></span>
+            <span id="statusPillText">Confirmed</span>
+          </div>
+        </div>
+
+        <div class="brand">
+          <h1>Ibis Styles Jakarta</h1>
+          <p>Airport shuttle · Drop-off service</p>
+        </div>
+
+        <div class="route">
+          <div class="stop">
+            <p class="stop-label">Hotel</p>
+            <p class="stop-name">Ibis Styles Jakarta</p>
+            <p class="stop-sub">Hotel lobby</p>
+          </div>
+          <div class="stop end">
+            <p class="stop-label">Airport</p>
+            <p class="stop-name">Soekarno-Hatta Intl.</p>
+            <p class="stop-sub">Terminal drop-off</p>
+          </div>
+        </div>
+
+        <div class="track">
+          <div class="track-line"></div>
+          <div class="track-node start"></div>
+          <div class="track-vehicle" id="vehicleIcon">
+            <svg viewBox="0 0 24 14" fill="none"><rect x="1" y="2" width="18" height="8" rx="2" fill="#182231"/><rect x="4" y="4" width="4" height="3.5" fill="#F4EDDD"/><rect x="9.5" y="4" width="4" height="3.5" fill="#F4EDDD"/><rect x="15" y="4" width="3" height="3.5" fill="#F4EDDD"/><circle cx="6" cy="11" r="2" fill="#182231"/><circle cx="15" cy="11" r="2" fill="#182231"/></svg>
+          </div>
+          <div class="track-node end"></div>
+        </div>
+
+        <div class="depart-row">
+          <p class="depart-time">10:30<span>WIB</span></p>
+          <p class="depart-status" id="departStatus">Boards in —</p>
+        </div>
+
+        <div class="notch-row">
+          <div class="notch left"></div>
+          <div class="notch right"></div>
+        </div>
+
+        <div class="details">
+          <div>
+            <p class="detail-label">Passenger</p>
+            <p class="detail-value">Muhammad Ridwan</p>
+          </div>
+          <div>
+            <p class="detail-label">Room no.</p>
+            <p class="detail-value">301</p>
+          </div>
+          <div>
+            <p class="detail-label">Date</p>
+            <p class="detail-value">Tue, 28 Jul 2026</p>
+          </div>
+          <div>
+            <p class="detail-label">Passengers</p>
+            <p class="detail-value">1 person</p>
+          </div>
+        </div>
+
+        <div class="stamp" id="stamp">Confirmed</div>
+
+        <div class="stub">
+          <div class="stub-qr"><canvas id="qrSmall" width="80" height="80"></canvas></div>
+          <div class="stub-mid">
+            <p class="detail-label">Booking ID</p>
+            <div class="booking-row">
+              <span class="booking-id">IBXMS40722WXH6</span>
+              <button class="copy-btn" id="copyBtn" aria-label="Salin booking ID">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="flip-hint">
+            <span>Flip</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="face face-back">
+        <div class="back-header">
+          <div class="back-brand">Ibis Styles Jakarta<span>Booking IBXMS40722WXH6</span></div>
+        </div>
+
+        <div class="big-qr-wrap">
+          <div class="big-qr"><canvas id="qrBig" width="280" height="280"></canvas></div>
+          <p class="big-qr-caption">Scan to verify ticket</p>
+          <p class="big-qr-sub">Show this QR code or your downloaded PDF ticket to the driver upon boarding.</p>
+        </div>
+
+        <div class="back-divider"></div>
+
+        <div class="contact">
+          <p class="contact-title">Need help? Contact Ibis Styles Jakarta</p>
+          <a class="contact-row" href="tel:+622129327777">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <span><span class="ct-label">Phone / WhatsApp</span><span class="ct-value">+62 21 2932 7777</span></span>
+          </a>
+          <a class="contact-row" href="mailto:H8593-RE@accor.com">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" style="display:none"/><path d="M22 6c0-1.1-.9-2-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h16a2 2 0 0 0 2-2V6z"/><path d="M22 6l-10 7L2 6"/></svg>
+            <span><span class="ct-label">Email</span><span class="ct-value">H8593-RE@accor.com</span></span>
+          </a>
+          <div class="contact-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9m5-16h-5v4h5V6z"/><path d="M17 12H7"/><path d="M17 16H7"/></svg>
+            <span><span class="ct-label">Fax</span><span class="ct-value">+62 21 2923 7637</span></span>
+          </div>
+        </div>
+
+        <div class="back-flip-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          <span>Tap to flip back</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <p class="stage-hint">Tap the pass to flip</p>
+</div>
+
+<div class="toast" id="toast">Booking ID copied</div>
+
+<script>
+(function(){
+  var bookingId = "IBXMS40722WXH6";
+
+  function drawFakeQR(canvas, seed){
+    var ctx = canvas.getContext('2d');
+    var size = canvas.width;
+    var cells = 21;
+    var cell = size / cells;
+    ctx.fillStyle = '#F4EDDD';
+    ctx.fillRect(0,0,size,size);
+    var h = 0;
+    for(var i=0;i<seed.length;i++){ h = (h*31 + seed.charCodeAt(i)) >>> 0; }
+    function rand(){ h = (h*1103515245 + 12345) >>> 0; return (h >>> 16) / 65535; }
+    for(var y=0;y<cells;y++){
+      for(var x=0;x<cells;x++){
+        var inFinder = (x<7&&y<7)||(x>cells-8&&y<7)||(x<7&&y>cells-8);
+        if(inFinder) continue;
+        if(rand() > 0.56){
+          ctx.fillStyle = '#F4EDDD';
+          ctx.fillRect(x*cell, y*cell, Math.ceil(cell), Math.ceil(cell));
+        }
+      }
+    }
+    function finder(fx,fy){
+      ctx.fillStyle = '#F4EDDD';
+      ctx.fillRect(fx*cell, fy*cell, 7*cell, 7*cell);
+      ctx.fillStyle = '#0B1119';
+      ctx.fillRect((fx)*cell, (fy)*cell, 7*cell, 7*cell);
+      ctx.fillStyle = '#F4EDDD';
+      ctx.fillRect((fx+1)*cell, (fy+1)*cell, 5*cell, 5*cell);
+      ctx.fillStyle = '#0B1119';
+      ctx.fillRect((fx+2)*cell, (fy+2)*cell, 3*cell, 3*cell);
+    }
+    ctx.fillStyle = '#0B1119';
+    ctx.fillRect(0,0,size,size);
+    for(var y2=0;y2<cells;y2++){
+      for(var x2=0;x2<cells;x2++){
+        var inFinder2 = (x2<7&&y2<7)||(x2>cells-8&&y2<7)||(x2<7&&y2>cells-8);
+        if(inFinder2) continue;
+        if(rand() > 0.56){
+          ctx.fillStyle = '#F4EDDD';
+          ctx.fillRect(x2*cell, y2*cell, Math.ceil(cell), Math.ceil(cell));
+        }
+      }
+    }
+    finder(0,0);
+    finder(cells-7,0);
+    finder(0,cells-7);
+  }
+  drawFakeQR(document.getElementById('qrSmall'), bookingId);
+  drawFakeQR(document.getElementById('qrBig'), bookingId + '_big');
+
+  var pass = document.getElementById('pass');
+  function toggleFlip(){
+    var flipped = pass.classList.toggle('flipped');
+    pass.setAttribute('aria-pressed', flipped ? 'true' : 'false');
+  }
+  pass.addEventListener('click', toggleFlip);
+  pass.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleFlip(); }
+  });
+
+  var copyBtn = document.getElementById('copyBtn');
+  var toast = document.getElementById('toast');
+  copyBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    function showToast(){
+      toast.classList.add('show');
+      setTimeout(function(){ toast.classList.remove('show'); }, 1600);
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(bookingId).then(showToast).catch(function(){
+        fallbackCopy(); showToast();
+      });
+    } else {
+      fallbackCopy(); showToast();
+    }
+    function fallbackCopy(){
+      var ta = document.createElement('textarea');
+      ta.value = bookingId;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try{ document.execCommand('copy'); }catch(err){}
+      document.body.removeChild(ta);
+    }
+  });
+
+  var target = new Date("2026-07-28T10:30:00+07:00");
+  var pill = document.getElementById('statusPill');
+  var pillText = document.getElementById('statusPillText');
+  var departStatus = document.getElementById('departStatus');
+  var stamp = document.getElementById('stamp');
+  var vehicle = document.getElementById('vehicleIcon');
+
+  function updateStatus(){
+    var now = new Date();
+    var diffMs = target - now;
+    var diffMin = Math.round(diffMs / 60000);
+
+    if(diffMs > 0){
+      var h = Math.floor(diffMin / 60);
+      var m = diffMin % 60;
+      var label = h > 0 ? (h + 'h ' + m + 'm') : (m + 'm');
+      departStatus.textContent = 'Boards in ' + label;
+      departStatus.classList.remove('is-departed');
+      pillText.textContent = 'Confirmed';
+      pill.classList.remove('is-departed');
+      stamp.textContent = 'Confirmed';
+      stamp.classList.remove('is-departed');
+      vehicle.style.opacity = '1';
+    } else {
+      departStatus.textContent = 'Shuttle has departed';
+      departStatus.classList.add('is-departed');
+      pillText.textContent = 'Departed';
+      pill.classList.add('is-departed');
+      stamp.textContent = 'Departed';
+      stamp.classList.add('is-departed');
+      vehicle.style.opacity = '0.35';
+    }
+  }
+  updateStatus();
+  setInterval(updateStatus, 30000);
+})();
+</script>
+
+</body>
+</html>

@@ -95,3 +95,197 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* ═══════════════════════════════════════════════
+   SHUTTLE PASS — Card Design System
+   ═══════════════════════════════════════════════ */
+
+:root {
+  --sp-paper: #F4EDDD;
+  --sp-paper-2: #EAE0C7;
+  --sp-ink: #182231;
+  --sp-ink-soft: #5A6577;
+  --sp-ink-faint: #8B93A0;
+  --sp-transit: #1F6F5C;
+  --sp-transit-dark: #123F34;
+  --sp-transit-bg: #DEEAE3;
+  --sp-stamp: #B14226;
+  --sp-line: rgba(24,34,49,0.18);
+  --sp-void: #101823;
+  --sp-void-2: #0B1119;
+}
+
+/* Flip card perspective & transform */
+.shuttle-pass-perspective {
+  perspective: 1800px;
+}
+
+.shuttle-pass-card {
+  position: relative;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(.4,.2,.2,1);
+  cursor: pointer;
+  transform-origin: center;
+}
+
+/* Pressed Hint Animation (scales 1 -> 0.95 -> 1 with calm rest pause between pulses) */
+@keyframes sp-press-hint {
+  0% {
+    transform: scale(1);
+  }
+  18% {
+    transform: scale(0.95);
+  }
+  36%, 100% {
+    transform: scale(1);
+  }
+}
+
+.shuttle-pass-card.hint-active:not(.flipped) {
+  animation: sp-press-hint 2.2s ease-in-out 1s 3;
+}
+
+/* Floating Tooltip Hint */
+@keyframes sp-tooltip-appear {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.shuttle-pass-tooltip-hint {
+  position: absolute;
+  top: -44px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99;
+  pointer-events: none;
+  background: var(--sp-ink);
+  color: var(--sp-paper);
+  border: 1px solid rgba(244, 237, 221, 0.25);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  opacity: 0;
+  animation: sp-tooltip-appear 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
+}
+
+.shuttle-pass-tooltip-hint::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--sp-ink);
+}
+
+/* Tactile :active Feedback */
+.shuttle-pass-card:active {
+  transform: scale(0.95);
+  transition: transform 0.15s ease-out;
+}
+
+.shuttle-pass-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.shuttle-pass-card.flipped:active {
+  transform: rotateY(180deg) scale(0.95);
+  transition: transform 0.15s ease-out;
+}
+
+.shuttle-pass-card:focus-visible {
+  outline: 2px solid var(--sp-transit);
+  outline-offset: 6px;
+  border-radius: 20px;
+}
+
+.shuttle-pass-face {
+  backface-visibility: hidden;
+  background: var(--sp-paper);
+  border-radius: 20px;
+  box-shadow: 0 30px 60px -20px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.4) inset;
+  overflow: hidden;
+  color: var(--sp-ink);
+}
+
+.shuttle-pass-face-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+}
+
+/* Track animation */
+@keyframes sp-travel {
+  0%   { left: 6%;  opacity: 0; }
+  10%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { left: 94%; opacity: 0; }
+}
+
+.shuttle-pass-vehicle {
+  animation: sp-travel 4.5s linear infinite;
+}
+
+/* Stamp */
+.shuttle-pass-stamp {
+  position: absolute;
+  right: 20px;
+  bottom: 96px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--sp-stamp);
+  border: 2px solid var(--sp-stamp);
+  border-radius: 8px;
+  padding: 4px 8px;
+  transform: rotate(-9deg);
+  opacity: 0.85;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.shuttle-pass-stamp.is-departed {
+  color: var(--sp-ink-faint);
+  border-color: var(--sp-ink-faint);
+}
+
+/* Toast */
+.shuttle-pass-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--sp-ink);
+  color: var(--sp-paper);
+  font-size: 12px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 50;
+}
+
+.shuttle-pass-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shuttle-pass-vehicle { animation: none; left: 50%; opacity: 1; }
+  .shuttle-pass-card { transition: none; }
+}
