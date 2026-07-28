@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, Shield, Clock, Loader2, Plane, MapPin, ArrowRight, ArrowLeft } from "lucide-react"
+import { User, Shield, Clock, Loader2, MapPin } from "lucide-react"
 import { ScheduleSelector } from "@/components/ScheduleSelector"
 import { useRealTimeCapacity } from "@/hooks/useRealTimeCapacity"
 import { ServiceTypeSelector } from "@/components/ServiceTypeSelector"
@@ -359,6 +359,9 @@ export default function BookingPage() {
               todaySchedules={todaySchedules}
               tomorrowSchedules={tomorrowSchedules}
               onChangeSchedule={() => setBookingStep(1)}
+              hotelName={hotelName}
+              meetingPointId={selectedMeetingPointId}
+              terminalMeetingPoints={terminalMeetingPoints}
             />
 
             <Card className="shadow-lg border border-slate-100 rounded-2xl">
@@ -566,7 +569,10 @@ function SelectionSummary({
   date,
   todaySchedules,
   tomorrowSchedules,
-  onChangeSchedule
+  onChangeSchedule,
+  hotelName,
+  meetingPointId,
+  terminalMeetingPoints
 }: {
   serviceType: string | null
   scheduleId: string | null
@@ -575,66 +581,187 @@ function SelectionSummary({
   todaySchedules: any[]
   tomorrowSchedules: any[]
   onChangeSchedule?: () => void
+  hotelName: string
+  meetingPointId: string | null
+  terminalMeetingPoints: { id: string; terminalCode: string; locationDescription: string; arrivalTimeOffsetMin?: number; arrivalTimeOffsetMax?: number }[]
 }) {
   const allSchedules = [...todaySchedules, ...tomorrowSchedules]
   const schedule = allSchedules.find(s => s.id === scheduleId)
 
   if (!scheduleId && !terminalCode) return null
 
+  const isPickup = serviceType !== "drop_off"
+  const pickupLabel = isPickup ? "Airport" : "Hotel"
+  const dropoffLabel = isPickup ? "Hotel" : "Airport"
+
+  // Resolve meeting point for pickup
+  const meetingPoint = meetingPointId
+    ? terminalMeetingPoints.find(mp => mp.id === meetingPointId)
+    : terminalCode
+      ? terminalMeetingPoints.find(mp => mp.terminalCode === terminalCode)
+      : null
+
+  const pickupLocation = isPickup
+    ? (terminalCode ? `Terminal ${terminalCode}` : "Airport Terminal")
+    : hotelName
+  const pickupSub = isPickup
+    ? (meetingPoint?.locationDescription || "Meeting point")
+    : "Hotel Lobby"
+  const dropoffLocation = isPickup
+    ? hotelName
+    : (terminalCode ? `Terminal ${terminalCode}` : "Airport")
+  const dropoffSub = isPickup ? "Hotel drop-off" : "Terminal drop-off"
+  const departureTime = schedule
+    ? schedule.departure_time.split(':').slice(0, 2).join(':')
+    : "--:--"
+  const serviceDirection = isPickup
+    ? "Airport shuttle · Pick-up service"
+    : "Airport shuttle · Drop-off service"
+
+  const mono = 'var(--font-mono-ibm, ui-monospace, monospace)'
+
   return (
-    <div className="relative group overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white p-5 shadow-xl border border-slate-700/80 transition-all duration-300 hover:shadow-2xl">
-      {/* Decorative background glow */}
-      <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
-
-      {/* Ticket Side Notches */}
-      <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-50 border border-slate-300/40" />
-      <div className="absolute -right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-50 border border-slate-300/40" />
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10 px-2 sm:px-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Reserved Slot
-            </span>
-            <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">
-              {serviceType === "drop_off" ? "Hotel ➔ Airport" : "Airport ➔ Hotel"}
-            </span>
-          </div>
-
-          <div className="flex items-baseline gap-3 flex-wrap">
-            {schedule && (
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-emerald-400" />
-                <span className="text-2xl font-black tracking-tight">
-                  {schedule.departure_time.split(':').slice(0, 2).join(':')}
-                  <span className="text-xs font-medium text-slate-400 ml-1">WIB</span>
-                </span>
-              </div>
-            )}
-
-            {terminalCode && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-white/10 text-xs font-semibold text-white border border-white/15 backdrop-blur-sm">
-                <Plane className="h-3.5 w-3.5 text-indigo-300" />
-                Terminal {terminalCode}
-              </span>
-            )}
-          </div>
+    <div className="relative overflow-hidden" style={{ borderRadius: 16, background: 'var(--sp-paper)', boxShadow: '0 4px 24px rgba(24,34,49,0.10)' }}>
+      {/* Status Row */}
+      <div className="flex items-center justify-end" style={{ padding: '16px 20px 0' }}>
+        <div className="flex items-center gap-1.5" style={{
+          fontFamily: mono,
+          fontSize: '10.5px',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase' as const,
+          padding: '5px 10px 5px 8px',
+          borderRadius: '100px',
+          background: 'var(--sp-transit-bg)',
+          color: 'var(--sp-transit-dark)',
+        }}>
+          <span style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: 'var(--sp-transit)',
+            display: 'inline-block',
+          }} />
+          <span>Reserved</span>
         </div>
+      </div>
 
-        {onChangeSchedule && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-10 px-4 text-xs font-bold rounded-xl border-white/20 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all duration-200 hover:scale-105 self-start sm:self-center"
-            onClick={onChangeSchedule}
-          >
-            ✏️ Change Route / Time
-          </Button>
+      {/* Hotel name + service direction */}
+      <div style={{ padding: '12px 20px 0' }}>
+        <h2 style={{
+          margin: 0,
+          fontWeight: 700,
+          fontSize: '20px',
+          letterSpacing: '-0.01em',
+          color: 'var(--sp-ink)',
+        }}>{hotelName}</h2>
+        <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: 'var(--sp-ink-soft)' }}>
+          {serviceDirection}
+        </p>
+      </div>
+
+      {/* Route */}
+      <div className="flex items-start justify-between" style={{ padding: '20px 20px 6px', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{
+            fontFamily: mono,
+            fontSize: '10px', letterSpacing: '0.1em',
+            color: 'var(--sp-ink-faint)', textTransform: 'uppercase' as const,
+            margin: '0 0 4px',
+          }}>{pickupLabel}</p>
+          <p style={{
+            fontWeight: 600, fontSize: '14.5px', lineHeight: 1.25,
+            margin: 0, color: 'var(--sp-ink)',
+          }}>{pickupLocation}</p>
+          <p style={{ fontSize: '11.5px', color: 'var(--sp-ink-soft)', margin: '2px 0 0' }}>
+            {pickupSub}
+          </p>
+        </div>
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+          <p style={{
+            fontFamily: mono,
+            fontSize: '10px', letterSpacing: '0.1em',
+            color: 'var(--sp-ink-faint)', textTransform: 'uppercase' as const,
+            margin: '0 0 4px',
+          }}>{dropoffLabel}</p>
+          <p style={{
+            fontWeight: 600, fontSize: '14.5px', lineHeight: 1.25,
+            margin: 0, color: 'var(--sp-ink)',
+          }}>{dropoffLocation}</p>
+          <p style={{ fontSize: '11.5px', color: 'var(--sp-ink-soft)', margin: '2px 0 0' }}>
+            {dropoffSub}
+          </p>
+        </div>
+      </div>
+
+      {/* Track */}
+      <div style={{ position: 'relative', height: 20, margin: '8px 20px 4px' }}>
+        <div style={{ position: 'absolute', top: '50%', left: 6, right: 6, borderTop: '1.5px dashed var(--sp-ink-faint)', transform: 'translateY(-50%)' }} />
+        <div style={{ position: 'absolute', top: '50%', left: 0, width: 7, height: 7, borderRadius: '50%', background: 'var(--sp-transit)', transform: 'translateY(-50%)' }} />
+        <div className="shuttle-pass-vehicle" style={{
+          position: 'absolute', top: '50%', width: 16, height: 10, left: '6%', opacity: 0,
+          transform: 'translate(-50%,-50%)',
+        }}>
+          <svg viewBox="0 0 24 14" fill="none" style={{ width: '100%', height: '100%', display: 'block' }}>
+            <rect x="1" y="2" width="18" height="8" rx="2" fill="#182231" />
+            <rect x="4" y="4" width="4" height="3.5" fill="#F4EDDD" />
+            <rect x="9.5" y="4" width="4" height="3.5" fill="#F4EDDD" />
+            <rect x="15" y="4" width="3" height="3.5" fill="#F4EDDD" />
+            <circle cx="6" cy="11" r="2" fill="#182231" />
+            <circle cx="15" cy="11" r="2" fill="#182231" />
+          </svg>
+        </div>
+        <div style={{ position: 'absolute', top: '50%', right: 0, width: 7, height: 7, borderRadius: '50%', background: 'var(--sp-ink)', transform: 'translateY(-50%)' }} />
+      </div>
+
+      {/* Depart Row */}
+      <div className="flex items-baseline justify-between" style={{ padding: '10px 20px 18px', borderBottom: '1px dashed var(--sp-line)' }}>
+        <p style={{
+          fontFamily: mono,
+          fontSize: '19px', fontWeight: 600, letterSpacing: '0.01em',
+          margin: 0, color: 'var(--sp-ink)',
+        }}>
+          {departureTime}
+          <span style={{ fontSize: '11px', color: 'var(--sp-ink-faint)', fontWeight: 400, marginLeft: '4px' }}>WIB</span>
+        </p>
+        {date && (
+          <p style={{
+            fontFamily: mono,
+            fontSize: '11.5px', color: 'var(--sp-ink-soft)', margin: 0,
+          }}>
+            {new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </p>
         )}
       </div>
+
+      {/* Notches */}
+      <div style={{ position: 'relative', height: 0 }}>
+        <div style={{ position: 'absolute', top: -11, left: -11, width: 22, height: 22, borderRadius: '50%', background: '#f8fafc', zIndex: 2 }} />
+        <div style={{ position: 'absolute', top: -11, right: -11, width: 22, height: 22, borderRadius: '50%', background: '#f8fafc', zIndex: 2 }} />
+      </div>
+
+      {/* Footer — Change action */}
+      {onChangeSchedule && (
+        <div className="flex items-center justify-center" style={{ padding: '14px 20px 14px' }}>
+          <button
+            type="button"
+            onClick={onChangeSchedule}
+            className="flex items-center gap-1.5 transition-colors"
+            style={{
+              fontFamily: mono,
+              fontSize: '11px',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase' as const,
+              padding: '6px 16px',
+              borderRadius: 8,
+              border: '1px solid var(--sp-line)',
+              background: 'transparent',
+              color: 'var(--sp-ink-soft)',
+              cursor: 'pointer',
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            Change Route / Time
+          </button>
+        </div>
+      )}
     </div>
   )
 }
